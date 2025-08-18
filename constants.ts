@@ -46,8 +46,10 @@ export const DEFAULT_TEST_LIBRARY: TestLibraryItem[] = [
 
 
 const emailFooter = `\n\nبا احترام،\nتیم استخدام {{companyName}}\n{{companyWebsite}}`;
+const whatsappFooter = `\n\nبا احترام،\nتیم استخدام {{companyName}}`;
 
 export const DEFAULT_TEMPLATES: Template[] = [
+    // --- Email Templates ---
     {
         id: 'tpl_hired_email',
         name: 'ایمیل استخدام (پیشنهاد شغلی)',
@@ -56,36 +58,60 @@ export const DEFAULT_TEMPLATES: Template[] = [
         content: `سلام {{candidateName}} عزیز،\n\nامیدوارم حالت عالی باشه.\n\nبا خوشحالی بهت اطلاع می‌دیم که مراحل مصاحبه رو با موفقیت پشت سر گذاشتی و مایلیم موقعیت شغلی «{{position}}» رو در شرکت {{companyName}} به شما پیشنهاد بدیم.\n\nبه زودی برای هماهنگی جزئیات بیشتر با شما تماس می‌گیریم.` + emailFooter
     },
     {
-        id: 'tpl_stage_change_review',
-        name: 'اطلاع‌رسانی انتقال به مرحله بررسی',
+        id: 'tpl_stage_change_review_email',
+        name: 'ایمیل اطلاع‌رسانی انتقال به بررسی',
         type: 'email',
         stageId: 'review',
         content: `سلام {{candidateName}} عزیز،\n\nجهت اطلاع، رزومه شما برای موقعیت شغلی «{{position}}» دریافت شد و در حال حاضر در مرحله «{{stageName}}» قرار دارد.\n\nبه زودی نتیجه بررسی را به شما اطلاع خواهیم داد.` + emailFooter
     },
     {
-        id: 'tpl_stage_change_interview-1',
-        name: 'دعوت به مصاحبه اول',
+        id: 'tpl_stage_change_interview-1_email',
+        name: 'ایمیل دعوت به مصاحبه اول',
         type: 'email',
         stageId: 'interview-1',
         content: `سلام {{candidateName}} عزیز،\n\nخبر خوبی داریم! رزومه شما برای موقعیت «{{position}}» بررسی شد و مایلیم شما را به مرحله «{{stageName}}» دعوت کنیم.\n\nزمان مصاحبه شما برای تاریخ {{interviewDate}} ساعت {{interviewTime}} در محل شرکت به آدرس زیر تنظیم شده است:\n{{companyAddress}}\n\nلطفا در صورت امکان، حضور خود را تایید بفرمایید.` + emailFooter
     },
     {
-        id: 'tpl_stage_change_interview-2',
-        name: 'دعوت به مصاحبه دوم (فنی/نهایی)',
+        id: 'tpl_stage_change_interview-2_email',
+        name: 'ایمیل دعوت به مصاحبه دوم (فنی/نهایی)',
         type: 'email',
         stageId: 'interview-2',
         content: `سلام {{candidateName}} عزیز،\n\nMممنون از حضور شما در مصاحبه اولیه. مایلیم شما را برای مرحله بعدی، «{{stageName}}»، دعوت کنیم.\n\nزمان مصاحبه بعدی شما برای تاریخ {{interviewDate}} ساعت {{interviewTime}} در محل شرکت به آدرس زیر تنظیم شده است:\n{{companyAddress}}\n\nلطفا در صورت امکان، حضور خود را تایید بفرمایید.` + emailFooter
     },
+    // --- WhatsApp Templates ---
      {
         id: 'tpl_whatsapp_offer',
         name: 'واتسپ پیشنهاد شغلی',
         type: 'whatsapp',
+        stageId: 'hired',
         content: `سلام {{candidateName}} عزیز. تبریک! 🎉 شما در فرایند استخدام ما در شرکت {{companyName}} برای موقعیت شغلی «{{position}}» پذیرفته شدید. برای هماهنگی جزئیات بیشتر به زودی با شما تماس می‌گیریم.`
     },
     {
-        id: 'tpl_whatsapp_invite',
+        id: 'tpl_whatsapp_stage_change_review',
+        name: 'واتسپ اطلاع‌رسانی انتقال به بررسی',
+        type: 'whatsapp',
+        stageId: 'review',
+        content: `سلام {{candidateName}} عزیز. جهت اطلاع، رزومه شما برای موقعیت «{{position}}» در شرکت {{companyName}} دریافت شد و در مرحله «{{stageName}}» قرار دارد. به زودی نتیجه را به شما اطلاع می‌دهیم.` + whatsappFooter
+    },
+    {
+        id: 'tpl_whatsapp_stage_change_interview-1',
+        name: 'واتسپ دعوت به مصاحبه اول',
+        type: 'whatsapp',
+        stageId: 'interview-1',
+        content: `سلام {{candidateName}} عزیز. خبر خوبی داریم! رزومه شما برای موقعیت «{{position}}» بررسی شد و مایلیم شما را به مرحله «{{stageName}}» دعوت کنیم.\n\nزمان مصاحبه شما: {{interviewDate}} ساعت {{interviewTime}}\nمکان: {{companyAddress}}\n\nلطفا حضور خود را تایید بفرمایید.` + whatsappFooter
+    },
+    {
+        id: 'tpl_whatsapp_stage_change_interview-2',
+        name: 'واتسپ دعوت به مصاحبه دوم',
+        type: 'whatsapp',
+        stageId: 'interview-2',
+        content: `سلام {{candidateName}} عزیز. ممنون از حضور شما در مصاحبه اولیه. مایلیم شما را برای مرحله بعدی، «{{stageName}}»، دعوت کنیم.\n\nزمان مصاحبه بعدی: {{interviewDate}} ساعت {{interviewTime}}\nمکان: {{companyAddress}}\n\nلطفا حضور خود را تایید بفرمایید.` + whatsappFooter
+    },
+    {
+        id: 'tpl_whatsapp_invite_reminder',
         name: 'واتسپ یادآوری مصاحبه',
         type: 'whatsapp',
+        // No stageId, this is a generic reminder, not a stage change notification
         content: `سلام {{candidateName}} عزیز، خواستم یادآوری کنم که جلسه مصاحبه شما برای موقعیت شغلی «{{position}}» فردا در تاریخ {{interviewDate}} ساعت {{interviewTime}} برگزار خواهد شد. بی‌صبرانه منتظر دیدارتون هستیم.`
     }
 ];
