@@ -112,6 +112,9 @@ const App: React.FC = () => {
     return <LoginScreen />;
   }
 
+  // A safe way to get the version, defaulting if not defined during build
+  const appVersion = process.env.APP_VERSION || '1.0.0';
+
   return (
     <>
       <div className="min-h-screen">
@@ -121,6 +124,11 @@ const App: React.FC = () => {
             {activeView === 'dashboard' && <DashboardSummary candidates={candidates} />}
             {renderView()}
         </main>
+      </div>
+
+      {/* Version Display */}
+      <div className="fixed bottom-2 left-2 text-xs text-gray-400 font-mono z-50">
+        v{appVersion}
       </div>
 
       {/* Modals */}

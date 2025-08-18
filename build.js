@@ -2,6 +2,7 @@
 const esbuild = require('esbuild');
 const fs = require('fs-extra');
 const path = require('path');
+const packageJson = require('./package.json');
 
 const distDir = 'dist';
 
@@ -13,6 +14,7 @@ async function build() {
 
     // Read API_KEY from the build environment
     const apiKey = process.env.API_KEY || '';
+    const appVersion = packageJson.version;
 
     // 2. Build the TypeScript/React code
     await esbuild.build({
@@ -25,6 +27,7 @@ async function build() {
       define: { 
         'process.env.NODE_ENV': "'production'",
         'process.env.API_KEY': JSON.stringify(apiKey),
+        'process.env.APP_VERSION': JSON.stringify(appVersion),
       },
     });
     console.log('JavaScript bundled successfully.');
