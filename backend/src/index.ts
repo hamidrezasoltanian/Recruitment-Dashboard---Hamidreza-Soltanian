@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import candidateRoutes from './routes/candidate.routes';
@@ -7,7 +7,7 @@ import { connectDB } from './services/db';
 // Load environment variables from .env file
 dotenv.config();
 
-const app = express();
+const app: Express = express();
 const PORT = process.env.PORT || 4000;
 
 const startServer = async () => {
@@ -19,7 +19,7 @@ const startServer = async () => {
     app.use(express.json());
 
     // API Routes
-    app.get('/', (req: express.Request, res: express.Response) => {
+    app.get('/', (req: Request, res: Response) => {
         res.send('Recruitment Dashboard API is running!');
     });
 
