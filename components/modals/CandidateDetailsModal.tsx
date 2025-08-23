@@ -22,7 +22,7 @@ interface CandidateDetailsModalProps {
 }
 
 const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, onClose, candidate, onEdit, onStageChangeRequest, onNavigateToTests }) => {
-  const { addComment, updateCandidate, addCustomHistoryEntry } = useCandidates();
+  const { addComment, updateCandidate, addCustomHistoryEntry, generateCandidatePortalToken } = useCandidates();
   const { companyProfile, stages } = useSettings();
   const { user } = useAuth();
   const { addToast } = useToast();
@@ -145,6 +145,21 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
     }
   };
 
+  const handleCopyPortalLink = async () => {
+    if (!candidate) return;
+    const token = await generateCandidatePortalToken(candidate.id);
+    if (token) {
+        const url = `${window.location.origin}/?candidateId=${candidate.id}&token=${token}`;
+        try {
+            await navigator.clipboard.writeText(url);
+            addToast('لینک پورتال متقاضی در کلیپ‌بورد کپی شد.', 'success');
+        } catch (err) {
+            addToast('خطا در کپی کردن لینک.', 'error');
+            console.error('Failed to copy: ', err);
+        }
+    }
+  };
+
 
   return (
     <>
@@ -231,6 +246,7 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
           <div className="lg:col-span-1 space-y-4">
               <div className="p-4 bg-gray-100 rounded-lg space-y-3">
                   <h4 className="font-bold text-gray-800 mb-2">اقدامات سریع</h4>
+                  <button onClick={handleCopyPortalLink} className="w-full text-white bg-teal-600 hover:bg-teal-700 rounded-lg py-2 transition-colors">کپی لینک پورتال متقاضی</button>
                   <button onClick={() => { onEdit(candidate); onClose(); }} className="w-full text-white bg-blue-600 hover:bg-blue-700 rounded-lg py-2 transition-colors">ویرایش کامل اطلاعات</button>
                   <button onClick={() => onNavigateToTests(candidate.id)} className="w-full text-white bg-purple-600 hover:bg-purple-700 rounded-lg py-2 transition-colors">مدیریت آزمون‌ها</button>
                   <button onClick={() => onStageChangeRequest({candidate, newStage: stages.find(s=>s.id==='rejected')!})} className="w-full text-white bg-red-600 hover:bg-red-700 rounded-lg py-2 transition-colors">رد کردن متقاضی</button>

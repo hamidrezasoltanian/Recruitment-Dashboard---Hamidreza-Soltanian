@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { useCandidates } from './contexts/CandidatesContext';
 import { Candidate, StageId, View, StageChangeInfo } from './types';
@@ -17,11 +17,12 @@ import SelectCandidateModal from './components/modals/SelectCandidateModal';
 import TestSelectionModal from './components/modals/TestSelectionModal';
 import DashboardSummary from './components/dashboard/DashboardSummary';
 import LoginScreen from './components/auth/LoginScreen';
+import CandidatePortal from './components/portal/CandidatePortal';
 
 
 const App: React.FC = () => {
   const { user } = useAuth();
-  const { candidates, addCandidate, updateCandidate, updateCandidateStage } = useCandidates();
+  const { candidates, addCandidate, updateCandidate, updateCandidateStage, updateTestResult } = useCandidates();
   const [activeView, setActiveView] = useState<View>('dashboard');
   
   // Modal States
@@ -40,6 +41,52 @@ const App: React.FC = () => {
   const [testCandidateId, setTestCandidateId] = useState<string | null>(null);
   const [isSelectCandidateModalOpen, setSelectCandidateModalOpen] = useState(false);
   const [isTestSelectionModalOpen, setTestSelectionModalOpen] = useState(false);
+
+  // Portal Logic
+  const [portalCandidateInfo, setPortalCandidateInfo] = useState<{ id: string; token: string } | null>(null);
+  const [isCheckingPortal, setIsCheckingPortal] = useState(true);
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const candidateId = urlParams.get('candidateId');
+    const token = urlParams.get('token');
+    if (candidateId && token) {
+      setPortalCandidateInfo({ id: candidateId, token });
+    } else {
+      setIsCheckingPortal(false);
+    }
+  }, []);
+
+  const portalCandidate = useMemo(() => {
+    if (!portalCandidateInfo || candidates.length === 0) {
+      if (!portalCandidateInfo) setIsCheckingPortal(false);
+      return null;
+    }
+    const found = candidates.find(c => c.id === portalCandidateInfo.id && c.portalToken === portalCandidateInfo.token);
+    setIsCheckingPortal(false);
+    if (!found && portalCandidateInfo) {
+        console.error("Invalid portal link provided.");
+        const url = new URL(window.location.href);
+        url.searchParams.delete('candidateId');
+        url.searchParams.delete('token');
+        window.history.replaceState({}, document.title, url.toString());
+    }
+    return found;
+  }, [portalCandidateInfo, candidates]);
+
+  if (isCheckingPortal && portalCandidateInfo) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="text-center">
+          <p className="text-lg font-semibold text-gray-700">در حال اعتبارسنجی لینک...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (portalCandidate) {
+    return <CandidatePortal candidate={portalCandidate} onUpdateTestResult={updateTestResult} />;
+  }
 
 
   const handleOpenAddModal = (stage: StageId) => {
@@ -112,9 +159,6 @@ const App: React.FC = () => {
     return <LoginScreen />;
   }
 
-  // A safe way to get the version, defaulting if not defined during build
-  const appVersion = process.env.APP_VERSION || '1.0.0';
-
   return (
     <>
       <div className="min-h-screen">
@@ -124,11 +168,6 @@ const App: React.FC = () => {
             {activeView === 'dashboard' && <DashboardSummary candidates={candidates} />}
             {renderView()}
         </main>
-      </div>
-
-      {/* Version Display */}
-      <div className="fixed bottom-2 left-2 text-xs text-gray-400 font-mono z-50">
-        v{appVersion}
       </div>
 
       {/* Modals */}

@@ -3,6 +3,7 @@ import { Candidate, StageId, Comment, HistoryEntry, TestResult } from '../types'
 import { dbService } from '../services/dbService';
 import { useToast } from './ToastContext';
 import { useAuth } from './AuthContext';
+import { useSettings } from './SettingsContext';
 
 interface CandidatesContextType {
   candidates: Candidate[];
@@ -15,6 +16,7 @@ interface CandidatesContextType {
   addComment: (id: string, comment: Comment) => void;
   addCustomHistoryEntry: (id: string, actionText: string) => void;
   updateTestResult: (candidateId: string, testId: string, resultData: Partial<TestResult>) => Promise<void>;
+  generateCandidatePortalToken: (candidateId: string) => Promise<string | null>;
 }
 
 const CandidatesContext = createContext<CandidatesContextType | undefined>(undefined);
@@ -58,6 +60,7 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
   const [candidates, setCandidatesState] = useState<Candidate[]>([]);
   const { addToast } = useToast();
   const { user } = useAuth();
+  const { testLibrary } = useSettings();
   
   useEffect(() => {
     const loadData = async () => {
@@ -80,14 +83,14 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
   }, []);
 
   const addHistoryEntry = useCallback((candidate: Candidate, action: string, details?: string): Candidate => {
-    if (!user) return candidate;
+    const userForHistory = user ? user.name : 'متقاضی';
     const historyEntry: HistoryEntry = {
-      user: user.name,
+      user: userForHistory,
       action,
       details,
       timestamp: new Date().toISOString()
     };
-    return { ...candidate, history: [historyEntry, ...candidate.history] };
+    return { ...candidate, history: [historyEntry, ...(candidate.history || [])] };
   }, [user]);
 
   const setCandidates = async (newCandidates: Candidate[]) => {
@@ -210,13 +213,41 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
       updatedResults.push({ testId, status: 'not_sent', ...resultData });
     }
     
-    const action = `نتیجه آزمون به‌روزرسانی شد: ${testId}`;
-    const updatedCandidate = addHistoryEntry({ ...candidate, testResults: updatedResults }, action);
+    const testName = testLibrary.find(t => t.id === testId)?.name || 'ناشناخته';
+    const action = `نتیجه آزمون «${testName}» به‌روزرسانی شد`;
     
-    await updateCandidate(updatedCandidate);
+    const candidateWithHistory = addHistoryEntry({ ...candidate, testResults: updatedResults }, action);
+    
+    await dbService.saveCandidate(candidateWithHistory);
+    setCandidatesState(prev => prev.map(c => (c.id === candidateId ? candidateWithHistory : c)));
+    addToast(action, 'success');
   };
 
-  const value = { candidates, setCandidates, addCandidate, updateCandidate, deleteCandidate, updateCandidateStage, unarchiveCandidate, addComment, addCustomHistoryEntry, updateTestResult };
+  const generateCandidatePortalToken = async (candidateId: string): Promise<string | null> => {
+    const candidate = candidates.find(c => c.id === candidateId);
+    if (!candidate) return null;
+
+    if (candidate.portalToken) {
+      addToast('لینک پورتال بازیابی شد.', 'success');
+      return candidate.portalToken;
+    }
+
+    const newPortalToken = `token_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+    const updatedCandidate = { ...candidate, portalToken: newPortalToken };
+    
+    const candidateWithHistory = addHistoryEntry(updatedCandidate, 'لینک پورتال متقاضی ایجاد شد');
+    try {
+        await dbService.saveCandidate(candidateWithHistory);
+        setCandidatesState(prev => prev.map(c => c.id === candidateId ? candidateWithHistory : c));
+        addToast('لینک پورتال متقاضی با موفقیت ایجاد شد.', 'success');
+        return newPortalToken;
+    } catch (e) {
+        addToast('خطا در ایجاد لینک پورتال.', 'error');
+        return null;
+    }
+  };
+
+  const value = { candidates, setCandidates, addCandidate, updateCandidate, deleteCandidate, updateCandidateStage, unarchiveCandidate, addComment, addCustomHistoryEntry, updateTestResult, generateCandidatePortalToken };
 
   return <CandidatesContext.Provider value={value}>{children}</CandidatesContext.Provider>;
 };

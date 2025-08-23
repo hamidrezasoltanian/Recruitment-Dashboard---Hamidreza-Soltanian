@@ -4,6 +4,7 @@ import { useSettings } from '../../contexts/SettingsContext';
 import { TestResult, TestLibraryItem, Candidate } from '../../types';
 import { dbService } from '../../services/dbService';
 import { useToast } from '../../contexts/ToastContext';
+import AiAnalysisModal from '../modals/AiAnalysisModal';
 
 interface TestViewProps {
   selectedCandidateId: string | null;
@@ -23,10 +24,15 @@ const TestResultGroup: React.FC<{
     const [notes, setNotes] = useState(result?.notes || '');
     const [status, setStatus] = useState(result?.status || 'not_sent');
     const [filePreview, setFilePreview] = useState<string | null>(null);
+    const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
     const testFileId = `${candidateId}_${test.id}`;
 
     useEffect(() => {
+        setScore(result?.score || '');
+        setNotes(result?.notes || '');
+        setStatus(result?.status || 'not_sent');
+
         const loadPreview = async () => {
             if (result?.file) {
                 try {
@@ -37,16 +43,18 @@ const TestResultGroup: React.FC<{
                 } catch (e) {
                     console.error("Failed to load test file preview", e);
                 }
+            } else {
+                setFilePreview(null);
             }
         };
         loadPreview();
-        // Clean up object URL
+        
         return () => {
             if (filePreview) {
                 URL.revokeObjectURL(filePreview);
             }
         }
-    }, [result?.file, testFileId]);
+    }, [result, testFileId]);
 
 
     const handleSave = () => {
@@ -68,7 +76,6 @@ const TestResultGroup: React.FC<{
                     file: { name: file.name, type: file.type }
                 });
                 addToast(`فایل برای آزمون ${test.name} آپلود شد.`, 'success');
-                // Refresh preview
                 if (filePreview) URL.revokeObjectURL(filePreview);
                 setFilePreview(URL.createObjectURL(file));
             } catch (err) {
@@ -80,67 +87,94 @@ const TestResultGroup: React.FC<{
     const statusClasses: Record<string, string> = {
         not_sent: 'bg-gray-100 text-gray-800',
         pending: 'bg-yellow-100 text-yellow-800',
+        submitted: 'bg-blue-100 text-blue-800',
         passed: 'bg-green-100 text-green-800',
         failed: 'bg-red-100 text-red-800',
-        review: 'bg-blue-100 text-blue-800',
+        review: 'bg-purple-100 text-purple-800',
     };
 
     const statusText: Record<string, string> = {
         not_sent: 'ارسال نشده',
         pending: 'در انتظار نتیجه',
+        submitted: 'نتیجه ارسال شد',
         passed: 'قبول',
         failed: 'مردود',
         review: 'نیاز به بررسی',
     };
 
     return (
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="font-bold text-lg mb-3">{test.name}</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                {/* Status */}
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">وضعیت</label>
-                    <select value={status} onChange={e => setStatus(e.target.value as TestResult['status'])} className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 sm:text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${statusClasses[status]}`}>
-                        <option value="not_sent">{statusText.not_sent}</option>
-                        <option value="pending">{statusText.pending}</option>
-                        <option value="passed">{statusText.passed}</option>
-                        <option value="failed">{statusText.failed}</option>
-                        <option value="review">{statusText.review}</option>
-                    </select>
-                </div>
+        <>
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                <h3 className="font-bold text-lg mb-3">{test.name}</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
+                    {/* Status */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">وضعیت</label>
+                        <select value={status} onChange={e => setStatus(e.target.value as TestResult['status'])} className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 sm:text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${statusClasses[status]}`}>
+                            {Object.entries(statusText).map(([key, value]) => (
+                                <option key={key} value={key}>{value}</option>
+                            ))}
+                        </select>
+                    </div>
 
-                {/* Score */}
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">نمره</label>
-                    <input type="number" value={score} onChange={e => setScore(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 sm:text-sm" />
-                </div>
-                
-                {/* File Upload / Preview */}
-                 <div>
-                    <label className="block text-sm font-medium text-gray-700">فایل نتیجه</label>
-                    {filePreview ? (
-                        <div className="mt-1">
-                            <a href={filePreview} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline truncate block">
-                                {result?.file?.name}
-                            </a>
+                    {/* Score */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">نمره</label>
+                        <input type="number" value={score} onChange={e => setScore(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 sm:text-sm" />
+                    </div>
+                    
+                    {/* File Upload / Preview */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">فایل نتیجه</label>
+                        {filePreview ? (
+                            <div className="mt-2">
+                                <a href={filePreview} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline truncate block">
+                                    {result?.file?.name}
+                                </a>
+                            </div>
+                        ) : (
+                            <input type="file" onChange={handleFileChange} className="mt-2 text-sm text-gray-500 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
+                        )}
+                    </div>
+                    
+                    {result?.resultUrl && (
+                        <div className="md:col-span-2 lg:col-span-3 bg-gray-50 p-3 rounded-md">
+                            <p className="text-sm font-medium text-gray-700">لینک ارسالی متقاضی:</p>
+                            <div className="flex items-center justify-between gap-4 mt-1">
+                                <a href={result.resultUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline truncate block">{result.resultUrl}</a>
+                                <button onClick={() => setIsAiModalOpen(true)} className="flex-shrink-0 bg-purple-100 text-purple-700 hover:bg-purple-200 text-xs font-bold py-2 px-3 rounded-lg">تحلیل با AI ✨</button>
+                            </div>
                         </div>
-                    ) : (
-                        <input type="file" onChange={handleFileChange} className="mt-1 text-sm text-gray-500 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
                     )}
-                </div>
 
-                {/* Notes */}
-                <div className="lg:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700">یادداشت</label>
-                    <input type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="تحلیل یا نکات کلیدی..." className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 sm:text-sm" />
-                </div>
+                    {/* Notes */}
+                    <div className="md:col-span-2 lg:col-span-3">
+                        <label className="block text-sm font-medium text-gray-700">یادداشت</label>
+                        <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="تحلیل یا نکات کلیدی..." className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 sm:text-sm h-24" />
+                    </div>
 
-                {/* Save Button */}
-                <div className="lg:col-span-2 flex justify-end">
-                    <button onClick={handleSave} className="bg-indigo-600 text-white py-2 px-6 rounded-lg hover:bg-indigo-700">ذخیره نتیجه</button>
+                    {/* Save Button */}
+                    <div className="md:col-span-2 lg:col-span-3 flex justify-end">
+                        <button onClick={handleSave} className="bg-indigo-600 text-white py-2 px-6 rounded-lg hover:bg-indigo-700">ذخیره نتیجه</button>
+                    </div>
                 </div>
             </div>
-        </div>
+            {isAiModalOpen && (
+                <AiAnalysisModal 
+                    isOpen={isAiModalOpen}
+                    onClose={() => setIsAiModalOpen(false)}
+                    testName={test.name}
+                    onSaveSummary={(summary) => {
+                        setNotes(prev => prev ? `${prev}\n\n--- تحلیل AI ---\n${summary}` : summary);
+                        setStatus('review');
+                        updateTestResult(candidateId, test.id, { 
+                            notes: notes ? `${notes}\n\n--- تحلیل AI ---\n${summary}` : summary, 
+                            status: 'review' 
+                        });
+                    }}
+                />
+            )}
+        </>
     )
 }
 
@@ -192,6 +226,12 @@ const TestView: React.FC<TestViewProps> = ({ selectedCandidateId, onSelectCandid
             candidateId={candidate.id}
           />
         ))}
+        {testLibrary.length === 0 && (
+            <div className="text-center p-10 bg-white rounded-lg shadow-sm border">
+                <p className="text-gray-500">هیچ آزمونی در کتابخانه آزمون شما وجود ندارد.</p>
+                <p className="text-sm text-gray-400 mt-1">برای افزودن آزمون به تنظیمات &gt; کتابخانه آزمون مراجعه کنید.</p>
+            </div>
+        )}
       </div>
     </div>
   );
