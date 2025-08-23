@@ -1,7 +1,6 @@
 import { Pool } from 'pg';
-import dotenv from 'dotenv';
 
-dotenv.config();
+// dotenv.config() is called in index.ts, no need to call it here.
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
