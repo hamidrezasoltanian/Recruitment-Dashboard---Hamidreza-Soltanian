@@ -1,4 +1,4 @@
-import express, { Express, Request, Response } from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import candidateRoutes from './routes/candidate.routes';
@@ -7,7 +7,7 @@ import { connectDB } from './services/db';
 // Load environment variables from .env file
 dotenv.config();
 
-const app: Express = express();
+const app = express();
 const PORT = process.env.PORT || 4000;
 
 const startServer = async () => {

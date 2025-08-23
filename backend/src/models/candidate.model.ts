@@ -104,6 +104,8 @@ const CandidateSchema = new Schema<ICandidate>({
     hasResume: { type: Boolean, default: false },
     testResults: { type: [TestResultSchema], default: [] },
     portalToken: { type: String },
+}, {
+    versionKey: false // Disable the __v field
 });
 
 // The ': any' types here are a known workaround for a Mongoose TypeScript issue.
@@ -111,14 +113,12 @@ CandidateSchema.set('toJSON', {
   transform: (doc: any, ret: any) => {
     ret.id = ret._id;
     delete ret._id;
-    delete ret.__v;
   }
 });
 CandidateSchema.set('toObject', {
   transform: (doc: any, ret: any) => {
     ret.id = ret._id;
     delete ret._id;
-    delete ret.__v;
   }
 });
 

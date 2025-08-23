@@ -1,7 +1,7 @@
-import { Request as ExpressRequest, Response as ExpressResponse } from 'express';
+import * as express from 'express';
 import { CandidateModel } from '../models/candidate.model';
 
-export const getAllCandidates = async (req: ExpressRequest, res: ExpressResponse) => {
+export const getAllCandidates = async (req: express.Request, res: express.Response) => {
     try {
         const candidates = await CandidateModel.find();
         res.status(200).json(candidates);
@@ -11,7 +11,7 @@ export const getAllCandidates = async (req: ExpressRequest, res: ExpressResponse
     }
 };
 
-export const getCandidateById = async (req: ExpressRequest, res: ExpressResponse) => {
+export const getCandidateById = async (req: express.Request, res: express.Response) => {
     try {
         const { id } = req.params;
         const candidate = await CandidateModel.findById(id);
@@ -25,7 +25,7 @@ export const getCandidateById = async (req: ExpressRequest, res: ExpressResponse
     }
 };
 
-export const createCandidate = async (req: ExpressRequest, res: ExpressResponse) => {
+export const createCandidate = async (req: express.Request, res: express.Response) => {
     try {
         const { id, ...candidateData } = req.body;
         
@@ -50,7 +50,7 @@ export const createCandidate = async (req: ExpressRequest, res: ExpressResponse)
     }
 };
 
-export const updateCandidate = async (req: ExpressRequest, res: ExpressResponse) => {
+export const updateCandidate = async (req: express.Request, res: express.Response) => {
     try {
         const { id } = req.params;
         const candidateData = req.body;
@@ -70,7 +70,7 @@ export const updateCandidate = async (req: ExpressRequest, res: ExpressResponse)
     }
 };
 
-export const deleteCandidate = async (req: ExpressRequest, res: ExpressResponse) => {
+export const deleteCandidate = async (req: express.Request, res: express.Response) => {
     try {
         const { id } = req.params;
         const result = await CandidateModel.findByIdAndDelete(id);
