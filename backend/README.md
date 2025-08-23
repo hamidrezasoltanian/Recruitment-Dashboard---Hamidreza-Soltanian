@@ -1,13 +1,13 @@
 # Recruitment Dashboard - Backend API
 
-This is the backend server for the Recruitment Dashboard application, built with Node.js, Express, and PostgreSQL.
+This is the backend server for the Recruitment Dashboard application, built with Node.js, Express, and MongoDB.
 
 ## Setup and Installation
 
 ### 1. Prerequisites
 
 - [Node.js](https://nodejs.org/) (v16 or later)
-- [PostgreSQL](https://www.postgresql.org/download/) installed and running.
+- [MongoDB](https://www.mongodb.com/try/download/community) installed and running locally, or an account with a cloud service like [MongoDB Atlas](https://www.mongodb.com/cloud/atlas/register).
 
 ### 2. Install Dependencies
 
@@ -17,49 +17,20 @@ Navigate into the `backend` directory and run:
 npm install
 ```
 
-### 3. Setup PostgreSQL Database
-
-1.  Connect to your PostgreSQL instance using a tool like `psql` or a GUI client (e.g., DBeaver, Postico).
-2.  Create a new database. For example:
-    ```sql
-    CREATE DATABASE recruitment_db;
-    ```
-3.  Connect to your newly created database.
-4.  Run the SQL script below to create the necessary `candidates` table. You can find this script also in `src/services/db.ts`.
-
-    ```sql
-    CREATE TABLE candidates (
-      id VARCHAR(255) PRIMARY KEY,
-      name VARCHAR(255) NOT NULL,
-      email VARCHAR(255) NOT NULL UNIQUE,
-      phone VARCHAR(255),
-      position VARCHAR(255),
-      stage VARCHAR(255) NOT NULL,
-      source VARCHAR(255),
-      rating INT DEFAULT 0,
-      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      "interviewDate" VARCHAR(255),
-      "interviewTime" VARCHAR(255),
-      "interviewTimeChanged" BOOLEAN DEFAULT FALSE,
-      history JSONB DEFAULT '[]',
-      comments JSONB DEFAULT '[]',
-      "hasResume" BOOLEAN DEFAULT FALSE,
-      "testResults" JSONB DEFAULT '[]',
-      "portalToken" VARCHAR(255)
-    );
-    ```
-
-### 4. Configure Environment Variables
+### 3. Configure Environment Variables
 
 1.  In the `backend` directory, create a copy of the example environment file:
     ```bash
     cp .env.example .env
     ```
-2.  Open the new `.env` file and edit the `DATABASE_URL` with your actual PostgreSQL connection details. The format is:
-    `postgresql://USER:PASSWORD@HOST:PORT/DATABASE_NAME`
+2.  Open the new `.env` file and edit the `MONGODB_URI` with your actual MongoDB connection string.
 
-    **Example:**
-    `DATABASE_URL="postgresql://postgres:mysecretpassword@localhost:5432/recruitment_db"`
+    **For a local MongoDB instance:**
+    `MONGODB_URI="mongodb://localhost:27017/recruitment_db"`
+
+    **For MongoDB Atlas:**
+    Copy the connection string provided by Atlas for your cluster. It will look something like this:
+    `MONGODB_URI="mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/recruitment_db?retryWrites=true&w=majority"`
 
 ## Running the Server
 
