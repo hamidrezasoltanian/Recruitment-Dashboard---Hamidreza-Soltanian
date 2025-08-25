@@ -229,7 +229,7 @@ const TestView: React.FC<TestViewProps> = ({ selectedCandidateId, onSelectCandid
         {testLibrary.length === 0 && (
             <div className="text-center p-10 bg-white rounded-lg shadow-sm border">
                 <p className="text-gray-500">هیچ آزمونی در کتابخانه آزمون شما وجود ندارد.</p>
-                <p className="text-sm text-gray-400 mt-1">برای افزودن آزمون به تنظیمات > کتابخانه آزمون مراجعه کنید.</p>
+                <p className="text-sm text-gray-400 mt-1">برای افزودن آزمون به تنظیمات {' > '} کتابخانه آزمون مراجعه کنید.</p>
             </div>
         )}
       </div>

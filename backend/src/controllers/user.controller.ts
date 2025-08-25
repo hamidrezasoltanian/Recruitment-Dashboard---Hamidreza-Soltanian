@@ -1,9 +1,9 @@
 
-import { RequestHandler } from 'express';
+import { Request, Response } from 'express';
 import UserModel from '../models/user.model';
 
 // Get current user profile
-export const getCurrentUser: RequestHandler = async (req, res) => {
+export const getCurrentUser = async (req: Request, res: Response) => {
     try {
         // req.user is attached by the authMiddleware
         if (!req.user) {
@@ -22,7 +22,7 @@ export const getCurrentUser: RequestHandler = async (req, res) => {
 };
 
 // Update current user (e.g., settings)
-export const updateCurrentUser: RequestHandler = async (req, res) => {
+export const updateCurrentUser = async (req: Request, res: Response) => {
     try {
         if (!req.user) {
             res.status(401).json({ message: 'Not authenticated' });
@@ -44,7 +44,7 @@ export const updateCurrentUser: RequestHandler = async (req, res) => {
 
 // --- Admin Only Controllers ---
 
-export const getAllUsers: RequestHandler = async (req, res) => {
+export const getAllUsers = async (req: Request, res: Response) => {
     try {
         const users = await UserModel.find().sort({ createdAt: -1 });
         res.status(200).json(users);
@@ -53,7 +53,7 @@ export const getAllUsers: RequestHandler = async (req, res) => {
     }
 };
 
-export const createUser: RequestHandler = async (req, res) => {
+export const createUser = async (req: Request, res: Response) => {
     try {
         const { username, name, password, isAdmin } = req.body;
         
@@ -71,7 +71,7 @@ export const createUser: RequestHandler = async (req, res) => {
     }
 };
 
-export const updateUser: RequestHandler = async (req, res) => {
+export const updateUser = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { name, isAdmin, password } = req.body;
@@ -94,7 +94,7 @@ export const updateUser: RequestHandler = async (req, res) => {
     }
 };
 
-export const deleteUser: RequestHandler = async (req, res) => {
+export const deleteUser = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
 

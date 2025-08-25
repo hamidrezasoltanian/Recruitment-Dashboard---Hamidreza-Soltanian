@@ -1,9 +1,9 @@
 
-import { RequestHandler } from 'express';
+import { Request, Response } from 'express';
 import SettingsModel from '../models/settings.model';
 import { DEFAULT_STAGES, DEFAULT_SOURCES, DEFAULT_COMPANY_PROFILE, DEFAULT_TEST_LIBRARY } from '../../../frontend/constants'; // Use frontend defaults
 
-export const getSettings: RequestHandler = async (req, res) => {
+export const getSettings = async (req: Request, res: Response) => {
     try {
         let settings = await SettingsModel.findOne();
         if (!settings) {
@@ -23,7 +23,7 @@ export const getSettings: RequestHandler = async (req, res) => {
     }
 };
 
-export const updateSettings: RequestHandler = async (req, res) => {
+export const updateSettings = async (req: Request, res: Response) => {
     try {
         const updatedSettingsData = req.body;
         
