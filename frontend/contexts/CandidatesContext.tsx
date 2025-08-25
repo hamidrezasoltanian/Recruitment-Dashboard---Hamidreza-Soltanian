@@ -7,6 +7,7 @@ import { useSettings } from './SettingsContext';
 
 interface CandidatesContextType {
   candidates: Candidate[];
+  isLoading: boolean;
   addCandidate: (candidate: Candidate, resumeFile?: File) => Promise<void>;
   updateCandidate: (candidate: Candidate, resumeFile?: File) => Promise<void>;
   deleteCandidate: (id: string) => Promise<void>;
@@ -30,25 +31,31 @@ export const useCandidates = () => {
 
 export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [candidates, setCandidatesState] = useState<Candidate[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const { addToast } = useToast();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { testLibrary, stages } = useSettings();
   
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const data = await dbService.getAllCandidates();
-        setCandidatesState(data);
-      } catch (error: any) {
-        console.error("Failed to load candidates from API", error);
-        addToast(`خطا در بارگذاری داده‌ها از سرور: ${error.message}`, 'error');
-      }
-    };
-    if (user) { // Only load data if user is logged in
-        loadData();
+  const loadData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const data = await dbService.getAllCandidates();
+      setCandidatesState(data);
+    } catch (error: any) {
+      console.error("Failed to load candidates from API", error);
+      addToast(`خطا در بارگذاری داده‌ها از سرور: ${error.message}`, 'error');
+    } finally {
+      setIsLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [addToast]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+        loadData();
+    } else {
+        setCandidatesState([]); // Clear data on logout
+    }
+  }, [isAuthenticated, loadData]);
 
   const addHistoryEntry = useCallback((candidate: Candidate, action: string, details?: string): Candidate => {
     const userForHistory = user ? user.name : 'متقاضی';
@@ -198,7 +205,7 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   };
 
-  const value = { candidates, addCandidate, updateCandidate, deleteCandidate, updateCandidateStage, unarchiveCandidate, addComment, addCustomHistoryEntry, updateTestResult, generateCandidatePortalToken };
+  const value = { candidates, isLoading, addCandidate, updateCandidate, deleteCandidate, updateCandidateStage, unarchiveCandidate, addComment, addCustomHistoryEntry, updateTestResult, generateCandidatePortalToken };
 
   return <CandidatesContext.Provider value={value}>{children}</CandidatesContext.Provider>;
 };

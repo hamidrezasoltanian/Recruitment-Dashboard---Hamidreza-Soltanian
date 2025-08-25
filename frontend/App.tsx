@@ -22,7 +22,7 @@ import BackgroundSelector from './components/kanban/BackgroundSelector';
 
 
 const App: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading, isAuthenticated, updateUserSettings } = useAuth();
   const { candidates, addCandidate, updateCandidate, updateCandidateStage, updateTestResult } = useCandidates();
   const [activeView, setActiveView] = useState<View>('dashboard');
   
@@ -48,17 +48,10 @@ const App: React.FC = () => {
   const [isCheckingPortal, setIsCheckingPortal] = useState(true);
   
   // Kanban Background
-  const [kanbanBackground, setKanbanBackground] = useState<string>(() => {
-    return localStorage.getItem('kanban_background_v1') || '';
-  });
+  const kanbanBackground = user?.settings?.kanbanBackground || '';
 
   const handleBackgroundChange = (bgUrl: string) => {
-    setKanbanBackground(bgUrl);
-    if (bgUrl) {
-      localStorage.setItem('kanban_background_v1', bgUrl);
-    } else {
-      localStorage.removeItem('kanban_background_v1');
-    }
+    updateUserSettings({ kanbanBackground: bgUrl });
   };
 
   useEffect(() => {
@@ -89,11 +82,11 @@ const App: React.FC = () => {
     return found;
   }, [portalCandidateInfo, candidates]);
 
-  if (isCheckingPortal && portalCandidateInfo) {
+  if (isAuthLoading || (isCheckingPortal && portalCandidateInfo)) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
         <div className="text-center">
-          <p className="text-lg font-semibold text-gray-700">در حال اعتبارسنجی لینک...</p>
+          <p className="text-lg font-semibold text-gray-700">در حال بارگذاری...</p>
         </div>
       </div>
     );
@@ -101,6 +94,10 @@ const App: React.FC = () => {
 
   if (portalCandidate) {
     return <CandidatePortal candidate={portalCandidate} onUpdateTestResult={updateTestResult} />;
+  }
+
+  if (!isAuthenticated) {
+    return <LoginScreen />;
   }
 
 
@@ -169,10 +166,6 @@ const App: React.FC = () => {
         />;
     }
   };
-
-  if (!user) {
-    return <LoginScreen />;
-  }
 
   return (
     <>

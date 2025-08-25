@@ -1,60 +1,25 @@
 import { Candidate } from '../types';
-
-const getApiBaseUrl = () => {
-    const { protocol, hostname } = window.location;
-    // Assume backend runs on port 4000 on the same host as the frontend.
-    // This works for both localhost development and cloud IDEs that expose ports on the same host.
-    return `${protocol}//${hostname}:4000/api`;
-};
-
-const API_BASE_URL = getApiBaseUrl();
-
-
-const handleResponse = async <T>(response: Response): Promise<T> => {
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Invalid JSON response' }));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-    }
-    if (response.status === 204) { // No Content
-        return {} as T;
-    }
-    return response.json();
-};
+import { api } from './api';
 
 export const dbService = {
-  createCandidate: async (candidate: Candidate): Promise<Candidate> => {
-    const response = await fetch(`${API_BASE_URL}/candidates`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(candidate),
-    });
-    return handleResponse<Candidate>(response);
+  createCandidate: (candidate: Candidate): Promise<Candidate> => {
+    return api.post<Candidate>('/candidates', candidate);
   },
   
-  updateCandidate: async (candidate: Candidate): Promise<Candidate> => {
-    const response = await fetch(`${API_BASE_URL}/candidates/${candidate.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(candidate),
-    });
-    return handleResponse<Candidate>(response);
+  updateCandidate: (candidate: Candidate): Promise<Candidate> => {
+    return api.put<Candidate>(`/candidates/${candidate.id}`, candidate);
   },
 
-  getAllCandidates: async (): Promise<Candidate[]> => {
-    const response = await fetch(`${API_BASE_URL}/candidates`);
-    return handleResponse<Candidate[]>(response);
+  getAllCandidates: (): Promise<Candidate[]> => {
+    return api.get<Candidate[]>('/candidates');
   },
 
-  getCandidate: async (id: string): Promise<Candidate> => {
-    const response = await fetch(`${API_BASE_URL}/candidates/${id}`);
-    return handleResponse<Candidate>(response);
+  getCandidate: (id: string): Promise<Candidate> => {
+    return api.get<Candidate>(`/candidates/${id}`);
   },
 
-  deleteCandidate: async (id: string): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/candidates/${id}`, {
-      method: 'DELETE',
-    });
-    await handleResponse(response);
+  deleteCandidate: (id: string): Promise<void> => {
+    return api.delete<void>(`/candidates/${id}`);
   },
   
   // The backend doesn't support file uploads yet. These are no-ops for now.

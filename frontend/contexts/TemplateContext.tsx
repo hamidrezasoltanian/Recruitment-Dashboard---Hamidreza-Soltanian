@@ -1,13 +1,16 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { Template } from '../types';
-import { DEFAULT_TEMPLATES, TEMPLATES_KEY } from '../constants';
+import { DEFAULT_TEMPLATES } from '../constants';
 import { useToast } from './ToastContext';
+import { useAuth } from './AuthContext';
+import { api } from '../services/api';
 
 interface TemplateContextType {
   templates: Template[];
-  addTemplate: (template: Omit<Template, 'id'>) => void;
-  updateTemplate: (template: Template) => void;
-  deleteTemplate: (id: string) => void;
+  isLoading: boolean;
+  addTemplate: (template: Omit<Template, 'id'>) => Promise<void>;
+  updateTemplate: (template: Template) => Promise<void>;
+  deleteTemplate: (id: string) => Promise<void>;
 }
 
 const TemplateContext = createContext<TemplateContextType | undefined>(undefined);
@@ -19,56 +22,73 @@ export const useTemplates = () => {
 };
 
 export const TemplateProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [templates, setTemplates] = useState<Template[]>(() => {
-    try {
-      const storedTemplates = localStorage.getItem(TEMPLATES_KEY);
-      return storedTemplates ? JSON.parse(storedTemplates) : DEFAULT_TEMPLATES;
-    } catch (error) {
-      console.error("Failed to load templates from localStorage", error);
-      return DEFAULT_TEMPLATES;
-    }
-  });
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const { addToast } = useToast();
+  const { isAuthenticated } = useAuth();
+
+  const fetchTemplates = useCallback(async () => {
+    setIsLoading(true);
+    try {
+        const serverTemplates = await api.get<Template[]>('/templates');
+        setTemplates(serverTemplates);
+    } catch (error: any) {
+        addToast(`خطا در بارگذاری قالب‌ها: ${error.message}`, 'error');
+        // Fallback to default templates on error
+        setTemplates(DEFAULT_TEMPLATES);
+    } finally {
+        setIsLoading(false);
+    }
+  }, [addToast]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
-    } catch (error) {
-      console.error("Failed to save templates to localStorage", error);
+    if (isAuthenticated) {
+      fetchTemplates();
     }
-  }, [templates]);
+  }, [isAuthenticated, fetchTemplates]);
 
-  const addTemplate = (templateData: Omit<Template, 'id'>) => {
+  const addTemplate = async (templateData: Omit<Template, 'id'>) => {
     if (!templateData.name.trim() || !templateData.content.trim()) {
       addToast('نام و محتوای قالب نمی‌تواند خالی باشد.', 'error');
       return;
     }
-    const newTemplate: Template = {
-      id: `tpl_${Date.now()}`,
-      ...templateData,
-    };
-    setTemplates(prev => [...prev, newTemplate]);
-    addToast(`قالب "${newTemplate.name}" اضافه شد.`, 'success');
+    try {
+      await api.post('/templates', templateData);
+      addToast(`قالب "${templateData.name}" اضافه شد.`, 'success');
+      await fetchTemplates();
+    } catch (error: any) {
+      addToast(`خطا در افزودن قالب: ${error.message}`, 'error');
+    }
   };
 
-  const updateTemplate = (updatedTemplate: Template) => {
+  const updateTemplate = async (updatedTemplate: Template) => {
     if (!updatedTemplate.name.trim() || !updatedTemplate.content.trim()) {
       addToast('نام و محتوای قالب نمی‌تواند خالی باشد.', 'error');
       return;
     }
-    setTemplates(prev => prev.map(t => t.id === updatedTemplate.id ? updatedTemplate : t));
-    addToast(`قالب "${updatedTemplate.name}" به‌روزرسانی شد.`, 'success');
+    try {
+      await api.put(`/templates/${updatedTemplate.id}`, updatedTemplate);
+      addToast(`قالب "${updatedTemplate.name}" به‌روزرسانی شد.`, 'success');
+      await fetchTemplates();
+    } catch (error: any) {
+      addToast(`خطا در به‌روزرسانی قالب: ${error.message}`, 'error');
+    }
   };
 
-  const deleteTemplate = (id: string) => {
+  const deleteTemplate = async (id: string) => {
     const templateToDelete = templates.find(t => t.id === id);
-    setTemplates(prev => prev.filter(t => t.id !== id));
-    if (templateToDelete) {
-        addToast(`قالب "${templateToDelete.name}" حذف شد.`, 'success');
+    try {
+        await api.delete(`/templates/${id}`);
+        if (templateToDelete) {
+            addToast(`قالب "${templateToDelete.name}" حذف شد.`, 'success');
+        }
+        await fetchTemplates();
+    } catch (error: any) {
+        addToast(`خطا در حذف قالب: ${error.message}`, 'error');
     }
   };
   
-  const value = { templates, addTemplate, updateTemplate, deleteTemplate };
+  const value = { templates, isLoading, addTemplate, updateTemplate, deleteTemplate };
 
   return <TemplateContext.Provider value={value}>{children}</TemplateContext.Provider>;
 };

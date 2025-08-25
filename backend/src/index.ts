@@ -1,8 +1,13 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import candidateRoutes from './routes/candidate.routes';
 import { connectDB } from './services/db';
+import candidateRoutes from './routes/candidate.routes';
+import authRoutes from './routes/auth.routes';
+import userRoutes from './routes/user.routes';
+import settingsRoutes from './routes/settings.routes';
+import templateRoutes from './routes/template.routes';
+import { authMiddleware } from './middleware/auth.middleware';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -18,12 +23,19 @@ const startServer = async () => {
     app.use(cors());
     app.use(express.json());
 
-    // API Routes
-    app.get('/', (req: express.Request, res: express.Response) => {
+    // --- Public Routes ---
+    app.use('/api/auth', authRoutes);
+
+    // --- Protected Routes ---
+    app.use('/api/candidates', authMiddleware, candidateRoutes);
+    app.use('/api/users', authMiddleware, userRoutes);
+    app.use('/api/settings', authMiddleware, settingsRoutes);
+    app.use('/api/templates', authMiddleware, templateRoutes);
+
+    // API health check
+    app.get('/', (req: Request, res: Response) => {
         res.send('Recruitment Dashboard API is running!');
     });
-
-    app.use('/api/candidates', candidateRoutes);
 
     // Start the server
     app.listen(PORT, () => {

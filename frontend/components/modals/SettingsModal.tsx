@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../ui/Modal';
 import { useAuth } from '../../contexts/AuthContext';
-import { CompanyProfile, JobPosition, KanbanStage, Template, TestLibraryItem, UserWithPassword } from '../../types';
+import { CompanyProfile, JobPosition, KanbanStage, Template, TestLibraryItem, UserWithPassword, User } from '../../types';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useTemplates } from '../../contexts/TemplateContext';
@@ -9,8 +9,8 @@ import { aiService } from '../../services/aiService';
 import { useCandidates } from '../../contexts/CandidatesContext';
 
 const UserManagementPanel: React.FC = () => {
-  const { users, addUser, updateUser, deleteUser, changePassword, currentUser } = useAuth();
-  const [editingUser, setEditingUser] = useState<UserWithPassword | null>(null);
+  const { users, addUser, updateUser, deleteUser, user: currentUser } = useAuth();
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isAdding, setIsAdding] = useState(false);
 
   const [username, setUsername] = useState('');
@@ -19,7 +19,7 @@ const UserManagementPanel: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const { addToast } = useToast();
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (editingUser) {
         setUsername(editingUser.username);
         setName(editingUser.name);
@@ -33,7 +33,7 @@ const UserManagementPanel: React.FC = () => {
     }
   }, [editingUser]);
 
-  const handleSelectUserForEdit = (user: UserWithPassword) => {
+  const handleSelectUserForEdit = (user: User) => {
     setIsAdding(false);
     setEditingUser(user);
   };
@@ -47,54 +47,58 @@ const UserManagementPanel: React.FC = () => {
     setIsAdmin(false);
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!username || !name) {
         addToast('نام کاربری و نام کامل الزامی است.', 'error');
         return;
     }
-    const userData = { username: username.toLowerCase(), name, password, isAdmin };
-
-    if (isAdding) {
-        if (!password) {
-            addToast('رمز عبور برای کاربر جدید الزامی است.', 'error');
-            return;
-        }
-        addUser(userData);
-    } else if (editingUser) {
-        updateUser(editingUser.username, { name, isAdmin });
-        if(password) {
-            changePassword(editingUser.username, password, password, true);
-        }
+    const userData: Partial<UserWithPassword> = { username: username.toLowerCase(), name, isAdmin };
+    if(password) {
+      userData.password = password;
     }
-    setEditingUser(null);
-    setIsAdding(false);
+
+    try {
+      if (isAdding) {
+          if (!password) {
+              addToast('رمز عبور برای کاربر جدید الزامی است.', 'error');
+              return;
+          }
+          await addUser(userData as UserWithPassword);
+      } else if (editingUser) {
+          await updateUser((editingUser as any).id, userData);
+      }
+      setEditingUser(null);
+      setIsAdding(false);
+    } catch (e) {
+      // Error toast is handled in context
+    }
   };
 
-  const handleDelete = (usernameToDelete: string) => {
-    if (usernameToDelete === currentUser?.username) {
+  const handleDelete = async (userToDelete: User) => {
+    if (userToDelete.username === currentUser?.username) {
         addToast('شما نمی‌توانید حساب کاربری خود را حذف کنید.', 'error');
         return;
     }
-    if (window.confirm(`آیا از حذف کاربر ${usernameToDelete} مطمئن هستید؟`)) {
-        deleteUser(usernameToDelete);
-        if (editingUser?.username === usernameToDelete) {
-          setEditingUser(null);
-        }
+    if (window.confirm(`آیا از حذف کاربر ${userToDelete.username} مطمئن هستید؟`)) {
+        try {
+          await deleteUser((userToDelete as any).id);
+          if (editingUser?.username === userToDelete.username) {
+            setEditingUser(null);
+          }
+        } catch(e) {}
     }
   };
-  
-  const activeUsers = Object.values(users);
 
   return (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-1">
           <h3 className="font-bold mb-2">لیست کاربران</h3>
           <div className="space-y-2">
-            {activeUsers.map(u => (
+            {users.map(u => (
               <div key={u.username} className={`p-2 rounded-md cursor-pointer flex justify-between items-center ${editingUser?.username === u.username || (isAdding && !editingUser) ? 'bg-indigo-100' : 'hover:bg-gray-100'}`} onClick={() => handleSelectUserForEdit(u)}>
                 <span>{u.name} ({u.isAdmin ? 'ادمین' : 'کارشناس'})</span>
                 { u.username !== currentUser?.username &&
-                    <button onClick={(e) => { e.stopPropagation(); handleDelete(u.username); }} className="text-red-500 hover:text-red-700 text-xs px-1">حذف</button>
+                    <button onClick={(e) => { e.stopPropagation(); handleDelete(u); }} className="text-red-500 hover:text-red-700 text-xs px-1">حذف</button>
                 }
               </div>
             ))}
@@ -280,12 +284,12 @@ const TemplateManagementPanel: React.FC = () => {
       setEditingTemplate(null);
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const templateData = { name, content, type, stageId: stageId || undefined };
     if (isAdding) {
-      addTemplate(templateData);
+      await addTemplate(templateData);
     } else if (editingTemplate) {
-      updateTemplate({ ...editingTemplate, ...templateData });
+      await updateTemplate({ ...editingTemplate, ...templateData });
     }
     handleCancel();
   };

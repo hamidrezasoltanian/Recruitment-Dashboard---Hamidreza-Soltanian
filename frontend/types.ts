@@ -70,6 +70,9 @@ export interface User {
   username: string;
   name: string;
   isAdmin: boolean;
+  settings?: {
+    kanbanBackground?: string;
+  };
 }
 
 export interface UserWithPassword extends User {
