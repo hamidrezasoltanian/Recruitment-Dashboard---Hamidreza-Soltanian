@@ -1,9 +1,6 @@
 import mongoose, { Document, Schema, Model } from 'mongoose';
 
-// --- Interfaces for Mongoose Data Structures ---
-
-// Note: These interfaces define the shape of the data. Mongoose adds its own properties.
-
+// --- Interfaces for Sub-documents ---
 interface IHistoryEntry {
   user: string;
   action: string;
@@ -18,6 +15,11 @@ interface IComment {
   timestamp: string;
 }
 
+interface ITestResultFile {
+    name: string;
+    type: string;
+}
+
 interface ITestResult {
   testId: string;
   status: 'not_sent' | 'pending' | 'passed' | 'failed' | 'review' | 'submitted';
@@ -25,16 +27,13 @@ interface ITestResult {
   notes?: string;
   sentDate?: string;
   deadlineHours?: number;
-  file?: {
-    name: string;
-    type: string;
-  };
+  file?: ITestResultFile;
   resultUrl?: string;
 }
 
-// Interface for the Candidate Mongoose Document, which includes Mongoose's Document properties
-export interface ICandidate extends Document {
-  _id: string;
+// --- Main Candidate Interface ---
+// This interface defines the properties of a candidate document, excluding Mongoose-specific fields.
+interface CandidateProperties {
   name: string;
   email: string;
   phone: string;
@@ -51,6 +50,11 @@ export interface ICandidate extends Document {
   hasResume?: boolean;
   testResults?: ITestResult[];
   portalToken?: string;
+}
+
+// This interface represents a Mongoose Document, including its methods and a typed `_id`.
+export interface ICandidate extends CandidateProperties, Document {
+    _id: string;
 }
 
 
@@ -70,7 +74,7 @@ const CommentSchema = new Schema<IComment>({
   timestamp: { type: String, required: true },
 }, { _id: false });
 
-const TestResultFileSchema = new Schema({
+const TestResultFileSchema = new Schema<ITestResultFile>({
     name: { type: String, required: true },
     type: { type: String, required: true },
 }, { _id: false });
@@ -87,9 +91,9 @@ const TestResultSchema = new Schema<ITestResult>({
 }, { _id: false });
 
 const CandidateSchema = new Schema<ICandidate>({
-    _id: { type: String, required: true }, // The frontend 'id' is used as MongoDB's '_id'
+    _id: { type: String, required: true }, // Use frontend 'id' as MongoDB's '_id'
     name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     phone: { type: String, required: true },
     position: { type: String, required: true },
     stage: { type: String, required: true },
@@ -108,14 +112,10 @@ const CandidateSchema = new Schema<ICandidate>({
     versionKey: false // Disable the __v field
 });
 
-// The ': any' types here are a known workaround for a Mongoose TypeScript issue.
+// Transform the output to match frontend expectations (id instead of _id)
+// The ': any' types are a necessary evil for this specific Mongoose feature
+// to work smoothly with TypeScript's strict mode.
 CandidateSchema.set('toJSON', {
-  transform: (doc: any, ret: any) => {
-    ret.id = ret._id;
-    delete ret._id;
-  }
-});
-CandidateSchema.set('toObject', {
   transform: (doc: any, ret: any) => {
     ret.id = ret._id;
     delete ret._id;
@@ -123,4 +123,6 @@ CandidateSchema.set('toObject', {
 });
 
 // Create and export the strongly-typed model
-export const CandidateModel: Model<ICandidate> = mongoose.model<ICandidate>('Candidate', CandidateSchema);
+const CandidateModel: Model<ICandidate> = mongoose.model<ICandidate>('Candidate', CandidateSchema);
+
+export default CandidateModel;

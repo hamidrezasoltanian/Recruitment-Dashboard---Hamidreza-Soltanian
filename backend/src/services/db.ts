@@ -1,12 +1,11 @@
 import mongoose from 'mongoose';
-import process from 'process';
 
 export const connectDB = async () => {
     try {
         const mongoURI = process.env.MONGODB_URI;
         if (!mongoURI) {
             console.error('❌ MONGODB_URI is not defined in .env file.');
-            process.exit(1);
+            throw new Error('MONGODB_URI is not defined in the environment variables.');
         }
         
         await mongoose.connect(mongoURI);
@@ -14,6 +13,7 @@ export const connectDB = async () => {
         console.log('✅ Connected to MongoDB successfully.');
     } catch (error) {
         console.error('❌ Error connecting to MongoDB:', error);
-        process.exit(1);
+        // Re-throwing the error will cause the startServer promise to reject, stopping the app.
+        throw error;
     }
 };

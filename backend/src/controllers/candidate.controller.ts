@@ -1,9 +1,9 @@
-import * as express from 'express';
-import { CandidateModel } from '../models/candidate.model';
+import express from 'express';
+import CandidateModel, { ICandidate } from '../models/candidate.model';
 
-export const getAllCandidates = async (req: express.Request, res: express.Response) => {
+export const getAllCandidates = async (req: express.Request, res: express.Response): Promise<void> => {
     try {
-        const candidates = await CandidateModel.find();
+        const candidates: ICandidate[] = await CandidateModel.find();
         res.status(200).json(candidates);
     } catch (error) {
         console.error(error);
@@ -11,12 +11,13 @@ export const getAllCandidates = async (req: express.Request, res: express.Respon
     }
 };
 
-export const getCandidateById = async (req: express.Request, res: express.Response) => {
+export const getCandidateById = async (req: express.Request, res: express.Response): Promise<void> => {
     try {
         const { id } = req.params;
-        const candidate = await CandidateModel.findById(id);
+        const candidate: ICandidate | null = await CandidateModel.findById(id);
         if (!candidate) {
-            return res.status(404).json({ message: 'Candidate not found' });
+            res.status(404).json({ message: 'Candidate not found' });
+            return;
         }
         res.status(200).json(candidate);
     } catch (error) {
@@ -25,12 +26,14 @@ export const getCandidateById = async (req: express.Request, res: express.Respon
     }
 };
 
-export const createCandidate = async (req: express.Request, res: express.Response) => {
+export const createCandidate = async (req: express.Request, res: express.Response): Promise<void> => {
     try {
+        // The frontend sends 'id', we map it to '_id' for MongoDB
         const { id, ...candidateData } = req.body;
         
         if (!id || !candidateData.name || !candidateData.email || !candidateData.stage) {
-            return res.status(400).json({ message: 'Missing required fields' });
+            res.status(400).json({ message: 'Missing required fields' });
+            return;
         }
 
         const newCandidateData = {
@@ -43,25 +46,27 @@ export const createCandidate = async (req: express.Request, res: express.Respons
         res.status(201).json(newCandidate);
     } catch (error: any) {
         console.error(error);
-        if (error.code === 11000) { // Duplicate key error
-            return res.status(409).json({ message: 'Candidate with this email or ID already exists.' });
+        if (error.code === 11000) { // MongoDB duplicate key error
+            res.status(409).json({ message: 'Candidate with this email or ID already exists.' });
+            return;
         }
         res.status(500).json({ message: 'Error creating candidate' });
     }
 };
 
-export const updateCandidate = async (req: express.Request, res: express.Response) => {
+export const updateCandidate = async (req: express.Request, res: express.Response): Promise<void> => {
     try {
         const { id } = req.params;
         const candidateData = req.body;
         
-        // Ensure the _id is not changed
+        // Ensure the _id is not changed via the request body
         delete candidateData._id;
         
-        const updatedCandidate = await CandidateModel.findByIdAndUpdate(id, candidateData, { new: true });
+        const updatedCandidate: ICandidate | null = await CandidateModel.findByIdAndUpdate(id, candidateData, { new: true });
         
         if (!updatedCandidate) {
-            return res.status(404).json({ message: 'Candidate not found' });
+            res.status(404).json({ message: 'Candidate not found' });
+            return;
         }
         res.status(200).json(updatedCandidate);
     } catch (error) {
@@ -70,12 +75,13 @@ export const updateCandidate = async (req: express.Request, res: express.Respons
     }
 };
 
-export const deleteCandidate = async (req: express.Request, res: express.Response) => {
+export const deleteCandidate = async (req: express.Request, res: express.Response): Promise<void> => {
     try {
         const { id } = req.params;
         const result = await CandidateModel.findByIdAndDelete(id);
         if (!result) {
-            return res.status(404).json({ message: 'Candidate not found' });
+            res.status(404).json({ message: 'Candidate not found' });
+            return;
         }
         res.status(200).json({ message: 'Candidate deleted successfully' });
     } catch (error) {

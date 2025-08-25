@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import candidateRoutes from './routes/candidate.routes';
@@ -19,7 +19,7 @@ const startServer = async () => {
     app.use(express.json());
 
     // API Routes
-    app.get('/', (req: Request, res: Response) => {
+    app.get('/', (req: express.Request, res: express.Response) => {
         res.send('Recruitment Dashboard API is running!');
     });
 
