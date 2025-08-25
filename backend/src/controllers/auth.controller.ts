@@ -1,4 +1,5 @@
-import { Request, Response } from 'express';
+
+import { RequestHandler } from 'express';
 import UserModel, { IUser } from '../models/user.model';
 import jwt from 'jsonwebtoken';
 
@@ -10,7 +11,7 @@ const generateToken = (user: IUser) => {
     return jwt.sign({ id: user.id, isAdmin: user.isAdmin }, jwtSecret, { expiresIn: '1d' });
 };
 
-export const register = async (req: Request, res: Response): Promise<void> => {
+export const register: RequestHandler = async (req, res) => {
     try {
         const { username, name, password, isAdmin } = req.body;
         if (!username || !name || !password) {
@@ -37,7 +38,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     }
 };
 
-export const login = async (req: Request, res: Response): Promise<void> => {
+export const login: RequestHandler = async (req, res) => {
     try {
         const { username, password } = req.body;
         if (!username || !password) {

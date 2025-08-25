@@ -1,11 +1,18 @@
-import { Request, Response, NextFunction } from 'express';
+
+import { RequestHandler } from 'express';
 import jwt from 'jsonwebtoken';
 
-export interface AuthenticatedRequest extends Request {
-    user?: { id: string; isAdmin: boolean };
+// By extending the global Express Request interface, we can add our custom `user` property
+// without creating a new incompatible type.
+declare global {
+    namespace Express {
+        export interface Request {
+            user?: { id: string; isAdmin: boolean };
+        }
+    }
 }
 
-export const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const authMiddleware: RequestHandler = (req, res, next) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -29,7 +36,7 @@ export const authMiddleware = (req: AuthenticatedRequest, res: Response, next: N
     }
 };
 
-export const adminMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const adminMiddleware: RequestHandler = (req, res, next) => {
     if (!req.user?.isAdmin) {
         return res.status(403).json({ message: 'Admin access required' });
     }

@@ -1,7 +1,8 @@
-import { Request, Response } from 'express';
+
+import { RequestHandler } from 'express';
 import TemplateModel from '../models/template.model';
 
-export const getAllTemplates = async (req: Request, res: Response): Promise<void> => {
+export const getAllTemplates: RequestHandler = async (req, res) => {
     try {
         const templates = await TemplateModel.find().sort({ createdAt: -1 });
         res.status(200).json(templates);
@@ -10,7 +11,7 @@ export const getAllTemplates = async (req: Request, res: Response): Promise<void
     }
 };
 
-export const createTemplate = async (req: Request, res: Response): Promise<void> => {
+export const createTemplate: RequestHandler = async (req, res) => {
     try {
         const newTemplate = new TemplateModel(req.body);
         await newTemplate.save();
@@ -20,7 +21,7 @@ export const createTemplate = async (req: Request, res: Response): Promise<void>
     }
 };
 
-export const updateTemplate = async (req: Request, res: Response): Promise<void> => {
+export const updateTemplate: RequestHandler = async (req, res) => {
     try {
         const { id } = req.params;
         const updatedTemplate = await TemplateModel.findByIdAndUpdate(id, req.body, { new: true });
@@ -34,7 +35,7 @@ export const updateTemplate = async (req: Request, res: Response): Promise<void>
     }
 };
 
-export const deleteTemplate = async (req: Request, res: Response): Promise<void> => {
+export const deleteTemplate: RequestHandler = async (req, res) => {
     try {
         const { id } = req.params;
         const deletedTemplate = await TemplateModel.findByIdAndDelete(id);

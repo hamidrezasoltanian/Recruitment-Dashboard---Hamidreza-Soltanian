@@ -2,9 +2,27 @@ import { Candidate } from '../types';
 
 const getApiBaseUrl = () => {
     const { protocol, hostname } = window.location;
-    // Assume backend runs on port 4000 on the same host as the frontend.
-    // This works for both localhost development and cloud IDEs that expose ports on the same host.
-    return `${protocol}//${hostname}:4000/api`;
+
+    // Handle sandboxed environments where protocol is 'blob:' and hostname is empty.
+    // Fallback to localhost, as it's often forwarded correctly.
+    if (protocol === 'blob:') {
+        return 'http://localhost:4000/api';
+    }
+
+    // Handle standard local development
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return `${window.location.protocol}//${hostname}:4000/api`;
+    }
+    
+    // Handle cloud IDEs by reconstructing the origin with the backend port
+    try {
+        const url = new URL(window.location.origin);
+        url.port = '4000';
+        return `${url.origin}/api`;
+    } catch (e) {
+        // Fallback for any other case
+        return `${protocol}//${hostname}:4000/api`;
+    }
 };
 
 const API_BASE_URL = getApiBaseUrl();

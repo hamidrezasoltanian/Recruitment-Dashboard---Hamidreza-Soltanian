@@ -1,9 +1,9 @@
-import { Response } from 'express';
+
+import { RequestHandler } from 'express';
 import UserModel from '../models/user.model';
-import { AuthenticatedRequest } from '../middleware/auth.middleware';
 
 // Get current user profile
-export const getCurrentUser = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const getCurrentUser: RequestHandler = async (req, res) => {
     try {
         // req.user is attached by the authMiddleware
         if (!req.user) {
@@ -22,7 +22,7 @@ export const getCurrentUser = async (req: AuthenticatedRequest, res: Response): 
 };
 
 // Update current user (e.g., settings)
-export const updateCurrentUser = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const updateCurrentUser: RequestHandler = async (req, res) => {
     try {
         if (!req.user) {
             res.status(401).json({ message: 'Not authenticated' });
@@ -44,7 +44,7 @@ export const updateCurrentUser = async (req: AuthenticatedRequest, res: Response
 
 // --- Admin Only Controllers ---
 
-export const getAllUsers = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const getAllUsers: RequestHandler = async (req, res) => {
     try {
         const users = await UserModel.find().sort({ createdAt: -1 });
         res.status(200).json(users);
@@ -53,7 +53,7 @@ export const getAllUsers = async (req: AuthenticatedRequest, res: Response): Pro
     }
 };
 
-export const createUser = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const createUser: RequestHandler = async (req, res) => {
     try {
         const { username, name, password, isAdmin } = req.body;
         
@@ -71,7 +71,7 @@ export const createUser = async (req: AuthenticatedRequest, res: Response): Prom
     }
 };
 
-export const updateUser = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const updateUser: RequestHandler = async (req, res) => {
     try {
         const { id } = req.params;
         const { name, isAdmin, password } = req.body;
@@ -94,7 +94,7 @@ export const updateUser = async (req: AuthenticatedRequest, res: Response): Prom
     }
 };
 
-export const deleteUser = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const deleteUser: RequestHandler = async (req, res) => {
     try {
         const { id } = req.params;
 

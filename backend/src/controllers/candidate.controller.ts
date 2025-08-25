@@ -1,7 +1,8 @@
-import { Request, Response } from 'express';
+
+import { RequestHandler } from 'express';
 import CandidateModel, { ICandidate } from '../models/candidate.model';
 
-export const getAllCandidates = async (req: Request, res: Response): Promise<void> => {
+export const getAllCandidates: RequestHandler = async (req, res) => {
     try {
         const candidates: ICandidate[] = await CandidateModel.find();
         res.status(200).json(candidates);
@@ -11,7 +12,7 @@ export const getAllCandidates = async (req: Request, res: Response): Promise<voi
     }
 };
 
-export const getCandidateById = async (req: Request, res: Response): Promise<void> => {
+export const getCandidateById: RequestHandler = async (req, res) => {
     try {
         const { id } = req.params;
         const candidate: ICandidate | null = await CandidateModel.findById(id);
@@ -26,7 +27,7 @@ export const getCandidateById = async (req: Request, res: Response): Promise<voi
     }
 };
 
-export const createCandidate = async (req: Request, res: Response): Promise<void> => {
+export const createCandidate: RequestHandler = async (req, res) => {
     try {
         // The frontend sends 'id', we map it to '_id' for MongoDB
         const { id, ...candidateData } = req.body;
@@ -54,7 +55,7 @@ export const createCandidate = async (req: Request, res: Response): Promise<void
     }
 };
 
-export const updateCandidate = async (req: Request, res: Response): Promise<void> => {
+export const updateCandidate: RequestHandler = async (req, res) => {
     try {
         const { id } = req.params;
         const candidateData = req.body;
@@ -75,7 +76,7 @@ export const updateCandidate = async (req: Request, res: Response): Promise<void
     }
 };
 
-export const deleteCandidate = async (req: Request, res: Response): Promise<void> => {
+export const deleteCandidate: RequestHandler = async (req, res) => {
     try {
         const { id } = req.params;
         const result = await CandidateModel.findByIdAndDelete(id);
