@@ -1,6 +1,14 @@
 import { Candidate } from '../types';
 
-const API_BASE_URL = 'http://localhost:4000/api';
+const getApiBaseUrl = () => {
+    const { protocol, hostname } = window.location;
+    // Assume backend runs on port 4000 on the same host as the frontend.
+    // This works for both localhost development and cloud IDEs that expose ports on the same host.
+    return `${protocol}//${hostname}:4000/api`;
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
 
 const handleResponse = async <T>(response: Response): Promise<T> => {
     if (!response.ok) {
