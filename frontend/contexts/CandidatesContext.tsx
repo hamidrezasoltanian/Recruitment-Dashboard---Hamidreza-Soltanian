@@ -32,7 +32,7 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
   const [candidates, setCandidatesState] = useState<Candidate[]>([]);
   const { addToast } = useToast();
   const { user } = useAuth();
-  const { testLibrary } = useSettings();
+  const { testLibrary, stages } = useSettings();
   
   useEffect(() => {
     const loadData = async () => {
@@ -100,7 +100,7 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
   const updateCandidateStage = async (id: string, newStage: StageId) => {
     const candidate = candidates.find(c => c.id === id);
     if (candidate) {
-        const stageTitle = useSettings().stages.find(s => s.id === newStage)?.title || newStage;
+        const stageTitle = stages.find(s => s.id === newStage)?.title || newStage;
         const updatedCandidate = { ...candidate, stage: newStage };
         const candidateWithHistory = addHistoryEntry(updatedCandidate, `مرحله به "${stageTitle}" تغییر کرد`);
         try {

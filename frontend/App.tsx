@@ -18,6 +18,7 @@ import TestSelectionModal from './components/modals/TestSelectionModal';
 import DashboardSummary from './components/dashboard/DashboardSummary';
 import LoginScreen from './components/auth/LoginScreen';
 import CandidatePortal from './components/portal/CandidatePortal';
+import BackgroundSelector from './components/kanban/BackgroundSelector';
 
 
 const App: React.FC = () => {
@@ -45,6 +46,20 @@ const App: React.FC = () => {
   // Portal Logic
   const [portalCandidateInfo, setPortalCandidateInfo] = useState<{ id: string; token: string } | null>(null);
   const [isCheckingPortal, setIsCheckingPortal] = useState(true);
+  
+  // Kanban Background
+  const [kanbanBackground, setKanbanBackground] = useState<string>(() => {
+    return localStorage.getItem('kanban_background_v1') || '';
+  });
+
+  const handleBackgroundChange = (bgUrl: string) => {
+    setKanbanBackground(bgUrl);
+    if (bgUrl) {
+      localStorage.setItem('kanban_background_v1', bgUrl);
+    } else {
+      localStorage.removeItem('kanban_background_v1');
+    }
+  };
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -161,13 +176,28 @@ const App: React.FC = () => {
 
   return (
     <>
-      <div className="min-h-screen">
-        <Header onSettingsClick={() => setSettingsModalOpen(true)} />
-        <Tabs activeView={activeView} setActiveView={setActiveView} />
-        <main className="p-4 md:p-6 lg:p-8">
-            {activeView === 'dashboard' && <DashboardSummary candidates={candidates} />}
-            {renderView()}
-        </main>
+      <div 
+        className="min-h-screen bg-gray-100"
+        style={activeView === 'dashboard' && kanbanBackground ? {
+          backgroundImage: `url(${kanbanBackground})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundAttachment: 'fixed',
+        } : {}}
+      >
+        <div className={activeView === 'dashboard' && kanbanBackground ? 'bg-black/10 min-h-screen' : ''}>
+          <Header onSettingsClick={() => setSettingsModalOpen(true)} />
+          <Tabs activeView={activeView} setActiveView={setActiveView} />
+          <main className="p-4 md:p-6 lg:p-8">
+              {activeView === 'dashboard' && (
+                <>
+                  <BackgroundSelector onSelect={handleBackgroundChange} />
+                  <DashboardSummary candidates={candidates} />
+                </>
+              )}
+              {renderView()}
+          </main>
+        </div>
       </div>
 
       {/* Modals */}

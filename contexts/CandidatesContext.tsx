@@ -7,7 +7,6 @@ import { useSettings } from './SettingsContext';
 
 interface CandidatesContextType {
   candidates: Candidate[];
-  setCandidates: (candidates: Candidate[]) => void;
   addCandidate: (candidate: Candidate, resumeFile?: File) => Promise<void>;
   updateCandidate: (candidate: Candidate, resumeFile?: File) => Promise<void>;
   deleteCandidate: (id: string) => Promise<void>;
@@ -29,58 +28,27 @@ export const useCandidates = () => {
   return context;
 };
 
-const defaultCandidate: Candidate = {
-    id: 'cand_default_h_soltanian',
-    name: 'حمیدرضا سلطانیان',
-    email: 'hamidreza.soltanian@gmail.com',
-    phone: '09125100121',
-    position: 'توسعه‌دهنده ارشد React',
-    stage: 'interview-1',
-    source: 'معرفی‌شده',
-    rating: 5,
-    createdAt: new Date().toISOString(),
-    interviewDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString('fa-IR-u-nu-latn').replace(/\//g, '/'),
-    interviewTime: '14:30',
-    interviewTimeChanged: true,
-    history: [{
-        user: 'سیستم',
-        action: 'متقاضی پیش‌فرض ایجاد شد',
-        timestamp: new Date().toISOString()
-    }],
-    comments: [{ id: '1', user: 'Admin', text: 'کاندیدای بسیار قوی، حتما مصاحبه شود.', timestamp: new Date().toISOString() }],
-    hasResume: true,
-    testResults: [
-        { testId: 'test-1', status: 'passed', score: 95, notes: 'تحلیل روانشناسی مثبت بود', file: { name: 'archetype_result.pdf', type: 'application/pdf' } },
-        { testId: 'test-2', status: 'pending', sentDate: new Date().toISOString() }
-    ]
-};
-
-
 export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [candidates, setCandidatesState] = useState<Candidate[]>([]);
   const { addToast } = useToast();
   const { user } = useAuth();
-  const { testLibrary } = useSettings();
+  const { testLibrary, stages } = useSettings();
   
   useEffect(() => {
     const loadData = async () => {
       try {
         const data = await dbService.getAllCandidates();
-        if (data.length === 0) {
-          await dbService.saveCandidate(defaultCandidate);
-          setCandidatesState([defaultCandidate]);
-          addToast('متقاضی پیش‌فرض برای تست اضافه شد.', 'success');
-        } else {
-          setCandidatesState(data);
-        }
-      } catch (error) {
-        console.error("Failed to load candidates from DB", error);
-        addToast('خطا در بارگذاری داده‌ها از پایگاه داده.', 'error');
+        setCandidatesState(data);
+      } catch (error: any) {
+        console.error("Failed to load candidates from API", error);
+        addToast(`خطا در بارگذاری داده‌ها از سرور: ${error.message}`, 'error');
       }
     };
-    loadData();
+    if (user) { // Only load data if user is logged in
+        loadData();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user]);
 
   const addHistoryEntry = useCallback((candidate: Candidate, action: string, details?: string): Candidate => {
     const userForHistory = user ? user.name : 'متقاضی';
@@ -93,104 +61,88 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
     return { ...candidate, history: [historyEntry, ...(candidate.history || [])] };
   }, [user]);
 
-  const setCandidates = async (newCandidates: Candidate[]) => {
-    try {
-        await dbService.clearAllCandidates();
-        await dbService.clearAllResumes(); // Assuming resumes are tied to candidates
-        for(const candidate of newCandidates) {
-            await dbService.saveCandidate(candidate);
-        }
-        setCandidatesState(newCandidates);
-        addToast('داده‌ها با موفقیت جایگزین شدند.', 'success');
-    } catch (error) {
-        addToast('خطا در ذخیره سازی داده‌های جدید.', 'error');
-    }
-  }
-
   const addCandidate = async (candidate: Candidate, resumeFile?: File) => {
     const candidateWithHistory = addHistoryEntry(candidate, 'متقاضی ایجاد شد');
     const candidateWithTests = { ...candidateWithHistory, testResults: [] };
     try {
-      await dbService.saveCandidate(candidateWithTests);
+      const newCandidate = await dbService.createCandidate(candidateWithTests);
       if(resumeFile) await dbService.saveResume(candidate.id, resumeFile);
-      setCandidatesState(prev => [...prev, candidateWithTests]);
+      setCandidatesState(prev => [...prev, newCandidate]);
       addToast('متقاضی با موفقیت اضافه شد.', 'success');
-    } catch (error) {
-      addToast('خطا در افزودن متقاضی.', 'error');
+    } catch (error: any) {
+      addToast(`خطا در افزودن متقاضی: ${error.message}`, 'error');
     }
   };
 
   const updateCandidate = async (candidate: Candidate, resumeFile?: File) => {
-    const candidateWithHistory = addHistoryEntry(candidate, 'اطلاعات ویرایش شد');
     try {
-      await dbService.saveCandidate(candidateWithHistory);
+      const updatedCandidate = await dbService.updateCandidate(candidate);
       if(resumeFile) await dbService.saveResume(candidate.id, resumeFile);
-      setCandidatesState(prev => prev.map(c => c.id === candidate.id ? candidateWithHistory : c));
-      addToast('اطلاعات با موفقیت به‌روزرسانی شد.', 'success');
-    } catch (error) {
-      addToast('خطا در به‌روزرسانی اطلاعات.', 'error');
+      setCandidatesState(prev => prev.map(c => c.id === candidate.id ? updatedCandidate : c));
+      // No toast here, as this function is called by many others that show their own toasts.
+    } catch (error: any) {
+      addToast(`خطا در به‌روزرسانی اطلاعات: ${error.message}`, 'error');
+      throw error; // re-throw to be caught by caller if needed
     }
   };
 
   const deleteCandidate = async (id: string) => {
     try {
       await dbService.deleteCandidate(id);
-      await dbService.deleteResume(id);
-      // Also delete all test files associated with this candidate
-      const candidate = candidates.find(c => c.id === id);
-      if (candidate?.testResults) {
-        for (const result of candidate.testResults) {
-          if (result.file) {
-            await dbService.deleteTestFile(`${candidate.id}_${result.testId}`);
-          }
-        }
-      }
+      // await dbService.deleteResume(id); // File handling not implemented in backend
       setCandidatesState(prev => prev.filter(c => c.id !== id));
       addToast('متقاضی حذف شد.', 'success');
-    } catch (error) {
-      addToast('خطا در حذف متقاضی.', 'error');
+    } catch (error: any) {
+      addToast(`خطا در حذف متقاضی: ${error.message}`, 'error');
     }
   };
 
-  const updateCandidateStage = (id: string, newStage: StageId) => {
+  const updateCandidateStage = async (id: string, newStage: StageId) => {
     const candidate = candidates.find(c => c.id === id);
     if (candidate) {
-      const updatedCandidate = { ...candidate, stage: newStage };
-      const candidateWithHistory = addHistoryEntry(updatedCandidate, `مرحله به "${newStage}" تغییر کرد`);
-      dbService.saveCandidate(candidateWithHistory);
-      setCandidatesState(prev => prev.map(c => c.id === id ? candidateWithHistory : c));
-      addToast(`مرحله به ${newStage} تغییر کرد.`, 'success');
+        const stageTitle = stages.find(s => s.id === newStage)?.title || newStage;
+        const updatedCandidate = { ...candidate, stage: newStage };
+        const candidateWithHistory = addHistoryEntry(updatedCandidate, `مرحله به "${stageTitle}" تغییر کرد`);
+        try {
+            await updateCandidate(candidateWithHistory);
+            addToast(`مرحله به ${stageTitle} تغییر کرد.`, 'success');
+        } catch(e) {
+            // Error is handled in updateCandidate
+        }
     }
   };
   
-  const unarchiveCandidate = (id: string) => {
+  const unarchiveCandidate = async (id: string) => {
     const candidate = candidates.find(c => c.id === id);
     if(candidate) {
         const updatedCandidate = { ...candidate, stage: 'inbox' as StageId };
         const candidateWithHistory = addHistoryEntry(updatedCandidate, 'از آرشیو خارج شد و به صندوق ورودی منتقل شد');
-        dbService.saveCandidate(candidateWithHistory);
-        setCandidatesState(prev => prev.map(c => c.id === id ? candidateWithHistory : c));
-        addToast('متقاضی از آرشیو خارج شد.', 'success');
+        try {
+            await updateCandidate(candidateWithHistory);
+            addToast('متقاضی از آرشیو خارج شد.', 'success');
+        } catch(e) {}
     }
   };
 
-  const addComment = (id: string, comment: Comment) => {
+  const addComment = async (id: string, comment: Comment) => {
     const candidate = candidates.find(c => c.id === id);
     if (candidate) {
       const updatedCandidate = { ...candidate, comments: [...candidate.comments, comment] };
-      dbService.saveCandidate(updatedCandidate);
-      setCandidatesState(prev => prev.map(c => c.id === id ? updatedCandidate : c));
-      addToast('یادداشت اضافه شد.', 'success');
+      try {
+        await updateCandidate(updatedCandidate);
+        addToast('یادداشت اضافه شد.', 'success');
+      } catch(e) {}
     }
   };
 
-  const addCustomHistoryEntry = (id: string, actionText: string) => {
+  const addCustomHistoryEntry = async (id: string, actionText: string) => {
     const candidate = candidates.find(c => c.id === id);
     if (candidate && user && actionText.trim()) {
       const candidateWithHistory = addHistoryEntry(candidate, actionText.trim());
-      dbService.saveCandidate(candidateWithHistory);
-      setCandidatesState(prev => prev.map(c => c.id === id ? candidateWithHistory : c));
-      addToast('رویداد جدید در تاریخچه ثبت شد.', 'success');
+      try {
+          await updateCandidate(candidateWithHistory);
+          addToast('رویداد جدید در تاریخچه ثبت شد.', 'success');
+      } catch(e) {}
     }
   };
 
@@ -218,9 +170,10 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
     
     const candidateWithHistory = addHistoryEntry({ ...candidate, testResults: updatedResults }, action);
     
-    await dbService.saveCandidate(candidateWithHistory);
-    setCandidatesState(prev => prev.map(c => (c.id === candidateId ? candidateWithHistory : c)));
-    addToast(action, 'success');
+    try {
+        await updateCandidate(candidateWithHistory);
+        addToast(action, 'success');
+    } catch(e) {}
   };
 
   const generateCandidatePortalToken = async (candidateId: string): Promise<string | null> => {
@@ -228,7 +181,6 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
     if (!candidate) return null;
 
     if (candidate.portalToken) {
-      addToast('لینک پورتال بازیابی شد.', 'success');
       return candidate.portalToken;
     }
 
@@ -237,8 +189,7 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
     
     const candidateWithHistory = addHistoryEntry(updatedCandidate, 'لینک پورتال متقاضی ایجاد شد');
     try {
-        await dbService.saveCandidate(candidateWithHistory);
-        setCandidatesState(prev => prev.map(c => c.id === candidateId ? candidateWithHistory : c));
+        await updateCandidate(candidateWithHistory);
         addToast('لینک پورتال متقاضی با موفقیت ایجاد شد.', 'success');
         return newPortalToken;
     } catch (e) {
@@ -247,7 +198,7 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   };
 
-  const value = { candidates, setCandidates, addCandidate, updateCandidate, deleteCandidate, updateCandidateStage, unarchiveCandidate, addComment, addCustomHistoryEntry, updateTestResult, generateCandidatePortalToken };
+  const value = { candidates, addCandidate, updateCandidate, deleteCandidate, updateCandidateStage, unarchiveCandidate, addComment, addCustomHistoryEntry, updateTestResult, generateCandidatePortalToken };
 
   return <CandidatesContext.Provider value={value}>{children}</CandidatesContext.Provider>;
 };

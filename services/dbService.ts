@@ -1,67 +1,85 @@
-
-
 import { Candidate } from '../types';
 
-const DB_NAME = 'RecruitmentDB_React_V1';
-const CANDIDATES_STORE = 'candidates';
-const RESUMES_STORE = 'resumes';
-const TEST_FILES_STORE = 'test_files'; // New store for test result files
-const DB_VERSION = 2; // Incremented version for schema change
+const API_BASE_URL = 'http://localhost:4000/api';
 
-let db: IDBDatabase | null = null;
-
-const openDB = (): Promise<IDBDatabase> => {
-  return new Promise((resolve, reject) => {
-    if (db) {
-      return resolve(db);
+const handleResponse = async <T>(response: Response): Promise<T> => {
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Invalid JSON response' }));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
     }
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-    request.onerror = () => reject(new Error('خطا در باز کردن پایگاه داده.'));
-    request.onsuccess = () => {
-      db = request.result;
-      resolve(db);
-    };
-    request.onupgradeneeded = (event) => {
-      const dbInstance = (event.target as IDBOpenDBRequest).result;
-      if (!dbInstance.objectStoreNames.contains(CANDIDATES_STORE)) {
-        dbInstance.createObjectStore(CANDIDATES_STORE, { keyPath: 'id' });
-      }
-      if (!dbInstance.objectStoreNames.contains(RESUMES_STORE)) {
-        dbInstance.createObjectStore(RESUMES_STORE);
-      }
-      if (!dbInstance.objectStoreNames.contains(TEST_FILES_STORE)) {
-        dbInstance.createObjectStore(TEST_FILES_STORE);
-      }
-    };
-  });
-};
-
-const dbOp = async <T,>(storeName: string, mode: IDBTransactionMode, operation: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> => {
-  const dbInstance = await openDB();
-  return new Promise<T>((resolve, reject) => {
-    const transaction = dbInstance.transaction(storeName, mode);
-    const store = transaction.objectStore(storeName);
-    const request = operation(store);
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
+    if (response.status === 204) { // No Content
+        return {} as T;
+    }
+    return response.json();
 };
 
 export const dbService = {
-  saveCandidate: (candidate: Candidate) => dbOp(CANDIDATES_STORE, 'readwrite', store => store.put(candidate)),
-  getAllCandidates: () => dbOp<Candidate[]>(CANDIDATES_STORE, 'readonly', store => store.getAll()),
-  getCandidate: (id: string) => dbOp<Candidate>(CANDIDATES_STORE, 'readonly', store => store.get(id)),
-  deleteCandidate: (id: string) => dbOp(CANDIDATES_STORE, 'readwrite', store => store.delete(id)),
-  clearAllCandidates: () => dbOp(CANDIDATES_STORE, 'readwrite', store => store.clear()),
+  createCandidate: async (candidate: Candidate): Promise<Candidate> => {
+    const response = await fetch(`${API_BASE_URL}/candidates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(candidate),
+    });
+    return handleResponse<Candidate>(response);
+  },
   
-  saveResume: (id: string, file: File) => dbOp(RESUMES_STORE, 'readwrite', store => store.put(file, id)),
-  getResume: (id: string) => dbOp<File>(RESUMES_STORE, 'readonly', store => store.get(id)),
-  deleteResume: (id: string) => dbOp(RESUMES_STORE, 'readwrite', store => store.delete(id)),
-  clearAllResumes: () => dbOp(RESUMES_STORE, 'readwrite', store => store.clear()),
+  updateCandidate: async (candidate: Candidate): Promise<Candidate> => {
+    const response = await fetch(`${API_BASE_URL}/candidates/${candidate.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(candidate),
+    });
+    return handleResponse<Candidate>(response);
+  },
 
-  // Methods for test files
-  saveTestFile: (id: string, file: File) => dbOp(TEST_FILES_STORE, 'readwrite', store => store.put(file, id)),
-  getTestFile: (id: string) => dbOp<File>(TEST_FILES_STORE, 'readonly', store => store.get(id)),
-  deleteTestFile: (id: string) => dbOp(TEST_FILES_STORE, 'readwrite', store => store.delete(id)),
+  getAllCandidates: async (): Promise<Candidate[]> => {
+    const response = await fetch(`${API_BASE_URL}/candidates`);
+    return handleResponse<Candidate[]>(response);
+  },
+
+  getCandidate: async (id: string): Promise<Candidate> => {
+    const response = await fetch(`${API_BASE_URL}/candidates/${id}`);
+    return handleResponse<Candidate>(response);
+  },
+
+  deleteCandidate: async (id: string): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/candidates/${id}`, {
+      method: 'DELETE',
+    });
+    await handleResponse(response);
+  },
+  
+  // The backend doesn't support file uploads yet. These are no-ops for now.
+  // Implementing file handling requires backend changes (e.g., using multer with Express).
+  saveResume: async (id: string, file: File): Promise<void> => {
+    console.warn('saveResume: File uploads to backend not implemented.');
+    return Promise.resolve();
+  },
+  getResume: async (id: string): Promise<File | null> => {
+    console.warn('getResume: File downloads from backend not implemented.');
+    try {
+        const candidate = await dbService.getCandidate(id);
+        if (!candidate.hasResume) return null;
+        // This is just a placeholder to avoid breaking the UI.
+        return new File(["(فایل در بک‌اند ذخیره نشده)"], "resume_placeholder.pdf", { type: "application/pdf" });
+    } catch {
+        return null;
+    }
+  },
+  deleteResume: async (id: string): Promise<void> => {
+    console.warn('deleteResume: File deletion on backend not implemented.');
+    return Promise.resolve();
+  },
+  saveTestFile: async (id: string, file: File): Promise<void> => {
+      console.warn('saveTestFile: Not implemented for backend.');
+      return Promise.resolve();
+  },
+  getTestFile: async (id: string): Promise<File | null> => {
+      console.warn('getTestFile: Not implemented for backend.');
+      return Promise.resolve(null);
+  },
+  deleteTestFile: async (id: string): Promise<void> => {
+      console.warn('deleteTestFile: Not implemented for backend.');
+      return Promise.resolve();
+  },
 };

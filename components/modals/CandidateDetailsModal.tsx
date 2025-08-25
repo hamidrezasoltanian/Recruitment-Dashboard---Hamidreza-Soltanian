@@ -100,7 +100,7 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
         } else {
-            addToast('فایل رزومه یافت نشد.', 'error');
+            addToast('فایل رزومه یافت نشد. (پشتیبانی از فایل در بک‌اند پیاده‌سازی نشده)', 'error');
         }
     } catch(err) {
         addToast('خطا در دانلود رزومه.', 'error');
@@ -146,7 +146,7 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
   };
 
   const handleCopyPortalLink = async () => {
-    if (!candidate) return;
+    if (!candidate) return null;
     const token = await generateCandidatePortalToken(candidate.id);
     if (token) {
         const url = `${window.location.origin}/?candidateId=${candidate.id}&token=${token}`;

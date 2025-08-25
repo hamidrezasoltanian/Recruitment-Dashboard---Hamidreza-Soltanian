@@ -53,13 +53,19 @@ const StageChangeCommunicationModal: React.FC<StageChangeCommunicationModalProps
   }, [relevantTemplate, candidate, newStage, companyProfile]);
 
   const handleConfirm = () => {
-    if (sendNotification) {
+    if (sendNotification && relevantTemplate) {
       if (!message.trim()) {
         addToast('قالب پیام برای این مرحله خالی است. نمی‌توان ایمیل ارسال کرد.', 'error');
         return;
       }
-      console.log(`Sending email to ${candidate.email}:\n\n${message}`);
-      addToast(`ایمیل اطلاع‌رسانی به ${candidate.name} ارسال شد. (نمایشی)`, 'success');
+      const subject = `اطلاع‌رسانی در خصوص موقعیت شغلی: ${candidate.position}`;
+      const mailtoLink = `mailto:${candidate.email}?subject=${encodeURIComponent(
+        subject
+      )}&body=${encodeURIComponent(message)}`;
+      
+      window.location.href = mailtoLink;
+      
+      addToast(`ایمیل اطلاع‌رسانی به ${candidate.name} آماده ارسال است.`, 'success');
     }
     onConfirm();
   };

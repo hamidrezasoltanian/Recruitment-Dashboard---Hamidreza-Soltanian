@@ -2,7 +2,6 @@ import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCandidates } from '../../contexts/CandidatesContext';
 import { useToast } from '../../contexts/ToastContext';
-import { Candidate } from '../../types';
 
 declare const persianDate: any;
 
@@ -35,7 +34,7 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick }) => {
 
 
   return (
-    <header className="bg-white shadow-md p-4 flex flex-wrap justify-between items-center sticky top-0 z-30 gap-4">
+    <header className="bg-white/80 backdrop-blur-sm shadow-md p-4 flex flex-wrap justify-between items-center sticky top-0 z-30 gap-4">
       <h1 className="text-xl md:text-2xl font-bold text-gray-800">داشبورد استخدام</h1>
       
       <div className="flex items-center gap-2 flex-wrap">
