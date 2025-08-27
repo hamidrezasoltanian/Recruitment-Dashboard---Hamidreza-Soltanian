@@ -165,10 +165,11 @@ const TestResultGroup: React.FC<{
                     onClose={() => setIsAiModalOpen(false)}
                     testName={test.name}
                     onSaveSummary={(summary) => {
-                        setNotes(prev => prev ? `${prev}\n\n--- تحلیل AI ---\n${summary}` : summary);
+                        const newNotes = notes ? `${notes}\n\n--- تحلیل AI ---\n${summary}` : summary;
+                        setNotes(newNotes);
                         setStatus('review');
                         updateTestResult(candidateId, test.id, { 
-                            notes: notes ? `${notes}\n\n--- تحلیل AI ---\n${summary}` : summary, 
+                            notes: newNotes, 
                             status: 'review' 
                         });
                     }}

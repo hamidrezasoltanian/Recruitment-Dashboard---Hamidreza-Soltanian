@@ -8,7 +8,8 @@ const generateToken = (user: IUser) => {
     if (!jwtSecret) {
         throw new Error('JWT_SECRET is not defined in .env file.');
     }
-    return jwt.sign({ id: user.id, isAdmin: user.isAdmin }, jwtSecret, { expiresIn: '1d' });
+    // Fix: Use `user._id` which is available on the Mongoose Document, instead of the virtual `user.id`.
+    return jwt.sign({ id: user._id, isAdmin: user.isAdmin }, jwtSecret, { expiresIn: '1d' });
 };
 
 export const register = async (req: Request, res: Response) => {
