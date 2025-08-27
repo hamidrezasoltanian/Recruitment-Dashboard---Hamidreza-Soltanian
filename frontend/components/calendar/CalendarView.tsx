@@ -36,8 +36,16 @@ const CalendarView: React.FC<CalendarViewProps> = ({ onViewDetails }) => {
   };
   
   const getCandidatesForDay = (day: number) => {
-      const dateStr = `${monthData.year}/${String(monthData.month).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
-      return candidatesWithInterview.filter(c => c.interviewDate === dateStr);
+      const currentJalaliDate = `${monthData.year}/${String(monthData.month).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
+      return candidatesWithInterview.filter(c => {
+          if (!c.interviewDate) return false;
+          try {
+              const candidateJalaliDate = new persianDate(new Date(c.interviewDate)).format('YYYY/MM/DD');
+              return candidateJalaliDate === currentJalaliDate;
+          } catch {
+              return false;
+          }
+      });
   };
 
   const weekDays = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];

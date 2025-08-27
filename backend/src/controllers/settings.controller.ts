@@ -1,8 +1,11 @@
 
+
+// Fix: Use direct Request and Response types from express
 import { Request, Response } from 'express';
 import SettingsModel from '../models/settings.model';
 import { DEFAULT_STAGES, DEFAULT_SOURCES, DEFAULT_COMPANY_PROFILE, DEFAULT_TEST_LIBRARY } from '../../../frontend/constants'; // Use frontend defaults
 
+// Fix: Use direct Request and Response types
 export const getSettings = async (req: Request, res: Response) => {
     try {
         let settings = await SettingsModel.findOne();
@@ -23,6 +26,7 @@ export const getSettings = async (req: Request, res: Response) => {
     }
 };
 
+// Fix: Use direct Request and Response types
 export const updateSettings = async (req: Request, res: Response) => {
     try {
         const updatedSettingsData = req.body;

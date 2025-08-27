@@ -1,7 +1,10 @@
 
+
+// Fix: Use direct Request and Response types from express
 import { Request, Response } from 'express';
 import CandidateModel, { ICandidate } from '../models/candidate.model';
 
+// Fix: Use direct Request and Response types
 export const getAllCandidates = async (req: Request, res: Response) => {
     try {
         const candidates: ICandidate[] = await CandidateModel.find();
@@ -12,6 +15,7 @@ export const getAllCandidates = async (req: Request, res: Response) => {
     }
 };
 
+// Fix: Use direct Request and Response types
 export const getCandidateById = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
@@ -27,6 +31,7 @@ export const getCandidateById = async (req: Request, res: Response) => {
     }
 };
 
+// Fix: Use direct Request and Response types
 export const createCandidate = async (req: Request, res: Response) => {
     try {
         // The frontend sends 'id', we map it to '_id' for MongoDB
@@ -55,6 +60,7 @@ export const createCandidate = async (req: Request, res: Response) => {
     }
 };
 
+// Fix: Use direct Request and Response types
 export const updateCandidate = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
@@ -63,6 +69,20 @@ export const updateCandidate = async (req: Request, res: Response) => {
         // Ensure the _id is not changed via the request body
         delete candidateData._id;
         
+        const existingCandidate: ICandidate | null = await CandidateModel.findById(id).lean();
+        if (!existingCandidate) {
+            res.status(404).json({ message: 'Candidate not found' });
+            return;
+        }
+
+        // If interview date or interviewer changes, reset the reminder flag
+        if (
+            ('interviewDate' in candidateData && candidateData.interviewDate !== existingCandidate.interviewDate) ||
+            ('interviewerId' in candidateData && candidateData.interviewerId !== existingCandidate.interviewerId)
+        ) {
+            candidateData.reminderSent = { candidate: false, interviewer: false };
+        }
+
         const updatedCandidate: ICandidate | null = await CandidateModel.findByIdAndUpdate(id, candidateData, { new: true });
         
         if (!updatedCandidate) {
@@ -76,6 +96,7 @@ export const updateCandidate = async (req: Request, res: Response) => {
     }
 };
 
+// Fix: Use direct Request and Response types
 export const deleteCandidate = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;

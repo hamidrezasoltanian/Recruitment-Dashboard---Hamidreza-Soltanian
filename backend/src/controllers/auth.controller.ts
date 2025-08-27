@@ -1,4 +1,6 @@
 
+
+// Fix: Use direct Request and Response types from express
 import { Request, Response } from 'express';
 import UserModel, { IUser } from '../models/user.model';
 import jwt from 'jsonwebtoken';
@@ -8,10 +10,10 @@ const generateToken = (user: IUser) => {
     if (!jwtSecret) {
         throw new Error('JWT_SECRET is not defined in .env file.');
     }
-    // Fix: Use `user._id` which is available on the Mongoose Document, instead of the virtual `user.id`.
     return jwt.sign({ id: user._id, isAdmin: user.isAdmin }, jwtSecret, { expiresIn: '1d' });
 };
 
+// Fix: Use direct Request and Response types
 export const register = async (req: Request, res: Response) => {
     try {
         const { username, name, password, isAdmin } = req.body;
@@ -39,6 +41,7 @@ export const register = async (req: Request, res: Response) => {
     }
 };
 
+// Fix: Use direct Request and Response types
 export const login = async (req: Request, res: Response) => {
     try {
         const { username, password } = req.body;

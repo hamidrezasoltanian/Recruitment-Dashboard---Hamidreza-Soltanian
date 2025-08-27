@@ -1,4 +1,6 @@
 
+
+// Fix: Use direct Request, Response, and NextFunction types from express
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
@@ -12,6 +14,7 @@ declare global {
     }
 }
 
+// Fix: Use direct Request, Response, and NextFunction types
 export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
 
@@ -36,6 +39,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
     }
 };
 
+// Fix: Use direct Request, Response, and NextFunction types
 export const adminMiddleware = (req: Request, res: Response, next: NextFunction) => {
     if (!req.user?.isAdmin) {
         return res.status(403).json({ message: 'Admin access required' });

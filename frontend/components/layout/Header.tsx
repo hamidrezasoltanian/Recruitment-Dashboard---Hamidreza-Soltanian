@@ -15,20 +15,48 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick }) => {
   const { addToast } = useToast();
   
   const handleBulkReminder = () => {
-    const today = new persianDate();
-    const todayStr = today.format('YYYY/MM/DD');
-    const tomorrow = today.add('days', 1);
-    const tomorrowStr = tomorrow.format('YYYY/MM/DD');
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
 
-    const upcomingInterviews = candidates.filter(c => 
-      (c.stage === 'interview-1' || c.stage === 'interview-2') && 
-      (c.interviewDate === todayStr || c.interviewDate === tomorrowStr)
-    );
+    const dayAfterTomorrow = new Date(tomorrow);
+    dayAfterTomorrow.setDate(tomorrow.getDate() + 1);
 
-    if(upcomingInterviews.length > 0) {
-        addToast(`${upcomingInterviews.length} مصاحبه برای امروز و فردا برنامه‌ریزی شده است.`, 'success');
+    const interviewsForTomorrow = candidates.filter(c => {
+      if (!c.interviewDate) return false;
+      const interviewDateObj = new Date(c.interviewDate);
+      return interviewDateObj >= tomorrow && interviewDateObj < dayAfterTomorrow;
+    });
+
+    if (interviewsForTomorrow.length > 0) {
+      const uniqueInterviewers = new Set<string>();
+
+      console.log('--- Sending Interview Reminders for TOMORROW (Manual Trigger) ---');
+      interviewsForTomorrow.forEach(c => {
+        const interviewDateTime = new Date(c.interviewDate!);
+        const pDate = new persianDate(interviewDateTime);
+        const formattedDate = pDate.format('dddd D MMMM');
+        const formattedTime = c.interviewTime || new persianDate(interviewDateTime).format('HH:mm');
+        
+        // Log reminder for candidate (simulation)
+        console.log(`[CANDIDATE REMINDER] To: ${c.name} (${c.email}) - Your interview for ${c.position} is tomorrow, ${formattedDate} at ${formattedTime}.`);
+        
+        if (c.interviewerName) {
+            uniqueInterviewers.add(c.interviewerName);
+            // Log reminder for interviewer (simulation)
+            console.log(`[INTERVIEWER REMINDER] To: ${c.interviewerName} - You have an interview tomorrow with ${c.name} for ${c.position} on ${formattedDate} at ${formattedTime}.`);
+        }
+      });
+      console.log('-------------------------------------------------------------');
+      
+      let message = `${interviewsForTomorrow.length} مصاحبه برای فردا یافت شد.`;
+      if (uniqueInterviewers.size > 0) {
+          message += ` یادآوری برای ${uniqueInterviewers.size} مصاحبه‌کننده (در کنسول) ثبت شد.`
+      }
+      addToast(message, 'success');
+
     } else {
-        addToast('هیچ مصاحبه‌ای برای امروز یا فردا وجود ندارد.', 'success');
+      addToast('هیچ مصاحبه‌ای برای فردا برنامه‌ریزی نشده است.', 'success');
     }
   };
 

@@ -1,6 +1,12 @@
+
 import mongoose, { Document, Schema, Model } from 'mongoose';
 
 // --- Interfaces for Sub-documents ---
+interface IReminderStatus {
+  candidate: boolean;
+  interviewer: boolean;
+}
+
 interface IHistoryEntry {
   user: string;
   action: string;
@@ -45,6 +51,9 @@ interface CandidateProperties {
   interviewDate?: string;
   interviewTime?: string;
   interviewTimeChanged?: boolean;
+  interviewerId?: string;
+  interviewerName?: string;
+  reminderSent?: IReminderStatus;
   history: IHistoryEntry[];
   comments: IComment[];
   hasResume?: boolean;
@@ -59,6 +68,11 @@ export interface ICandidate extends CandidateProperties, Document {
 
 
 // --- Mongoose Schemas ---
+
+const ReminderStatusSchema = new Schema<IReminderStatus>({
+    candidate: { type: Boolean, default: false },
+    interviewer: { type: Boolean, default: false },
+}, { _id: false });
 
 const HistoryEntrySchema = new Schema<IHistoryEntry>({
   user: { type: String, required: true },
@@ -103,6 +117,9 @@ const CandidateSchema = new Schema<ICandidate>({
     interviewDate: { type: String },
     interviewTime: { type: String },
     interviewTimeChanged: { type: Boolean, default: false },
+    interviewerId: { type: String },
+    interviewerName: { type: String },
+    reminderSent: { type: ReminderStatusSchema, default: () => ({ candidate: false, interviewer: false }) },
     history: { type: [HistoryEntrySchema], default: [] },
     comments: { type: [CommentSchema], default: [] },
     hasResume: { type: Boolean, default: false },

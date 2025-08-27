@@ -5,6 +5,7 @@ import Modal from '../ui/Modal';
 import StarRating from '../ui/StarRating';
 import { useSettings } from '../../contexts/SettingsContext';
 import KamaDatePicker from '../ui/KamaDatePicker';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface AddEditCandidateModalProps {
   isOpen: boolean;
@@ -16,8 +17,10 @@ interface AddEditCandidateModalProps {
 
 const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, onClose, onSave, candidateToEdit, initialStage }) => {
   const { sources, companyProfile, stages } = useSettings();
+  const { users } = useAuth();
   const availableSources = sources.length > 0 ? sources : DEFAULT_SOURCES;
   const kanbanStages = stages.filter(s => s.id !== 'archived');
+  const availableInterviewers = users.filter(u => u.email);
   
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -28,6 +31,7 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
   const [rating, setRating] = useState(0);
   const [interviewDate, setInterviewDate] = useState('');
   const [interviewTime, setInterviewTime] = useState('');
+  const [interviewerId, setInterviewerId] = useState('');
   const [resumeFile, setResumeFile] = useState<File | undefined>();
 
   useEffect(() => {
@@ -41,6 +45,7 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
       setRating(candidateToEdit.rating);
       setInterviewDate(candidateToEdit.interviewDate || '');
       setInterviewTime(candidateToEdit.interviewTime || '');
+      setInterviewerId(candidateToEdit.interviewerId || '');
     } else {
       setName('');
       setEmail('');
@@ -51,6 +56,7 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
       setRating(0);
       setInterviewDate('');
       setInterviewTime('');
+      setInterviewerId('');
     }
     setResumeFile(undefined);
   }, [candidateToEdit, initialStage, isOpen, availableSources, companyProfile]);
@@ -59,6 +65,8 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const selectedInterviewer = users.find(u => u.id === interviewerId);
+
     const newCandidate: Candidate = {
       id: candidateToEdit?.id || `cand_${Date.now()}`,
       createdAt: candidateToEdit?.createdAt || new Date().toISOString(),
@@ -68,6 +76,8 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
       name, email, phone, position, source, stage, rating,
       interviewDate: isInterviewStage ? interviewDate : undefined,
       interviewTime: isInterviewStage ? interviewTime : undefined,
+      interviewerId: isInterviewStage ? interviewerId : undefined,
+      interviewerName: isInterviewStage ? selectedInterviewer?.name : undefined,
       hasResume: !!resumeFile || candidateToEdit?.hasResume,
     };
     onSave(newCandidate, resumeFile);
@@ -78,10 +88,6 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
       if (e.target.files && e.target.files[0]) {
           setResumeFile(e.target.files[0]);
       }
-  };
-
-  const handleDateChange = (date: string) => {
-    setInterviewDate(date);
   };
 
   return (
@@ -125,16 +131,28 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
             </select>
           </div>
            {isInterviewStage && (
-             <div className="md:col-span-2 grid grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">تاریخ مصاحبه</label>
-                    <KamaDatePicker value={interviewDate} onChange={handleDateChange} />
+             <>
+                <div className="md:col-span-2 grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">تاریخ مصاحبه</label>
+                        <KamaDatePicker value={interviewDate} onChange={setInterviewDate} />
+                    </div>
+                    <div>
+                        <label htmlFor="interviewTime" className="block text-sm font-medium text-gray-700 mb-1">ساعت مصاحبه</label>
+                        <input type="time" id="interviewTime" value={interviewTime} onChange={e => setInterviewTime(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-3 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                    </div>
                 </div>
-                <div>
-                    <label htmlFor="interviewTime" className="block text-sm font-medium text-gray-700 mb-1">ساعت مصاحبه</label>
-                    <input type="time" id="interviewTime" value={interviewTime} onChange={e => setInterviewTime(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-3 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                <div className="md:col-span-2">
+                    <label htmlFor="interviewer" className="block text-sm font-medium text-gray-700">مصاحبه‌کننده</label>
+                    <select id="interviewer" value={interviewerId} onChange={e => setInterviewerId(e.target.value)} className="mt-1 block w-full border border-gray-300 bg-white rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        <option value="">انتخاب کنید...</option>
+                        {availableInterviewers.map(user => (
+                            <option key={user.id} value={user.id}>{user.name} ({user.email})</option>
+                        ))}
+                    </select>
+                    {availableInterviewers.length === 0 && <p className="text-xs text-gray-500 mt-1">هیچ کاربری با ایمیل ثبت‌شده (برای ارسال یادآوری) یافت نشد.</p>}
                 </div>
-             </div>
+             </>
            )}
            <div>
               <label className="block text-sm font-medium text-gray-700">رزومه</label>

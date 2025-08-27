@@ -44,8 +44,7 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ candidate, onViewDetails, onEdi
   const getFormattedInterviewDate = () => {
     if (!candidate.interviewDate) return '';
     try {
-        const [year, month, day] = candidate.interviewDate.split('/').map(Number);
-        const pDate = new persianDate([year, month, day]);
+        const pDate = new persianDate(new Date(candidate.interviewDate));
         if (candidate.interviewTime) {
             const [hour, minute] = candidate.interviewTime.split(':').map(Number);
             pDate.hour(hour).minute(minute);
@@ -53,7 +52,7 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ candidate, onViewDetails, onEdi
         }
         return pDate.format('D MMMM');
     } catch(e) {
-        console.error("Error formatting Persian date:", e);
+        console.error("Error formatting interview date:", e);
         return candidate.interviewDate;
     }
   };

@@ -1,3 +1,4 @@
+
 import mongoose, { Document, Schema, Model } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
@@ -5,6 +6,7 @@ import bcrypt from 'bcryptjs';
 interface UserProperties {
   username: string;
   name: string;
+  email?: string;
   password?: string;
   isAdmin: boolean;
   settings?: {
@@ -13,6 +15,7 @@ interface UserProperties {
 }
 
 export interface IUser extends UserProperties, Document {
+    _id: any;
     comparePassword(password: string): Promise<boolean>;
 }
 
@@ -20,6 +23,7 @@ export interface IUser extends UserProperties, Document {
 const UserSchema = new Schema<IUser>({
     username: { type: String, required: true, unique: true, lowercase: true, trim: true },
     name: { type: String, required: true },
+    email: { type: String, unique: true, sparse: true, trim: true },
     password: { type: String, required: true, select: false }, // 'select: false' prevents password from being returned by default
     isAdmin: { type: Boolean, default: false },
     settings: {

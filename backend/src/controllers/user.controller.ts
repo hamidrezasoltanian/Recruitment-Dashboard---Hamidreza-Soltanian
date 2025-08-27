@@ -1,8 +1,11 @@
 
+
+// Fix: Use direct Request and Response types from express
 import { Request, Response } from 'express';
 import UserModel from '../models/user.model';
 
 // Get current user profile
+// Fix: Use direct Request and Response types
 export const getCurrentUser = async (req: Request, res: Response) => {
     try {
         // req.user is attached by the authMiddleware
@@ -22,17 +25,19 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 };
 
 // Update current user (e.g., settings)
+// Fix: Use direct Request and Response types
 export const updateCurrentUser = async (req: Request, res: Response) => {
     try {
         if (!req.user) {
             res.status(401).json({ message: 'Not authenticated' });
             return;
         }
-        // Users can only update their own 'name' and 'settings'
-        const { name, settings } = req.body;
-        const updates: { name?: string, settings?: any } = {};
+        // Users can only update their own 'name', 'settings' and 'email'
+        const { name, settings, email } = req.body;
+        const updates: { name?: string; settings?: any; email?: string } = {};
         if (name) updates.name = name;
         if (settings) updates.settings = settings;
+        if (email) updates.email = email;
 
         const updatedUser = await UserModel.findByIdAndUpdate(req.user.id, updates, { new: true });
         res.status(200).json(updatedUser);
@@ -44,6 +49,7 @@ export const updateCurrentUser = async (req: Request, res: Response) => {
 
 // --- Admin Only Controllers ---
 
+// Fix: Use direct Request and Response types
 export const getAllUsers = async (req: Request, res: Response) => {
     try {
         const users = await UserModel.find().sort({ createdAt: -1 });
@@ -53,9 +59,10 @@ export const getAllUsers = async (req: Request, res: Response) => {
     }
 };
 
+// Fix: Use direct Request and Response types
 export const createUser = async (req: Request, res: Response) => {
     try {
-        const { username, name, password, isAdmin } = req.body;
+        const { username, name, password, isAdmin, email } = req.body;
         
         const existingUser = await UserModel.findOne({ username: username.toLowerCase() });
         if (existingUser) {
@@ -63,18 +70,23 @@ export const createUser = async (req: Request, res: Response) => {
             return;
         }
 
-        const newUser = new UserModel({ username, name, password, isAdmin });
+        const newUser = new UserModel({ username, name, password, isAdmin, email });
         await newUser.save();
         res.status(201).json(newUser);
     } catch (error: any) {
+        if (error.code === 11000) { // Duplicate key error for email
+             res.status(409).json({ message: 'User with this email already exists' });
+             return;
+        }
         res.status(500).json({ message: 'Error creating user', error: error.message });
     }
 };
 
+// Fix: Use direct Request and Response types
 export const updateUser = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { name, isAdmin, password } = req.body;
+        const { name, isAdmin, password, email } = req.body;
         
         const userToUpdate = await UserModel.findById(id);
         if (!userToUpdate) {
@@ -83,6 +95,7 @@ export const updateUser = async (req: Request, res: Response) => {
         }
 
         if (name) userToUpdate.name = name;
+        if (email) userToUpdate.email = email;
         if (typeof isAdmin === 'boolean') userToUpdate.isAdmin = isAdmin;
         if (password) userToUpdate.password = password; // Hashing is handled by the pre-save hook
 
@@ -90,10 +103,15 @@ export const updateUser = async (req: Request, res: Response) => {
         res.status(200).json(updatedUser);
 
     } catch (error: any) {
+         if (error.code === 11000) {
+             res.status(409).json({ message: 'User with this email already exists' });
+             return;
+        }
         res.status(500).json({ message: 'Error updating user', error: error.message });
     }
 };
 
+// Fix: Use direct Request and Response types
 export const deleteUser = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;

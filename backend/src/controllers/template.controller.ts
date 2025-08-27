@@ -1,7 +1,10 @@
 
+
+// Fix: Use direct Request and Response types from express
 import { Request, Response } from 'express';
 import TemplateModel from '../models/template.model';
 
+// Fix: Use direct Request and Response types
 export const getAllTemplates = async (req: Request, res: Response) => {
     try {
         const templates = await TemplateModel.find().sort({ createdAt: -1 });
@@ -11,6 +14,7 @@ export const getAllTemplates = async (req: Request, res: Response) => {
     }
 };
 
+// Fix: Use direct Request and Response types
 export const createTemplate = async (req: Request, res: Response) => {
     try {
         const newTemplate = new TemplateModel(req.body);
@@ -21,6 +25,7 @@ export const createTemplate = async (req: Request, res: Response) => {
     }
 };
 
+// Fix: Use direct Request and Response types
 export const updateTemplate = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
@@ -35,6 +40,7 @@ export const updateTemplate = async (req: Request, res: Response) => {
     }
 };
 
+// Fix: Use direct Request and Response types
 export const deleteTemplate = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;

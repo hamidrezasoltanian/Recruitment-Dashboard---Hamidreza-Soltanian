@@ -1,5 +1,6 @@
 
-import express from 'express';
+// Fix: Use direct Request and Response types from express
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { connectDB } from './services/db';
@@ -8,6 +9,7 @@ import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
 import settingsRoutes from './routes/settings.routes';
 import templateRoutes from './routes/template.routes';
+import { startReminderService } from './services/reminder.service';
 import { authMiddleware } from './middleware/auth.middleware';
 
 // Load environment variables from .env file
@@ -28,15 +30,20 @@ const startServer = async () => {
     app.use('/api/auth', authRoutes);
 
     // --- Protected Routes ---
+    // Fix: Using correct middleware signature resolves overload error
     app.use('/api/candidates', authMiddleware, candidateRoutes);
     app.use('/api/users', authMiddleware, userRoutes);
     app.use('/api/settings', authMiddleware, settingsRoutes);
     app.use('/api/templates', authMiddleware, templateRoutes);
 
     // API health check
-    app.get('/', (req, res) => {
+    // Fix: Use direct Request and Response types
+    app.get('/', (req: Request, res: Response) => {
         res.send('Recruitment Dashboard API is running!');
     });
+
+    // Start automated services
+    startReminderService();
 
     // Start the server
     app.listen(PORT, () => {

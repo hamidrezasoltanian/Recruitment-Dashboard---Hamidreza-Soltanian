@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Modal from '../ui/Modal';
 import { useAuth } from '../../contexts/AuthContext';
@@ -15,6 +16,7 @@ const UserManagementPanel: React.FC = () => {
 
   const [username, setUsername] = useState('');
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const { addToast } = useToast();
@@ -23,11 +25,13 @@ const UserManagementPanel: React.FC = () => {
     if (editingUser) {
         setUsername(editingUser.username);
         setName(editingUser.name);
+        setEmail(editingUser.email || '');
         setIsAdmin(editingUser.isAdmin);
         setPassword('');
     } else {
         setUsername('');
         setName('');
+        setEmail('');
         setPassword('');
         setIsAdmin(false);
     }
@@ -43,6 +47,7 @@ const UserManagementPanel: React.FC = () => {
     setEditingUser(null);
     setUsername('');
     setName('');
+    setEmail('');
     setPassword('');
     setIsAdmin(false);
   }
@@ -52,7 +57,7 @@ const UserManagementPanel: React.FC = () => {
         addToast('نام کاربری و نام کامل الزامی است.', 'error');
         return;
     }
-    const userData: Partial<UserWithPassword> = { username: username.toLowerCase(), name, isAdmin };
+    const userData: Partial<UserWithPassword> = { username: username.toLowerCase(), name, email, isAdmin };
     if(password) {
       userData.password = password;
     }
@@ -65,7 +70,7 @@ const UserManagementPanel: React.FC = () => {
           }
           await addUser(userData as UserWithPassword);
       } else if (editingUser) {
-          await updateUser((editingUser as any).id, userData);
+          await updateUser(editingUser.id, userData);
       }
       setEditingUser(null);
       setIsAdding(false);
@@ -81,7 +86,7 @@ const UserManagementPanel: React.FC = () => {
     }
     if (window.confirm(`آیا از حذف کاربر ${userToDelete.username} مطمئن هستید؟`)) {
         try {
-          await deleteUser((userToDelete as any).id);
+          await deleteUser(userToDelete.id);
           if (editingUser?.username === userToDelete.username) {
             setEditingUser(null);
           }
@@ -118,6 +123,10 @@ const UserManagementPanel: React.FC = () => {
                      <div>
                         <label className="block text-sm font-medium text-gray-700">نام کامل</label>
                         <input type="text" value={name} onChange={e => setName(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
+                    </div>
+                     <div>
+                        <label className="block text-sm font-medium text-gray-700">ایمیل (برای یادآوری‌ها)</label>
+                        <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
                     </div>
                      <div>
                         <label className="block text-sm font-medium text-gray-700">رمز عبور</label>

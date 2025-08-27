@@ -1,7 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { useCandidates } from './contexts/CandidatesContext';
-import { Candidate, StageId, View, StageChangeInfo } from './types';
+import { Candidate, StageId, View, StageChangeInfo, HistoryEntry } from './types';
+import { useToast } from './contexts/ToastContext';
+import { useSettings } from './contexts/SettingsContext';
 
 import Header from './components/layout/Header';
 import Tabs from './components/layout/Tabs';
@@ -19,11 +21,14 @@ import DashboardSummary from './components/dashboard/DashboardSummary';
 import LoginScreen from './components/auth/LoginScreen';
 import CandidatePortal from './components/portal/CandidatePortal';
 import BackgroundSelector from './components/kanban/BackgroundSelector';
+import ScheduleInterviewModal from './components/modals/ScheduleInterviewModal';
 
 
 const App: React.FC = () => {
   const { user, isLoading: isAuthLoading, isAuthenticated, updateUserSettings } = useAuth();
   const { candidates, addCandidate, updateCandidate, updateCandidateStage, updateTestResult } = useCandidates();
+  const { addToast } = useToast();
+  const { stages } = useSettings();
   const [activeView, setActiveView] = useState<View>('dashboard');
   
   // Modal States
@@ -37,6 +42,9 @@ const App: React.FC = () => {
   const [isSettingsModalOpen, setSettingsModalOpen] = useState(false);
   
   const [stageChangeInfo, setStageChangeInfo] = useState<StageChangeInfo | null>(null);
+  const [isCommunicationModalOpen, setCommunicationModalOpen] = useState(false);
+  const [isScheduleModalOpen, setScheduleModalOpen] = useState(false);
+
 
   // Test View States
   const [testCandidateId, setTestCandidateId] = useState<string | null>(null);
@@ -129,13 +137,52 @@ const App: React.FC = () => {
 
   const handleStageChangeRequest = (info: StageChangeInfo) => {
     setStageChangeInfo(info);
+    const { newStage } = info;
+    if (newStage.id === 'interview-1' || newStage.id === 'interview-2') {
+        setScheduleModalOpen(true);
+    } else {
+        setCommunicationModalOpen(true);
+    }
   };
 
   const handleConfirmStageChange = () => {
     if (stageChangeInfo) {
       updateCandidateStage(stageChangeInfo.candidate.id, stageChangeInfo.newStage.id);
     }
-    setStageChangeInfo(null); // Close modal
+    setCommunicationModalOpen(false);
+    setStageChangeInfo(null);
+  };
+
+  const handleSaveInterviewSchedule = (updatedCandidate: Candidate, sendEmail: boolean, emailBody: string) => {
+      const originalCandidate = candidates.find(c => c.id === updatedCandidate.id);
+      const newStageDetails = stages.find(s => s.id === updatedCandidate.stage);
+
+      if (!originalCandidate || !newStageDetails) return;
+
+      let finalCandidate = { ...updatedCandidate };
+
+      if (originalCandidate.stage !== newStageDetails.id) {
+          const userForHistory = user ? user.name : 'System';
+          const historyEntry: HistoryEntry = {
+              user: userForHistory,
+              action: `مرحله به "${newStageDetails.title}" تغییر کرد`,
+              timestamp: new Date().toISOString(),
+          };
+          finalCandidate.history = [historyEntry, ...originalCandidate.history];
+      }
+
+      updateCandidate(finalCandidate).then(() => {
+          if (sendEmail && emailBody) {
+              const subject = `دعوت به مصاحبه برای موقعیت شغلی: ${finalCandidate.position}`;
+              const mailtoLink = `mailto:${finalCandidate.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
+              window.location.href = mailtoLink;
+              addToast(`ایمیل اطلاع‌رسانی به ${finalCandidate.name} آماده ارسال است.`, 'success');
+          }
+          addToast(`مصاحبه برای ${finalCandidate.name} با موفقیت زمان‌بندی و متقاضی منتقل شد.`, 'success');
+      });
+
+      setScheduleModalOpen(false);
+      setStageChangeInfo(null);
   };
   
   const handleNavigateToTests = (candidateId: string) => {
@@ -217,10 +264,24 @@ const App: React.FC = () => {
       )}
       {stageChangeInfo && (
         <StageChangeCommunicationModal
-          isOpen={!!stageChangeInfo}
-          onClose={() => setStageChangeInfo(null)}
+          isOpen={isCommunicationModalOpen}
+          onClose={() => {
+            setCommunicationModalOpen(false);
+            setStageChangeInfo(null);
+          }}
           stageChangeInfo={stageChangeInfo}
           onConfirm={handleConfirmStageChange}
+        />
+      )}
+      {stageChangeInfo && (
+        <ScheduleInterviewModal
+            isOpen={isScheduleModalOpen}
+            onClose={() => {
+                setScheduleModalOpen(false);
+                setStageChangeInfo(null);
+            }}
+            stageChangeInfo={stageChangeInfo}
+            onConfirm={handleSaveInterviewSchedule}
         />
       )}
       {/* Test Modals */}

@@ -24,7 +24,7 @@ interface CandidateDetailsModalProps {
 const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, onClose, candidate, onEdit, onStageChangeRequest, onNavigateToTests }) => {
   const { addComment, updateCandidate, addCustomHistoryEntry, generateCandidatePortalToken } = useCandidates();
   const { companyProfile, stages } = useSettings();
-  const { user } = useAuth();
+  const { user, users } = useAuth();
   const { addToast } = useToast();
   
   const [newComment, setNewComment] = useState('');
@@ -32,13 +32,17 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
   const [customHistoryEvent, setCustomHistoryEvent] = useState('');
   const [interviewDate, setInterviewDate] = useState('');
   const [interviewTime, setInterviewTime] = useState('');
+  const [interviewerId, setInterviewerId] = useState('');
   
+  const availableInterviewers = users.filter(u => u.email);
+
   useEffect(() => {
     if (isOpen && candidate) {
         setNewComment('');
         setCustomHistoryEvent('');
         setInterviewDate(candidate.interviewDate || '');
         setInterviewTime(candidate.interviewTime || '');
+        setInterviewerId(candidate.interviewerId || '');
     }
   }, [isOpen, candidate]);
 
@@ -74,14 +78,23 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
         addToast('لطفا تاریخ را انتخاب کنید.', 'error');
         return;
       }
-      updateCandidate({ ...candidate, interviewDate, interviewTime });
+
+      const selectedInterviewer = users.find(u => u.id === interviewerId);
+      updateCandidate({ 
+          ...candidate, 
+          interviewDate, 
+          interviewTime, 
+          interviewerId,
+          interviewerName: selectedInterviewer?.name
+      });
       addToast('تاریخ مصاحبه ثبت/ویرایش شد.', 'success');
   };
   
   const handleRemoveInterview = () => {
-      updateCandidate({ ...candidate, interviewDate: undefined, interviewTime: undefined });
+      updateCandidate({ ...candidate, interviewDate: undefined, interviewTime: undefined, interviewerId: undefined, interviewerName: undefined });
       setInterviewDate('');
       setInterviewTime('');
+      setInterviewerId('');
       addToast('تاریخ مصاحبه حذف شد.', 'success');
   };
   
@@ -120,13 +133,10 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
       return;
     }
     try {
-      const [year, month, day] = interviewDate.split('/').map(Number);
+      const startTime = new Date(interviewDate);
       const [hour, minute] = interviewTime.split(':').map(Number);
+      startTime.setUTCHours(hour, minute, 0, 0); // Assuming time input is local, but Date object is UTC
       
-      const pDate = new persianDate([year, month, day]).hour(hour).minute(minute);
-      const gDate = pDate.toDate();
-      
-      const startTime = new Date(gDate.getTime());
       const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Assume 1 hour duration
       
       const toGoogleISO = (date: Date) => date.toISOString().replace(/-|:|\.\d+/g, '');
@@ -135,7 +145,7 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
       calendarUrl.searchParams.append('action', 'TEMPLATE');
       calendarUrl.searchParams.append('text', `مصاحبه: ${candidate.name} برای ${candidate.position}`);
       calendarUrl.searchParams.append('dates', `${toGoogleISO(startTime)}/${toGoogleISO(endTime)}`);
-      calendarUrl.searchParams.append('details', `مصاحبه با ${candidate.name} برای موقعیت شغلی ${candidate.position}.\n\nایمیل: ${candidate.email}\nتلفن: ${candidate.phone}`);
+      calendarUrl.searchParams.append('details', `مصاحبه با ${candidate.name} برای موقعیت شغلی ${candidate.position}.\n\nمصاحبه‌کننده: ${candidate.interviewerName || 'تعیین نشده'}\nایمیل: ${candidate.email}\nتلفن: ${candidate.phone}`);
       calendarUrl.searchParams.append('location', companyProfile.address);
       
       window.open(calendarUrl.toString(), '_blank');
@@ -187,6 +197,14 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
                            <label className="block text-sm font-medium text-gray-700 mb-1">ساعت مصاحبه</label>
                            <input type="time" value={interviewTime} onChange={e => setInterviewTime(e.target.value)} className="w-full border rounded-lg shadow-sm p-3 text-gray-800 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-gray-300"/>
                       </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">مصاحبه‌کننده</label>
+                    <select value={interviewerId} onChange={e => setInterviewerId(e.target.value)} className="w-full border rounded-lg shadow-sm p-3 text-gray-800 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-gray-300">
+                      <option value="">انتخاب کنید...</option>
+                      {availableInterviewers.map(u => <option key={u.id} value={u.id}>{u.name} ({u.email})</option>)}
+                    </select>
+                    {availableInterviewers.length === 0 && <p className="text-xs text-gray-500 mt-1">هیچ کاربری با ایمیل ثبت‌شده یافت نشد.</p>}
                   </div>
                   <div className="flex flex-wrap gap-2">
                       <button onClick={handleUpdateInterview} className="flex-1 text-white bg-green-500 hover:bg-green-600 rounded-lg py-2 text-sm">ذخیره تاریخ</button>

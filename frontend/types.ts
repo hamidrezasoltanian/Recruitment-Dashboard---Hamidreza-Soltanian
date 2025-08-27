@@ -1,3 +1,4 @@
+
 export type StageId = string;
 
 export interface KanbanStage {
@@ -51,9 +52,12 @@ export interface Candidate {
   source: string;
   rating: number; // 0-5
   createdAt: string;
-  interviewDate?: string; // Format: YYYY/MM/DD
+  interviewDate?: string; // Format: ISO String
   interviewTime?: string; // Format: HH:MM
   interviewTimeChanged?: boolean; // New field
+  interviewerId?: string;
+  interviewerName?: string;
+  reminderSent?: { candidate: boolean; interviewer: boolean };
   history: HistoryEntry[];
   comments: Comment[];
   hasResume?: boolean;
@@ -67,8 +71,10 @@ export interface StageChangeInfo {
 }
 
 export interface User {
+  id: string;
   username: string;
   name: string;
+  email?: string;
   isAdmin: boolean;
   settings?: {
     kanbanBackground?: string;

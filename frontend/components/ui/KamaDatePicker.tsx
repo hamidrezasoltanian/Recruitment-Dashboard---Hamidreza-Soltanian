@@ -1,28 +1,39 @@
+
+
 import React, { useEffect, useMemo, useRef } from 'react';
 import { generateId } from '../../utils/idUtils';
 import { CalendarIcon } from './Icons';
 
-// Let TypeScript know about the global function
+// Let TypeScript know about the global functions
 declare const kamaDatepicker: any;
+declare const persianDate: any;
 
 interface KamaDatePickerProps {
-    value: string; // Expects "YYYY/MM/DD" or empty string
-    onChange: (date: string) => void;
+    value: string; // Expects ISO string or empty string
+    onChange: (date: string) => void; // Emits ISO string
 }
 
 const KamaDatePicker: React.FC<KamaDatePickerProps> = ({ value, onChange }) => {
     const inputId = useMemo(() => `datepicker-${generateId()}`, []);
     const onChangeRef = useRef(onChange);
 
-    // Keep onChange function reference up to date without re-triggering the effect
     useEffect(() => {
         onChangeRef.current = onChange;
     }, [onChange]);
+    
+    const displayedValue = useMemo(() => {
+        if (!value || typeof persianDate === 'undefined') return '';
+        try {
+            // Convert ISO string to a persianDate object and format it
+            return new persianDate(new Date(value)).format('YYYY/MM/DD');
+        } catch {
+            return '';
+        }
+    }, [value]);
 
     useEffect(() => {
-        // Ensure the global function is loaded
-        if (typeof kamaDatepicker === 'undefined') {
-            console.error('kamaDatepicker function is not loaded. Check script tags in index.html.');
+        if (typeof kamaDatepicker === 'undefined' || typeof persianDate === 'undefined') {
+            console.error('kamaDatepicker or persianDate function is not loaded.');
             return;
         }
 
@@ -34,66 +45,55 @@ const KamaDatePicker: React.FC<KamaDatePickerProps> = ({ value, onChange }) => {
             forceFarsiDigits: true,
             markToday: true,
             gotoToday: true,
-            // Use onclose to capture the final value, robust against clicks away
             onclose: () => {
                 const inputElement = document.getElementById(inputId) as HTMLInputElement;
                 if (inputElement && inputElement.value) {
-                    const newValue = inputElement.value;
-                    // Only call onChange if the value has actually changed
-                    if (newValue !== value) {
-                        onChangeRef.current(newValue);
+                    try {
+                        const [y, m, d] = inputElement.value.split('/').map(Number);
+                        const gregorianDate = new persianDate([y, m, d]).toDate();
+                        
+                        // Create a new Date object in UTC to avoid timezone shifts
+                        const utcDate = new Date(Date.UTC(gregorianDate.getFullYear(), gregorianDate.getMonth(), gregorianDate.getDate()));
+                        const newIsoValue = utcDate.toISOString();
+
+                        if (newIsoValue !== value) {
+                            onChangeRef.current(newIsoValue);
+                        }
+                    } catch (e) {
+                         console.error("Invalid Persian date format in input", e);
+                         inputElement.value = displayedValue;
                     }
-                } else if (value !== '') {
-                    // Handle case where user clears the input and closes picker
+                } else if (value) {
+                    // If input is cleared, send empty string
                     onChangeRef.current('');
                 }
             }
         };
 
-        // Initialize the datepicker on the input element
         kamaDatepicker(inputId, datePickerOptions);
 
-        // Cleanup function to run when the component unmounts
         return () => {
-            // The library is known for not having a clean destroy method.
-            // The most reliable way to clean up is to remove the picker from the DOM.
             const pickerElement = document.querySelector('.bd-main');
             if (pickerElement) {
                 pickerElement.remove();
             }
         };
-        // Re-initialize if the value changes externally (e.g., opening modal for a different candidate)
-    }, [inputId, value]);
+    }, [inputId, value, displayedValue]);
 
-    // This effect ensures the input field visually updates if the `value` prop changes from outside.
     useEffect(() => {
         const inputElement = document.getElementById(inputId) as HTMLInputElement;
-        if (inputElement && inputElement.value !== value) {
-            inputElement.value = value || '';
+        if (inputElement) {
+            inputElement.value = displayedValue;
         }
-    }, [value, inputId]);
+    }, [displayedValue, inputId]);
 
-    // Handle manual input
-    const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-        const manualValue = e.target.value.trim();
-        // Validate the format on blur
-        if (/^\d{4}\/\d{2}\/\d{2}$/.test(manualValue) || manualValue === '') {
-            if (manualValue !== value) {
-                onChange(manualValue);
-            }
-        } else {
-            // If format is invalid, revert to the last valid value
-            e.target.value = value || '';
-        }
-    };
 
     return (
         <div className="date-input-container">
             <input
                 id={inputId}
                 type="text"
-                defaultValue={value}
-                onBlur={handleBlur}
+                defaultValue={displayedValue}
                 className="w-full border rounded-lg shadow-sm p-3 date-input text-gray-800 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-gray-300"
                 placeholder="YYYY/MM/DD"
                 autoComplete="off"
