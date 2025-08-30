@@ -1,6 +1,6 @@
-
 import mongoose from 'mongoose';
-import process from 'process';
+// Fix: Removed 'import process from "process";' to use the global Node.js process object.
+// This resolves errors related to process.exit and process.uptime not being found.
 
 const getMongoURI = (): string => {
     // اولویت اول: اگر رشته اتصال کامل وجود دارد، از آن استفاده کن.

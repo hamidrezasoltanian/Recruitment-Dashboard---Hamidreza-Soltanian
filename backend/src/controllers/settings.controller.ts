@@ -1,10 +1,9 @@
-
-
-import express from 'express';
+// Fix: Use specific Request and Response types from express to get correct type checking.
+import { Request, Response } from 'express';
 import SettingsModel from '../models/settings.model';
 import { DEFAULT_STAGES, DEFAULT_SOURCES, DEFAULT_COMPANY_PROFILE, DEFAULT_TEST_LIBRARY } from '../constants';
 
-export const getSettings = async (req: express.Request, res: express.Response) => {
+export const getSettings = async (req: Request, res: Response) => {
     try {
         let settings = await SettingsModel.findOne();
         if (!settings) {
@@ -24,7 +23,7 @@ export const getSettings = async (req: express.Request, res: express.Response) =
     }
 };
 
-export const updateSettings = async (req: express.Request, res: express.Response) => {
+export const updateSettings = async (req: Request, res: Response) => {
     try {
         const updatedSettingsData = req.body;
         

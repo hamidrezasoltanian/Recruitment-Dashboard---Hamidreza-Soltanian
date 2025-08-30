@@ -1,17 +1,4 @@
-
-import express from "express";
-const app = express();
-
-// ... بقیه کانفیگ‌ها و middleware ها
-
-// health check route
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", uptime: process.uptime() });
-});
-
-// ... بقیه روت‌ها
-
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { connectDB } from './services/db';
@@ -40,14 +27,20 @@ const startServer = async () => {
     // --- Public Routes ---
     app.use('/api/auth', authRoutes);
 
+    // --- Health Check ---
+    // Fix: Added health check route
+    app.get("/api/health", (req: Request, res: Response) => {
+      res.json({ status: "ok", uptime: process.uptime() });
+    });
+
     // --- Protected Routes ---
     app.use('/api/candidates', authMiddleware, candidateRoutes);
     app.use('/api/users', authMiddleware, userRoutes);
     app.use('/api/settings', authMiddleware, settingsRoutes);
     app.use('/api/templates', authMiddleware, templateRoutes);
 
-    // API health check
-    app.get('/', (req: express.Request, res: express.Response) => {
+    // API root
+    app.get('/', (req: Request, res: Response) => {
         res.send('Recruitment Dashboard API is running!');
     });
 
