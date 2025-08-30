@@ -1,5 +1,5 @@
 
-import express from 'express';
+import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
 // By extending the global Express Request interface, we can add our custom `user` property
@@ -12,7 +12,7 @@ declare global {
     }
 }
 
-export const authMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -36,7 +36,7 @@ export const authMiddleware = (req: express.Request, res: express.Response, next
     }
 };
 
-export const adminMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+export const adminMiddleware = (req: Request, res: Response, next: NextFunction) => {
     if (!req.user?.isAdmin) {
         return res.status(403).json({ message: 'Admin access required' });
     }
