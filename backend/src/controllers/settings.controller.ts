@@ -1,4 +1,3 @@
-// Fix: Use specific Request and Response types from express to get correct type checking.
 import { Request, Response } from 'express';
 import SettingsModel from '../models/settings.model';
 import { DEFAULT_STAGES, DEFAULT_SOURCES, DEFAULT_COMPANY_PROFILE, DEFAULT_TEST_LIBRARY } from '../constants';

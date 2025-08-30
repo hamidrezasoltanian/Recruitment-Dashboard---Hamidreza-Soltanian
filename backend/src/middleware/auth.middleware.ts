@@ -1,4 +1,3 @@
-// Fix: Use specific Request, Response, NextFunction types from express to get correct type checking.
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 

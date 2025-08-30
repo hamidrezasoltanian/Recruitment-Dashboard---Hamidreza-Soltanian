@@ -1,4 +1,3 @@
-// Fix: Use specific Request and Response types from express to get correct type checking.
 import { Request, Response } from 'express';
 import UserModel, { IUser } from '../models/user.model';
 import jwt from 'jsonwebtoken';

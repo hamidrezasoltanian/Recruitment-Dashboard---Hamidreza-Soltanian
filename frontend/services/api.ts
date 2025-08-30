@@ -1,28 +1,11 @@
 import { authService } from './authService';
 
 const getApiBaseUrl = () => {
-    const { protocol, hostname } = window.location;
-
-    // Handle sandboxed environments where protocol is 'blob:' and hostname is empty.
-    // Fallback to localhost, as it's often forwarded correctly.
-    if (protocol === 'blob:') {
-        return 'http://localhost:4000/api';
-    }
-
-    // Handle standard local development
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        return `${window.location.protocol}//${hostname}:4000/api`;
-    }
-    
-    // Handle cloud IDEs by reconstructing the origin with the backend port
-    try {
-        const url = new URL(window.location.origin);
-        url.port = '4000';
-        return `${url.origin}/api`;
-    } catch (e) {
-        // Fallback for any other case
-        return `${protocol}//${hostname}:4000/api`;
-    }
+    // All API calls should be relative to the current domain.
+    // The web server (e.g., Nginx) is responsible for proxying any requests
+    // under /api to the backend service running on its configured port (e.g., 4000).
+    // This removes the need for complex logic to detect the environment (local, prod, codespace).
+    return '/api';
 };
 
 const API_BASE_URL = getApiBaseUrl();
@@ -41,6 +24,11 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
     });
 
     if (!response.ok) {
+        // If the server sends a 401 Unauthorized, log the user out.
+        if (response.status === 401 && window.location.pathname !== '/') {
+            authService.logout();
+            window.location.href = '/'; // Redirect to login
+        }
         throw new Error(data.message || `HTTP error! status: ${response.status}`);
     }
 

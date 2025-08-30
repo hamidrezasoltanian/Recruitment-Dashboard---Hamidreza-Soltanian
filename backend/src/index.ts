@@ -28,7 +28,6 @@ const startServer = async () => {
     app.use('/api/auth', authRoutes);
 
     // --- Health Check ---
-    // Fix: Added health check route
     app.get("/api/health", (req: Request, res: Response) => {
       res.json({ status: "ok", uptime: process.uptime() });
     });
