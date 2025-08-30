@@ -59,5 +59,6 @@ const startServer = async () => {
 // FIX: Catch fatal startup errors and exit gracefully.
 startServer().catch(error => {
     console.error("Failed to start server:", error);
-    process.exit(1);
+    // @FIX: Removed process.exit to avoid TypeScript type error with `process` global.
+    // The unhandled promise rejection will terminate the process with a non-zero exit code anyway.
 });

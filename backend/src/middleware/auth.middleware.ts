@@ -13,7 +13,7 @@ declare global {
     }
 }
 
-// FIX: Changed types to express.Request, express.Response, express.NextFunction to resolve type errors.
+// @FIX: Changed types to express.Request, express.Response, express.NextFunction to resolve type errors.
 export const authMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
     const authHeader = req.headers.authorization;
 
@@ -38,7 +38,7 @@ export const authMiddleware = (req: express.Request, res: express.Response, next
     }
 };
 
-// FIX: Changed types to express.Request, express.Response, express.NextFunction to resolve type errors.
+// @FIX: Changed types to express.Request, express.Response, express.NextFunction to resolve type errors.
 export const adminMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (!req.user?.isAdmin) {
         return res.status(403).json({ message: 'Admin access required' });

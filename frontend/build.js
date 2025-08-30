@@ -2,6 +2,7 @@
 const esbuild = require('esbuild');
 const fs = require('fs-extra');
 const path = require('path');
+const { postcssPlugin } = require('./build-plugins');
 
 const distDir = 'dist';
 
@@ -14,35 +15,26 @@ async function build() {
     // Read API_KEY from the build environment
     const apiKey = process.env.API_KEY || '';
 
-    // 2. Build the TypeScript/React code
+    // 2. Build the TypeScript/React code and CSS
     await esbuild.build({
       entryPoints: ['index.tsx'],
       bundle: true,
       outfile: path.join(distDir, 'bundle.js'),
       minify: true,
-      sourcemap: true,
+      sourcemap: false, // No sourcemap for production
       loader: { '.tsx': 'tsx' },
+      plugins: [postcssPlugin], // Use the PostCSS plugin
       define: { 
         'process.env.NODE_ENV': "'production'",
         'process.env.API_KEY': JSON.stringify(apiKey),
       },
     });
-    console.log('JavaScript bundled successfully.');
+    console.log('JavaScript and CSS bundled successfully.');
 
-    // 3. Read, modify, and write index.html
-    let htmlContent = await fs.readFile('index.html', 'utf-8');
-    
-    // Remove importmap
-    htmlContent = htmlContent.replace(/<script type="importmap">[\s\S]*?<\/script>/, '');
-    
-    // Change the main script tag to point to the bundle
-    htmlContent = htmlContent.replace(
-      '<script type="module" src="./index.tsx"></script>',
-      '<script defer src="./bundle.js"></script>'
-    );
-    
+    // 3. Read and write the final index.html
+    const htmlContent = await fs.readFile('index.html', 'utf-8');
     await fs.writeFile(path.join(distDir, 'index.html'), htmlContent);
-    console.log('index.html processed and copied to dist.');
+    console.log('index.html copied to dist.');
 
     console.log('\nBuild complete! The "dist" folder is ready for deployment.');
 

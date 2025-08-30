@@ -1,7 +1,7 @@
 import express from 'express';
 import TemplateModel from '../models/template.model';
 
-// FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
+// @FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
 export const getAllTemplates = async (req: express.Request, res: express.Response) => {
     try {
         const templates = await TemplateModel.find().sort({ createdAt: -1 });
@@ -11,7 +11,7 @@ export const getAllTemplates = async (req: express.Request, res: express.Respons
     }
 };
 
-// FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
+// @FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
 export const createTemplate = async (req: express.Request, res: express.Response) => {
     try {
         const newTemplate = new TemplateModel(req.body);
@@ -22,7 +22,7 @@ export const createTemplate = async (req: express.Request, res: express.Response
     }
 };
 
-// FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
+// @FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
 export const updateTemplate = async (req: express.Request, res: express.Response) => {
     try {
         const { id } = req.params;
@@ -37,7 +37,7 @@ export const updateTemplate = async (req: express.Request, res: express.Response
     }
 };
 
-// FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
+// @FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
 export const deleteTemplate = async (req: express.Request, res: express.Response) => {
     try {
         const { id } = req.params;

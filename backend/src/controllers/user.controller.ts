@@ -2,7 +2,7 @@ import express from 'express';
 import UserModel from '../models/user.model';
 
 // Get current user profile
-// FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
+// @FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
 export const getCurrentUser = async (req: express.Request, res: express.Response) => {
     try {
         // req.user is attached by the authMiddleware
@@ -22,7 +22,7 @@ export const getCurrentUser = async (req: express.Request, res: express.Response
 };
 
 // Update current user (e.g., settings)
-// FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
+// @FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
 export const updateCurrentUser = async (req: express.Request, res: express.Response) => {
     try {
         if (!req.user) {
@@ -46,7 +46,7 @@ export const updateCurrentUser = async (req: express.Request, res: express.Respo
 
 // --- Admin Only Controllers ---
 
-// FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
+// @FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
 export const getAllUsers = async (req: express.Request, res: express.Response) => {
     try {
         const users = await UserModel.find().sort({ createdAt: -1 });
@@ -56,7 +56,7 @@ export const getAllUsers = async (req: express.Request, res: express.Response) =
     }
 };
 
-// FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
+// @FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
 export const createUser = async (req: express.Request, res: express.Response) => {
     try {
         const { username, name, password, isAdmin, email } = req.body;
@@ -79,7 +79,7 @@ export const createUser = async (req: express.Request, res: express.Response) =>
     }
 };
 
-// FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
+// @FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
 export const updateUser = async (req: express.Request, res: express.Response) => {
     try {
         const { id } = req.params;
@@ -108,7 +108,7 @@ export const updateUser = async (req: express.Request, res: express.Response) =>
     }
 };
 
-// FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
+// @FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
 export const deleteUser = async (req: express.Request, res: express.Response) => {
     try {
         const { id } = req.params;

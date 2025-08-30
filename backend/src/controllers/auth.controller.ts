@@ -10,7 +10,7 @@ const generateToken = (user: IUser) => {
     return jwt.sign({ id: user._id, isAdmin: user.isAdmin }, jwtSecret, { expiresIn: '1d' });
 };
 
-// FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
+// @FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
 export const register = async (req: express.Request, res: express.Response) => {
     try {
         const { username, name, password, isAdmin } = req.body;
@@ -38,7 +38,7 @@ export const register = async (req: express.Request, res: express.Response) => {
     }
 };
 
-// FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
+// @FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
 export const login = async (req: express.Request, res: express.Response) => {
     try {
         const { username, password } = req.body;

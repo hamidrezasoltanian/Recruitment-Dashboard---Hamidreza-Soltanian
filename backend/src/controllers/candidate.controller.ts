@@ -1,7 +1,7 @@
 import express from 'express';
 import CandidateModel, { ICandidate } from '../models/candidate.model';
 
-// FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
+// @FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
 export const getAllCandidates = async (req: express.Request, res: express.Response) => {
     try {
         const candidates: ICandidate[] = await CandidateModel.find();
@@ -12,7 +12,7 @@ export const getAllCandidates = async (req: express.Request, res: express.Respon
     }
 };
 
-// FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
+// @FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
 export const getCandidateById = async (req: express.Request, res: express.Response) => {
     try {
         const { id } = req.params;
@@ -28,7 +28,7 @@ export const getCandidateById = async (req: express.Request, res: express.Respon
     }
 };
 
-// FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
+// @FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
 export const createCandidate = async (req: express.Request, res: express.Response) => {
     try {
         // The frontend sends 'id', we map it to '_id' for MongoDB
@@ -57,7 +57,7 @@ export const createCandidate = async (req: express.Request, res: express.Respons
     }
 };
 
-// FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
+// @FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
 export const updateCandidate = async (req: express.Request, res: express.Response) => {
     try {
         const { id } = req.params;
@@ -93,7 +93,7 @@ export const updateCandidate = async (req: express.Request, res: express.Respons
     }
 };
 
-// FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
+// @FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
 export const deleteCandidate = async (req: express.Request, res: express.Response) => {
     try {
         const { id } = req.params;

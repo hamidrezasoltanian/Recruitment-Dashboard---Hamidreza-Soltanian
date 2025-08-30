@@ -2,7 +2,7 @@ import express from 'express';
 import SettingsModel from '../models/settings.model';
 import { DEFAULT_STAGES, DEFAULT_SOURCES, DEFAULT_COMPANY_PROFILE, DEFAULT_TEST_LIBRARY } from '../constants';
 
-// FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
+// @FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
 export const getSettings = async (req: express.Request, res: express.Response) => {
     try {
         let settings = await SettingsModel.findOne();
@@ -23,7 +23,7 @@ export const getSettings = async (req: express.Request, res: express.Response) =
     }
 };
 
-// FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
+// @FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
 export const updateSettings = async (req: express.Request, res: express.Response) => {
     try {
         const updatedSettingsData = req.body;
