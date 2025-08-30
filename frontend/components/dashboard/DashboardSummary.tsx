@@ -44,8 +44,8 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ candidates }) => {
         const interviewsThisWeek = candidates.filter(c => {
             if (!c.interviewDate) return false;
             try {
-                // The date format is YYYY/MM/DD
-                const interviewPDate = new persianDate(c.interviewDate.split('/').map(Number));
+                // Correctly handle ISO date string
+                const interviewPDate = new persianDate(new Date(c.interviewDate));
                 return interviewPDate.isBetween(startOfWeek, endOfWeek, 'day', '[]');
             } catch {
                 return false;

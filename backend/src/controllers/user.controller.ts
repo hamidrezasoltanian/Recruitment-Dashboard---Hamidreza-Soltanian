@@ -1,12 +1,9 @@
 
-
-// Fix: Use direct Request and Response types from express
-import { Request, Response } from 'express';
+import express from 'express';
 import UserModel from '../models/user.model';
 
 // Get current user profile
-// Fix: Use direct Request and Response types
-export const getCurrentUser = async (req: Request, res: Response) => {
+export const getCurrentUser = async (req: express.Request, res: express.Response) => {
     try {
         // req.user is attached by the authMiddleware
         if (!req.user) {
@@ -25,8 +22,7 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 };
 
 // Update current user (e.g., settings)
-// Fix: Use direct Request and Response types
-export const updateCurrentUser = async (req: Request, res: Response) => {
+export const updateCurrentUser = async (req: express.Request, res: express.Response) => {
     try {
         if (!req.user) {
             res.status(401).json({ message: 'Not authenticated' });
@@ -49,8 +45,7 @@ export const updateCurrentUser = async (req: Request, res: Response) => {
 
 // --- Admin Only Controllers ---
 
-// Fix: Use direct Request and Response types
-export const getAllUsers = async (req: Request, res: Response) => {
+export const getAllUsers = async (req: express.Request, res: express.Response) => {
     try {
         const users = await UserModel.find().sort({ createdAt: -1 });
         res.status(200).json(users);
@@ -59,8 +54,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
     }
 };
 
-// Fix: Use direct Request and Response types
-export const createUser = async (req: Request, res: Response) => {
+export const createUser = async (req: express.Request, res: express.Response) => {
     try {
         const { username, name, password, isAdmin, email } = req.body;
         
@@ -82,8 +76,7 @@ export const createUser = async (req: Request, res: Response) => {
     }
 };
 
-// Fix: Use direct Request and Response types
-export const updateUser = async (req: Request, res: Response) => {
+export const updateUser = async (req: express.Request, res: express.Response) => {
     try {
         const { id } = req.params;
         const { name, isAdmin, password, email } = req.body;
@@ -111,8 +104,7 @@ export const updateUser = async (req: Request, res: Response) => {
     }
 };
 
-// Fix: Use direct Request and Response types
-export const deleteUser = async (req: Request, res: Response) => {
+export const deleteUser = async (req: express.Request, res: express.Response) => {
     try {
         const { id } = req.params;
 
