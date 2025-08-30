@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+// FIX: Add a side-effect import to ensure Express module augmentation is applied correctly.
+import 'express';
 
 // By extending the global Express Request interface, we can add our custom `user` property
 // without creating a new incompatible type.

@@ -5,7 +5,9 @@
   "description": "A comprehensive dashboard for managing the recruitment process.",
   "scripts": {
     "build": "node build.js",
-    "start": "serve dist"
+    "watch": "node watch.js",
+    "start": "node proxy.js",
+    "dev": "concurrently \"npm:watch\" \"npm:start\""
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -14,11 +16,14 @@
     "react-dom": "^19.1.1"
   },
   "devDependencies": {
+    "@types/express": "^4.17.21",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
+    "concurrently": "^8.2.2",
     "esbuild": "^0.23.0",
+    "express": "^4.19.2",
     "fs-extra": "^11.2.0",
-    "typescript": "^5.5.3",
-    "serve": "^14.2.3"
+    "http-proxy-middleware": "^3.0.0",
+    "typescript": "^5.5.3"
   }
 }

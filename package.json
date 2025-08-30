@@ -6,8 +6,8 @@
   "scripts": {
     "postinstall": "npm install --prefix frontend && npm install --prefix backend",
     "dev:backend": "npm run dev --prefix backend",
-    "start:frontend": "npm start --prefix frontend",
-    "start:fullstack": "concurrently \"npm:dev:backend\" \"npm:start:frontend\""
+    "dev:frontend": "npm run dev --prefix frontend",
+    "start:fullstack": "concurrently \"npm:dev:backend\" \"npm:dev:frontend\""
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

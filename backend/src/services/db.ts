@@ -32,6 +32,7 @@ export const connectDB = async () => {
     } catch (error) {
         console.error('❌ Error connecting to MongoDB:', error);
         // خروج از برنامه در صورت عدم موفقیت در اتصال به دیتابیس
-        process.exit(1);
+        // FIX: Throw error instead of exiting process. Let the caller (startServer) handle it.
+        throw error;
     }
 };

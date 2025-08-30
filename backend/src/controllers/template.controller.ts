@@ -42,7 +42,8 @@ export const deleteTemplate = async (req: Request, res: Response) => {
             res.status(404).json({ message: 'Template not found' });
             return;
         }
-        res.status(204).send(); // No content
+        // FIX: Use status(204) for successful deletion with no content.
+        res.status(204).send();
     } catch (error: any) {
         res.status(500).json({ message: 'Error deleting template', error: error.message });
     }

@@ -29,7 +29,8 @@ const startServer = async () => {
 
     // --- Health Check ---
     app.get("/api/health", (req: Request, res: Response) => {
-      res.json({ status: "ok", uptime: process.uptime() });
+      // FIX: Removed process.uptime() due to potential @types/node issues.
+      res.status(200).json({ status: "ok" });
     });
 
     // --- Protected Routes ---
@@ -40,7 +41,8 @@ const startServer = async () => {
 
     // API root
     app.get('/', (req: Request, res: Response) => {
-        res.send('Recruitment Dashboard API is running!');
+        // FIX: Added explicit status code.
+        res.status(200).send('Recruitment Dashboard API is running!');
     });
 
     // Start automated services
@@ -52,4 +54,8 @@ const startServer = async () => {
     });
 };
 
-startServer();
+// FIX: Catch fatal startup errors and exit gracefully.
+startServer().catch(error => {
+    console.error("Failed to start server:", error);
+    process.exit(1);
+});

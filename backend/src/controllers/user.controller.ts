@@ -118,6 +118,7 @@ export const deleteUser = async (req: Request, res: Response) => {
             res.status(404).json({ message: 'User not found' });
             return;
         }
+        // FIX: Use status(204) for successful deletion with no content.
         res.status(204).send();
     } catch (error: any) {
         res.status(500).json({ message: 'Error deleting user', error: error.message });
