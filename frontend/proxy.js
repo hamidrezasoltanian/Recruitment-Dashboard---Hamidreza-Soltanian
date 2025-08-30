@@ -5,11 +5,17 @@ const path = require('path');
 
 const app = express();
 const PORT = 3000;
-const BACKEND_PORT = 4000;
+const BACKEND_PORT = process.env.BACKEND_PORT || 4000;
 const distPath = path.join(__dirname, 'dist');
 
+// This filter function explicitly tells the proxy which requests to handle.
+// Using a function is more robust than a simple string path.
+const apiFilter = (pathname, req) => {
+  return pathname.startsWith('/api');
+};
+
 // Proxy API requests to the backend server
-app.use('/api', createProxyMiddleware({
+app.use(createProxyMiddleware(apiFilter, {
   target: `http://localhost:${BACKEND_PORT}`,
   changeOrigin: true,
   onError: (err, req, res) => {
@@ -25,7 +31,11 @@ app.use(express.static(distPath));
 // For any other request, serve the index.html file.
 // This is crucial for single-page applications that use client-side routing.
 app.get('*', (req, res) => {
-  res.sendFile(path.join(distPath, 'index.html'));
+  res.sendFile(path.join(distPath, 'index.html'), (err) => {
+    if (err) {
+      res.status(500).send(err);
+    }
+  });
 });
 
 app.listen(PORT, () => {

@@ -1,7 +1,8 @@
-import { Request, Response } from 'express';
+import express from 'express';
 import CandidateModel, { ICandidate } from '../models/candidate.model';
 
-export const getAllCandidates = async (req: Request, res: Response) => {
+// FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
+export const getAllCandidates = async (req: express.Request, res: express.Response) => {
     try {
         const candidates: ICandidate[] = await CandidateModel.find();
         res.status(200).json(candidates);
@@ -11,7 +12,8 @@ export const getAllCandidates = async (req: Request, res: Response) => {
     }
 };
 
-export const getCandidateById = async (req: Request, res: Response) => {
+// FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
+export const getCandidateById = async (req: express.Request, res: express.Response) => {
     try {
         const { id } = req.params;
         const candidate: ICandidate | null = await CandidateModel.findById(id);
@@ -26,7 +28,8 @@ export const getCandidateById = async (req: Request, res: Response) => {
     }
 };
 
-export const createCandidate = async (req: Request, res: Response) => {
+// FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
+export const createCandidate = async (req: express.Request, res: express.Response) => {
     try {
         // The frontend sends 'id', we map it to '_id' for MongoDB
         const { id, ...candidateData } = req.body;
@@ -54,7 +57,8 @@ export const createCandidate = async (req: Request, res: Response) => {
     }
 };
 
-export const updateCandidate = async (req: Request, res: Response) => {
+// FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
+export const updateCandidate = async (req: express.Request, res: express.Response) => {
     try {
         const { id } = req.params;
         const candidateData = req.body;
@@ -89,7 +93,8 @@ export const updateCandidate = async (req: Request, res: Response) => {
     }
 };
 
-export const deleteCandidate = async (req: Request, res: Response) => {
+// FIX: Changed Request/Response types to express.Request/express.Response to resolve type errors.
+export const deleteCandidate = async (req: express.Request, res: express.Response) => {
     try {
         const { id } = req.params;
         const result = await CandidateModel.findByIdAndDelete(id);

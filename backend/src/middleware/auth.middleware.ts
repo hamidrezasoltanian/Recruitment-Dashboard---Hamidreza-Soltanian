@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import express from 'express';
 import jwt from 'jsonwebtoken';
 // FIX: Add a side-effect import to ensure Express module augmentation is applied correctly.
 import 'express';
@@ -13,7 +13,8 @@ declare global {
     }
 }
 
-export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+// FIX: Changed types to express.Request, express.Response, express.NextFunction to resolve type errors.
+export const authMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -37,7 +38,8 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
     }
 };
 
-export const adminMiddleware = (req: Request, res: Response, next: NextFunction) => {
+// FIX: Changed types to express.Request, express.Response, express.NextFunction to resolve type errors.
+export const adminMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (!req.user?.isAdmin) {
         return res.status(403).json({ message: 'Admin access required' });
     }
