@@ -1,4 +1,15 @@
 
+import express from "express";
+const app = express();
+
+// ... بقیه کانفیگ‌ها و middleware ها
+
+// health check route
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", uptime: process.uptime() });
+});
+
+// ... بقیه روت‌ها
 
 import express from 'express';
 import cors from 'cors';
