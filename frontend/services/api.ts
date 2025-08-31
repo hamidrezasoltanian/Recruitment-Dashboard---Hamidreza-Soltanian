@@ -1,11 +1,10 @@
 import { authService } from './authService';
 
 const getApiBaseUrl = () => {
-    // All API calls should be relative to the current domain.
-    // The web server (e.g., Nginx) is responsible for proxying any requests
-    // under /api to the backend service running on its configured port (e.g., 4000).
-    // This removes the need for complex logic to detect the environment (local, prod, codespace).
-    return '/api';
+    // All API calls will now directly target the backend server during development.
+    // This avoids potential issues with the proxy setup in the dev server.
+    // The backend's CORS policy is configured to allow these requests.
+    return 'http://localhost:4000/api';
 };
 
 const API_BASE_URL = getApiBaseUrl();
