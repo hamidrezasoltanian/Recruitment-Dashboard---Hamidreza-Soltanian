@@ -6,6 +6,7 @@ import { CandidatesProvider } from './contexts/CandidatesContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { TemplateProvider } from './contexts/TemplateContext';
+import './index.css';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

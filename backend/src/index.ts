@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { connectDB } from './services/db';
@@ -29,7 +29,8 @@ const startServer = async () => {
 
     // --- Health Check ---
     // FIX: Removed explicit types to allow for correct type inference from Express.
-    app.get("/api/health", (req, res) => {
+    // Re-adding explicit types to resolve ambiguity and fix type errors.
+    app.get("/api/health", (req: Request, res: Response) => {
       // FIX: Removed process.uptime() due to potential @types/node issues.
       res.status(200).json({ status: "ok" });
     });
@@ -42,7 +43,8 @@ const startServer = async () => {
 
     // API root
     // FIX: Removed explicit types to allow for correct type inference from Express.
-    app.get('/', (req, res) => {
+    // Re-adding explicit types to resolve ambiguity and fix type errors.
+    app.get('/', (req: Request, res: Response) => {
         // FIX: Added explicit status code.
         res.status(200).send('Recruitment Dashboard API is running!');
     });

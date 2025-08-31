@@ -31,9 +31,8 @@ async function build() {
     });
     console.log('JavaScript and CSS bundled successfully.');
 
-    // 3. Read and write the final index.html
-    const htmlContent = await fs.readFile('index.html', 'utf-8');
-    await fs.writeFile(path.join(distDir, 'index.html'), htmlContent);
+    // 3. Copy the final index.html to dist
+    await fs.copyFile('index.html', path.join(distDir, 'index.html'));
     console.log('index.html copied to dist.');
 
     console.log('\nBuild complete! The "dist" folder is ready for deployment.');
