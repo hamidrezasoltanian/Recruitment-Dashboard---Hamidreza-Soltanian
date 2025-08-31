@@ -1,9 +1,11 @@
 
 
-import { Request as ExpressRequest, Response as ExpressResponse } from 'express';
+
+// FIX: Use direct imports from express to ensure correct type resolution.
+import { Request, Response } from 'express';
 import CandidateModel, { ICandidate } from '../models/candidate.model';
 
-export const getAllCandidates = async (req: ExpressRequest, res: ExpressResponse) => {
+export const getAllCandidates = async (req: Request, res: Response) => {
     try {
         const candidates: ICandidate[] = await CandidateModel.find();
         res.status(200).json(candidates);
@@ -13,7 +15,7 @@ export const getAllCandidates = async (req: ExpressRequest, res: ExpressResponse
     }
 };
 
-export const getCandidateById = async (req: ExpressRequest, res: ExpressResponse) => {
+export const getCandidateById = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const candidate: ICandidate | null = await CandidateModel.findById(id);
@@ -28,7 +30,7 @@ export const getCandidateById = async (req: ExpressRequest, res: ExpressResponse
     }
 };
 
-export const createCandidate = async (req: ExpressRequest, res: ExpressResponse) => {
+export const createCandidate = async (req: Request, res: Response) => {
     try {
         // The frontend sends 'id', we map it to '_id' for MongoDB
         const { id, ...candidateData } = req.body;
@@ -56,7 +58,7 @@ export const createCandidate = async (req: ExpressRequest, res: ExpressResponse)
     }
 };
 
-export const updateCandidate = async (req: ExpressRequest, res: ExpressResponse) => {
+export const updateCandidate = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const candidateData = req.body;
@@ -91,7 +93,7 @@ export const updateCandidate = async (req: ExpressRequest, res: ExpressResponse)
     }
 };
 
-export const deleteCandidate = async (req: ExpressRequest, res: ExpressResponse) => {
+export const deleteCandidate = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const result = await CandidateModel.findByIdAndDelete(id);

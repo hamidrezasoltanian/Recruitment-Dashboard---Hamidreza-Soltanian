@@ -1,10 +1,12 @@
 
 
-import { Request as ExpressRequest, Response as ExpressResponse } from 'express';
+
+// FIX: Use direct imports from express to ensure correct type resolution.
+import { Request, Response } from 'express';
 import SettingsModel from '../models/settings.model';
 import { DEFAULT_STAGES, DEFAULT_SOURCES, DEFAULT_COMPANY_PROFILE, DEFAULT_TEST_LIBRARY } from '../constants';
 
-export const getSettings = async (req: ExpressRequest, res: ExpressResponse) => {
+export const getSettings = async (req: Request, res: Response) => {
     try {
         let settings = await SettingsModel.findOne();
         if (!settings) {
@@ -24,7 +26,7 @@ export const getSettings = async (req: ExpressRequest, res: ExpressResponse) => 
     }
 };
 
-export const updateSettings = async (req: ExpressRequest, res: ExpressResponse) => {
+export const updateSettings = async (req: Request, res: Response) => {
     try {
         const updatedSettingsData = req.body;
         

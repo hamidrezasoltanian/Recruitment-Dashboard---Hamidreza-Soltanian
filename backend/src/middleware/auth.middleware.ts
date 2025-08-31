@@ -1,6 +1,8 @@
 
 
-import { Request as ExpressRequest, Response as ExpressResponse, NextFunction } from 'express';
+
+// FIX: Use direct imports from express to ensure correct type resolution for Request, Response, and NextFunction.
+import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
 // By extending the global Express Request interface, we can add our custom `user` property
@@ -13,7 +15,7 @@ declare global {
     }
 }
 
-export const authMiddleware = (req: ExpressRequest, res: ExpressResponse, next: NextFunction) => {
+export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -37,7 +39,7 @@ export const authMiddleware = (req: ExpressRequest, res: ExpressResponse, next: 
     }
 };
 
-export const adminMiddleware = (req: ExpressRequest, res: ExpressResponse, next: NextFunction) => {
+export const adminMiddleware = (req: Request, res: Response, next: NextFunction) => {
     if (!req.user?.isAdmin) {
         return res.status(403).json({ message: 'Admin access required' });
     }

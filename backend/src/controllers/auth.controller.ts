@@ -1,6 +1,8 @@
 
 
-import { Request as ExpressRequest, Response as ExpressResponse } from 'express';
+
+// FIX: Use direct imports from express to ensure correct type resolution.
+import { Request, Response } from 'express';
 import UserModel, { IUser } from '../models/user.model';
 import jwt from 'jsonwebtoken';
 
@@ -12,7 +14,7 @@ const generateToken = (user: IUser) => {
     return jwt.sign({ id: user._id, isAdmin: user.isAdmin }, jwtSecret, { expiresIn: '1d' });
 };
 
-export const register = async (req: ExpressRequest, res: ExpressResponse) => {
+export const register = async (req: Request, res: Response) => {
     try {
         const { username, name, password, isAdmin } = req.body;
         if (!username || !name || !password) {
@@ -39,7 +41,7 @@ export const register = async (req: ExpressRequest, res: ExpressResponse) => {
     }
 };
 
-export const login = async (req: ExpressRequest, res: ExpressResponse) => {
+export const login = async (req: Request, res: Response) => {
     try {
         const { username, password } = req.body;
         if (!username || !password) {
