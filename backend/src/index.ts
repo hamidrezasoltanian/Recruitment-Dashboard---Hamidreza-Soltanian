@@ -24,28 +24,26 @@ const startServer = async () => {
     app.use(cors());
     app.use(express.json());
 
-    // --- Public Routes ---
-    app.use('/api/auth', authRoutes);
+    // --- API Router Setup ---
+    const apiRouter = express.Router();
 
-    // --- Health Check ---
-    // FIX: Removed explicit types to allow for correct type inference from Express.
-    // Re-adding explicit types to resolve ambiguity and fix type errors.
-    app.get("/api/health", (req: Request, res: Response) => {
-      // FIX: Removed process.uptime() due to potential @types/node issues.
+    // Public Routes
+    apiRouter.use('/auth', authRoutes);
+    apiRouter.get("/health", (req: Request, res: Response) => {
       res.status(200).json({ status: "ok" });
     });
 
-    // --- Protected Routes ---
-    app.use('/api/candidates', authMiddleware, candidateRoutes);
-    app.use('/api/users', authMiddleware, userRoutes);
-    app.use('/api/settings', authMiddleware, settingsRoutes);
-    app.use('/api/templates', authMiddleware, templateRoutes);
+    // Protected Routes
+    apiRouter.use('/candidates', authMiddleware, candidateRoutes);
+    apiRouter.use('/users', authMiddleware, userRoutes);
+    apiRouter.use('/settings', authMiddleware, settingsRoutes);
+    apiRouter.use('/templates', authMiddleware, templateRoutes);
+
+    // Mount the master API router
+    app.use('/api', apiRouter);
 
     // API root
-    // FIX: Removed explicit types to allow for correct type inference from Express.
-    // Re-adding explicit types to resolve ambiguity and fix type errors.
     app.get('/', (req: Request, res: Response) => {
-        // FIX: Added explicit status code.
         res.status(200).send('Recruitment Dashboard API is running!');
     });
 
@@ -58,9 +56,6 @@ const startServer = async () => {
     });
 };
 
-// FIX: Catch fatal startup errors and exit gracefully.
 startServer().catch(error => {
     console.error("Failed to start server:", error);
-    // @FIX: Removed process.exit to avoid TypeScript type error with `process` global.
-    // The unhandled promise rejection will terminate the process with a non-zero exit code anyway.
 });
