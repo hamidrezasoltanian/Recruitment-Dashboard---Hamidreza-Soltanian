@@ -7,12 +7,10 @@ import {
     deleteCandidate
 } from '../controllers/candidate.controller';
 
-const router = Router();
+export const candidateRoutes = Router();
 
-router.get('/', getAllCandidates);
-router.get('/:id', getCandidateById);
-router.post('/', createCandidate);
-router.put('/:id', updateCandidate);
-router.delete('/:id', deleteCandidate);
-
-export default router;
+candidateRoutes.get('/', getAllCandidates);
+candidateRoutes.get('/:id', getCandidateById);
+candidateRoutes.post('/', createCandidate);
+candidateRoutes.put('/:id', updateCandidate);
+candidateRoutes.delete('/:id', deleteCandidate);

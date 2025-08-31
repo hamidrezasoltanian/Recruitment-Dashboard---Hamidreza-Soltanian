@@ -6,12 +6,12 @@ import { connectDB } from './services/db';
 import { startReminderService } from './services/reminder.service';
 import { authMiddleware } from './middleware/auth.middleware';
 
-// Import route handlers directly
-import authRoutes from './routes/auth.routes';
-import candidateRoutes from './routes/candidate.routes';
-import userRoutes from './routes/user.routes';
-import settingsRoutes from './routes/settings.routes';
-import templateRoutes from './routes/template.routes';
+// Import route handlers directly using named imports
+import { authRoutes } from './routes/auth.routes';
+import { candidateRoutes } from './routes/candidate.routes';
+import { userRoutes } from './routes/user.routes';
+import { settingsRoutes } from './routes/settings.routes';
+import { templateRoutes } from './routes/template.routes';
 
 // Load environment variables from .env file
 dotenv.config();

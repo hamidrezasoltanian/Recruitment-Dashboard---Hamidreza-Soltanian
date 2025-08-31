@@ -2,13 +2,11 @@ import { Router } from 'express';
 import { getAllTemplates, createTemplate, updateTemplate, deleteTemplate } from '../controllers/template.controller';
 import { adminMiddleware } from '../middleware/auth.middleware';
 
-const router = Router();
+export const templateRoutes = Router();
 
-router.get('/', getAllTemplates);
+templateRoutes.get('/', getAllTemplates);
 
 // Only admins can modify templates
-router.post('/', adminMiddleware, createTemplate);
-router.put('/:id', adminMiddleware, updateTemplate);
-router.delete('/:id', adminMiddleware, deleteTemplate);
-
-export default router;
+templateRoutes.post('/', adminMiddleware, createTemplate);
+templateRoutes.put('/:id', adminMiddleware, updateTemplate);
+templateRoutes.delete('/:id', adminMiddleware, deleteTemplate);
