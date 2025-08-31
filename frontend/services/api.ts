@@ -1,10 +1,9 @@
 import { authService } from './authService';
 
 const getApiBaseUrl = () => {
-    // All API calls will now directly target the backend server during development.
-    // This avoids potential issues with the proxy setup in the dev server.
-    // The backend's CORS policy is configured to allow these requests.
-    return 'http://localhost:4000/api';
+    // Use a relative path to leverage the development server's proxy.
+    // This avoids CORS issues and connection problems in containerized environments.
+    return '/api';
 };
 
 const API_BASE_URL = getApiBaseUrl();
