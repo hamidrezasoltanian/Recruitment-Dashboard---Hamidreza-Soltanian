@@ -24,7 +24,7 @@ const postcssPlugin = {
         const cssContent = await fs.readFile(cssEntryPoint, 'utf8');
         
         const postcssResult = await postcss([
-          tailwindcss,
+          tailwindcss('./tailwind.config.js'),
           autoprefixer,
         ]).process(cssContent, { from: cssEntryPoint, to: outputCssPath });
         

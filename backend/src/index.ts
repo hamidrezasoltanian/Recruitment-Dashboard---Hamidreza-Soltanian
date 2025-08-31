@@ -24,23 +24,19 @@ const startServer = async () => {
     app.use(cors());
     app.use(express.json());
 
-    // --- API Router Setup ---
-    const apiRouter = express.Router();
+    // --- API Routes ---
 
     // Public Routes
-    apiRouter.use('/auth', authRoutes);
-    apiRouter.get("/health", (req: Request, res: Response) => {
+    app.use('/api/auth', authRoutes);
+    app.get("/api/health", (req: Request, res: Response) => {
       res.status(200).json({ status: "ok" });
     });
 
     // Protected Routes
-    apiRouter.use('/candidates', authMiddleware, candidateRoutes);
-    apiRouter.use('/users', authMiddleware, userRoutes);
-    apiRouter.use('/settings', authMiddleware, settingsRoutes);
-    apiRouter.use('/templates', authMiddleware, templateRoutes);
-
-    // Mount the master API router
-    app.use('/api', apiRouter);
+    app.use('/api/candidates', authMiddleware, candidateRoutes);
+    app.use('/api/users', authMiddleware, userRoutes);
+    app.use('/api/settings', authMiddleware, settingsRoutes);
+    app.use('/api/templates', authMiddleware, templateRoutes);
 
     // API root
     app.get('/', (req: Request, res: Response) => {
