@@ -1,4 +1,5 @@
-import express from 'express';
+
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { connectDB } from './services/db';
@@ -22,32 +23,24 @@ const startServer = async () => {
 
     // Middlewares
     app.use(cors());
-    // FIX: Using default import for express resolves type inference issues for app.use()
     app.use(express.json());
 
     // --- API Routes ---
-    const apiRouter = express.Router();
-
+    
     // Public Routes
-    apiRouter.use('/auth', authRoutes);
-    // FIX: Explicitly use express types to avoid conflicts with global types.
-    apiRouter.get("/health", (req: express.Request, res: express.Response) => {
+    app.use('/api/auth', authRoutes);
+    app.get("/api/health", (req: Request, res: Response) => {
       res.status(200).json({ status: "ok" });
     });
 
     // Protected Routes
-    apiRouter.use('/candidates', authMiddleware, candidateRoutes);
-    apiRouter.use('/users', authMiddleware, userRoutes);
-    apiRouter.use('/settings', authMiddleware, settingsRoutes);
-    apiRouter.use('/templates', authMiddleware, templateRoutes);
+    app.use('/api/candidates', authMiddleware, candidateRoutes);
+    app.use('/api/users', authMiddleware, userRoutes);
+    app.use('/api/settings', authMiddleware, settingsRoutes);
+    app.use('/api/templates', authMiddleware, templateRoutes);
     
-    // Mount the master API router
-    app.use('/api', apiRouter);
-
-
     // API root (for testing if the server is up)
-    // FIX: Explicitly use express types to avoid conflicts with global types.
-    app.get('/', (req: express.Request, res: express.Response) => {
+    app.get('/', (req: Request, res: Response) => {
         res.status(200).send('Recruitment Dashboard API is running!');
     });
 

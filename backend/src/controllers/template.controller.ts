@@ -1,8 +1,8 @@
-import express from 'express';
+
+import { Request, Response } from 'express';
 import TemplateModel from '../models/template.model';
 
-// FIX: Switched to explicit express types to resolve type errors.
-export const getAllTemplates = async (req: express.Request, res: express.Response) => {
+export const getAllTemplates = async (req: Request, res: Response) => {
     try {
         const templates = await TemplateModel.find().sort({ createdAt: -1 });
         res.status(200).json(templates);
@@ -11,8 +11,7 @@ export const getAllTemplates = async (req: express.Request, res: express.Respons
     }
 };
 
-// FIX: Switched to explicit express types to resolve type errors.
-export const createTemplate = async (req: express.Request, res: express.Response) => {
+export const createTemplate = async (req: Request, res: Response) => {
     try {
         const newTemplate = new TemplateModel(req.body);
         await newTemplate.save();
@@ -22,8 +21,7 @@ export const createTemplate = async (req: express.Request, res: express.Response
     }
 };
 
-// FIX: Switched to explicit express types to resolve type errors.
-export const updateTemplate = async (req: express.Request, res: express.Response) => {
+export const updateTemplate = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const updatedTemplate = await TemplateModel.findByIdAndUpdate(id, req.body, { new: true });
@@ -37,8 +35,7 @@ export const updateTemplate = async (req: express.Request, res: express.Response
     }
 };
 
-// FIX: Switched to explicit express types to resolve type errors.
-export const deleteTemplate = async (req: express.Request, res: express.Response) => {
+export const deleteTemplate = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const deletedTemplate = await TemplateModel.findByIdAndDelete(id);
@@ -46,7 +43,6 @@ export const deleteTemplate = async (req: express.Request, res: express.Response
             res.status(404).json({ message: 'Template not found' });
             return;
         }
-        // FIX: Use status(204) for successful deletion with no content.
         res.status(204).send();
     } catch (error: any) {
         res.status(500).json({ message: 'Error deleting template', error: error.message });

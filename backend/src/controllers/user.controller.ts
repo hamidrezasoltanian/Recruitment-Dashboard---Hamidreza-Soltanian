@@ -1,9 +1,9 @@
-import express from 'express';
+
+import { Request, Response } from 'express';
 import UserModel from '../models/user.model';
 
 // Get current user profile
-// FIX: Switched to explicit express types to resolve type errors.
-export const getCurrentUser = async (req: express.Request, res: express.Response) => {
+export const getCurrentUser = async (req: Request, res: Response) => {
     try {
         // req.user is attached by the authMiddleware
         if (!req.user) {
@@ -22,8 +22,7 @@ export const getCurrentUser = async (req: express.Request, res: express.Response
 };
 
 // Update current user (e.g., settings)
-// FIX: Switched to explicit express types to resolve type errors.
-export const updateCurrentUser = async (req: express.Request, res: express.Response) => {
+export const updateCurrentUser = async (req: Request, res: Response) => {
     try {
         if (!req.user) {
             res.status(401).json({ message: 'Not authenticated' });
@@ -46,8 +45,7 @@ export const updateCurrentUser = async (req: express.Request, res: express.Respo
 
 // --- Admin Only Controllers ---
 
-// FIX: Switched to explicit express types to resolve type errors.
-export const getAllUsers = async (req: express.Request, res: express.Response) => {
+export const getAllUsers = async (req: Request, res: Response) => {
     try {
         const users = await UserModel.find().sort({ createdAt: -1 });
         res.status(200).json(users);
@@ -56,8 +54,7 @@ export const getAllUsers = async (req: express.Request, res: express.Response) =
     }
 };
 
-// FIX: Switched to explicit express types to resolve type errors.
-export const createUser = async (req: express.Request, res: express.Response) => {
+export const createUser = async (req: Request, res: Response) => {
     try {
         const { username, name, password, isAdmin, email } = req.body;
         
@@ -79,8 +76,7 @@ export const createUser = async (req: express.Request, res: express.Response) =>
     }
 };
 
-// FIX: Switched to explicit express types to resolve type errors.
-export const updateUser = async (req: express.Request, res: express.Response) => {
+export const updateUser = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { name, isAdmin, password, email } = req.body;
@@ -108,8 +104,7 @@ export const updateUser = async (req: express.Request, res: express.Response) =>
     }
 };
 
-// FIX: Switched to explicit express types to resolve type errors.
-export const deleteUser = async (req: express.Request, res: express.Response) => {
+export const deleteUser = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
 
@@ -124,7 +119,6 @@ export const deleteUser = async (req: express.Request, res: express.Response) =>
             res.status(404).json({ message: 'User not found' });
             return;
         }
-        // FIX: Use status(204) for successful deletion with no content.
         res.status(204).send();
     } catch (error: any) {
         res.status(500).json({ message: 'Error deleting user', error: error.message });
