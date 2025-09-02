@@ -1,6 +1,5 @@
 
 
-
 export type StageId = string;
 
 export interface KanbanStage {
@@ -31,7 +30,7 @@ export interface TestLibraryItem {
 
 export interface TestResult {
   testId: string; // From TestLibraryItem.id
-  status: 'not_sent' | 'pending' | 'passed' | 'failed' | 'review' | 'submitted';
+  status: 'not_sent' | 'pending' | 'passed' | 'failed' | 'review';
   score?: number;
   notes?: string;
   sentDate?: string;
@@ -40,7 +39,6 @@ export interface TestResult {
     name: string;
     type: string;
   };
-  resultUrl?: string; // Link submitted by candidate
 }
 
 
@@ -61,7 +59,6 @@ export interface Candidate {
   comments: Comment[];
   hasResume?: boolean;
   testResults?: TestResult[]; // Comprehensive test results
-  portalToken?: string; // For candidate portal access
 }
 
 export interface StageChangeInfo {

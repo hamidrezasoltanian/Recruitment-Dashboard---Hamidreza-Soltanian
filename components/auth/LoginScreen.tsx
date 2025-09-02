@@ -68,6 +68,11 @@ const LoginScreen: React.FC = () => {
             </button>
           </div>
         </form>
+         <div className="text-sm text-center text-gray-500">
+            <p>راهنمایی:</p>
+            <p>ادمین: `admin` / `adminpassword`</p>
+            <p>کارشناس: `hr` / `hrpassword`</p>
+        </div>
       </div>
     </div>
   );
