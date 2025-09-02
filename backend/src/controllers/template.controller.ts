@@ -1,11 +1,7 @@
-
-
-
-// FIX: Use direct imports from express to ensure correct type resolution.
-import { Request, Response } from 'express';
+import express from 'express';
 import TemplateModel from '../models/template.model';
 
-export const getAllTemplates = async (req: Request, res: Response) => {
+export const getAllTemplates = async (req: express.Request, res: express.Response) => {
     try {
         const templates = await TemplateModel.find().sort({ createdAt: -1 });
         res.status(200).json(templates);
@@ -14,7 +10,7 @@ export const getAllTemplates = async (req: Request, res: Response) => {
     }
 };
 
-export const createTemplate = async (req: Request, res: Response) => {
+export const createTemplate = async (req: express.Request, res: express.Response) => {
     try {
         const newTemplate = new TemplateModel(req.body);
         await newTemplate.save();
@@ -24,7 +20,7 @@ export const createTemplate = async (req: Request, res: Response) => {
     }
 };
 
-export const updateTemplate = async (req: Request, res: Response) => {
+export const updateTemplate = async (req: express.Request, res: express.Response) => {
     try {
         const { id } = req.params;
         const updatedTemplate = await TemplateModel.findByIdAndUpdate(id, req.body, { new: true });
@@ -38,7 +34,7 @@ export const updateTemplate = async (req: Request, res: Response) => {
     }
 };
 
-export const deleteTemplate = async (req: Request, res: Response) => {
+export const deleteTemplate = async (req: express.Request, res: express.Response) => {
     try {
         const { id } = req.params;
         const deletedTemplate = await TemplateModel.findByIdAndDelete(id);

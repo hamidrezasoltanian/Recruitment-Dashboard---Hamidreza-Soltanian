@@ -1,19 +1,10 @@
-
-
-// FIX: Use direct imports from express to ensure correct type resolution.
-import express, { Request, Response } from 'express';
+import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
-// FIX: import fileURLToPath to define __dirname in an ES module context.
-import { fileURLToPath } from 'url';
 import { connectDB } from './services/db';
 import { startReminderService } from './services/reminder.service';
 import { apiRouter } from './routes/index'; 
-
-// FIX: Define __dirname for ES module scope.
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Load environment variables from .env file
 dotenv.config();
@@ -41,7 +32,7 @@ const startServer = async () => {
     // --- Frontend Catch-all Route ---
     // This route serves the index.html for any request that doesn't match an API route or a static file.
     // This is crucial for client-side routing (e.g., React Router) to work.
-    app.get('*', (req: Request, res: Response) => {
+    app.get('*', (req: express.Request, res: express.Response) => {
         if (!req.originalUrl.startsWith('/api')) {
             res.sendFile(path.join(frontendDistPath, 'index.html'));
         } else {
