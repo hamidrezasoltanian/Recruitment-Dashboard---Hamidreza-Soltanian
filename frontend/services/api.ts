@@ -1,9 +1,22 @@
 import { authService } from './authService';
 
 const getApiBaseUrl = () => {
-    // Use a relative path to leverage the development server's proxy.
-    // This avoids CORS issues and connection problems in containerized environments.
-    return '/api';
+    if (process.env.NODE_ENV === 'production') {
+        // In production, the API is on the same origin, under the /api path.
+        return '/api';
+    }
+
+    // In development, the backend is on port 4000.
+    // We construct the absolute URL to it.
+    try {
+        const url = new URL(window.location.origin);
+        url.port = '4000';
+        return `${url.origin}/api`;
+    } catch (e) {
+        // Fallback for environments where new URL() might fail or window.location is weird.
+        const { protocol, hostname } = window.location;
+        return `${protocol}//${hostname}:4000/api`;
+    }
 };
 
 const API_BASE_URL = getApiBaseUrl();

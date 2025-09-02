@@ -1,12 +1,19 @@
 
+
 // FIX: Use direct imports from express to ensure correct type resolution.
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+// FIX: import fileURLToPath to define __dirname in an ES module context.
+import { fileURLToPath } from 'url';
 import { connectDB } from './services/db';
 import { startReminderService } from './services/reminder.service';
 import { apiRouter } from './routes/index'; 
+
+// FIX: Define __dirname for ES module scope.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Load environment variables from .env file
 dotenv.config();
