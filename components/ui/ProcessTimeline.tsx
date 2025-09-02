@@ -20,7 +20,7 @@ const DraggableCandidate: React.FC<{ candidateId: string }> = ({ candidateId }) 
 
     return (
         <div ref={setNodeRef} style={style} {...listeners} {...attributes} className={`z-20 cursor-grab ${isDragging ? 'opacity-50' : ''}`}>
-             <UserIcon className="h-8 w-8 text-white bg-indigo-600 p-1 rounded-full shadow-lg" />
+             <UserIcon className="h-8 w-8 text-white bg-[var(--color-primary-600)] p-1 rounded-full shadow-lg" />
         </div>
     );
 };
@@ -32,12 +32,12 @@ const StageDropzone: React.FC<{ stage: KanbanStage, isCurrent: boolean, isFirst:
     return (
         <div ref={setNodeRef} className="relative flex-1 flex flex-col items-center">
             {/* Line */}
-            <div className={`absolute top-4 w-full h-1 ${isCurrent || isOver ? 'bg-indigo-500' : 'bg-gray-300'} 
+            <div className={`absolute top-4 w-full h-1 ${isCurrent || isOver ? 'bg-[var(--color-primary-500)]' : 'bg-gray-300'} 
                 ${isFirst ? 'right-1/2' : ''} ${isLast ? 'left-1/2' : ''}`}>
             </div>
             {/* Circle */}
             <div className={`relative z-10 h-8 w-8 rounded-full flex items-center justify-center transition-colors
-                ${isCurrent ? 'bg-indigo-600 ring-4 ring-indigo-200' : 'bg-gray-300'}
+                ${isCurrent ? 'bg-[var(--color-primary-600)] ring-4 ring-[var(--color-primary-200)]' : 'bg-gray-300'}
                 ${isOver ? 'bg-green-400' : ''}
             `}>
                 {isCurrent && <DraggableCandidate candidateId={stage.id} />}

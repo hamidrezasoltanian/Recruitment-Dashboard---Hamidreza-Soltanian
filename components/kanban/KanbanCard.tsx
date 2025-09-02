@@ -84,7 +84,7 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ candidate, onViewDetails, onEdi
                 )}
                  <button 
                     onClick={(e) => { e.stopPropagation(); onEdit(candidate); }} 
-                    className="text-gray-400 hover:text-indigo-600 transition-colors"
+                    className="text-gray-400 hover:text-[var(--color-primary-600)] transition-colors"
                     aria-label={`ویرایش ${candidate.name}`}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" /></svg>
@@ -93,11 +93,11 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ candidate, onViewDetails, onEdi
         </div>
         
         {/* Job Position */}
-        <p className="text-sm font-medium text-indigo-600 mb-2">{candidate.position || 'بدون موقعیت'}</p>
+        <p className="text-sm font-medium text-[var(--color-primary-600)] mb-2">{candidate.position || 'بدون موقعیت'}</p>
 
         {/* Contact Info */}
         <div className="border-t border-gray-200 mt-2 pt-2 text-xs text-gray-600 space-y-1">
-            <p className="truncate">ایمیل: <a href={`mailto:${candidate.email}`} className="text-indigo-600 hover:underline" data-action="email">{candidate.email}</a></p>
+            <p className="truncate">ایمیل: <a href={`mailto:${candidate.email}`} className="text-[var(--color-primary-600)] hover:underline" data-action="email">{candidate.email}</a></p>
             <div className="flex justify-between items-center">
                 <p>موبایل: <span dir="ltr">{candidate.phone || 'ندارد'}</span></p>
                 {candidate.phone && (

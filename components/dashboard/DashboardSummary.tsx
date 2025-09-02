@@ -11,13 +11,14 @@ interface StatCardProps {
     label: string;
     value: number | string;
     color: string;
+    textColor: string;
 }
 
 declare const persianDate: any;
 
-const StatCard: React.FC<StatCardProps> = ({ icon, label, value, color }) => (
+const StatCard: React.FC<StatCardProps> = ({ icon, label, value, color, textColor }) => (
     <div className="bg-white p-4 rounded-lg shadow-sm flex items-center">
-        <div className={`p-3 rounded-full mr-4 ${color}`}>
+        <div className={`p-3 rounded-full mr-4 ${color} ${textColor}`}>
             {icon}
         </div>
         <div>
@@ -93,25 +94,29 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ candidates }) => {
                 <StatCard 
                     label="متقاضیان فعال" 
                     value={stats.activeCount} 
-                    color="bg-blue-100 text-blue-600"
+                    color="bg-blue-100"
+                    textColor="text-blue-600"
                     icon={<UserIcon className="h-6 w-6" />}
                 />
                 <StatCard 
                     label="جدید در این هفته" 
                     value={stats.newThisWeek} 
-                    color="bg-green-100 text-green-600"
+                    color="bg-green-100"
+                    textColor="text-green-600"
                     icon={<SparklesIcon className="h-6 w-6" />}
                 />
                 <StatCard 
                     label="مصاحبه‌های این هفته" 
                     value={stats.interviewsThisWeek} 
-                    color="bg-amber-100 text-amber-600"
+                    color="bg-amber-100"
+                    textColor="text-amber-600"
                     icon={<CalendarIcon className="h-6 w-6" />}
                 />
-                <StatCard 
+                 <StatCard 
                     label="استخدام شده" 
                     value={stats.offersExtended} 
-                    color="bg-indigo-100 text-indigo-600"
+                    color="bg-[var(--color-primary-100)]"
+                    textColor="text-[var(--color-primary-600)]"
                     icon={<BriefcaseIcon className="h-6 w-6" />}
                 />
             </div>
@@ -125,7 +130,7 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ candidates }) => {
                                 <p className="w-32 text-sm font-medium text-gray-600 truncate">{source.name}</p>
                                 <div className="flex-1 bg-gray-200 rounded-full h-4 ml-4">
                                     <div 
-                                        className="bg-indigo-500 h-4 rounded-full" 
+                                        className="bg-[var(--color-primary-500)] h-4 rounded-full" 
                                         style={{ width: `${source.percentage}%` }}
                                     ></div>
                                 </div>

@@ -100,7 +100,7 @@ const TestResultGroup: React.FC<{
                 {/* Status */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700">وضعیت</label>
-                    <select value={status} onChange={e => setStatus(e.target.value as TestResult['status'])} className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 sm:text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${statusClasses[status]}`}>
+                    <select value={status} onChange={e => setStatus(e.target.value as TestResult['status'])} className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 sm:text-sm focus:outline-none focus:ring-[var(--color-primary-500)] focus:border-[var(--color-primary-500)] ${statusClasses[status]}`}>
                         <option value="not_sent">{statusText.not_sent}</option>
                         <option value="pending">{statusText.pending}</option>
                         <option value="passed">{statusText.passed}</option>
@@ -120,12 +120,12 @@ const TestResultGroup: React.FC<{
                     <label className="block text-sm font-medium text-gray-700">فایل نتیجه</label>
                     {filePreview ? (
                         <div className="mt-1">
-                            <a href={filePreview} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline truncate block">
+                            <a href={filePreview} target="_blank" rel="noopener noreferrer" className="text-[var(--color-primary-600)] hover:underline truncate block">
                                 {result?.file?.name}
                             </a>
                         </div>
                     ) : (
-                        <input type="file" onChange={handleFileChange} className="mt-1 text-sm text-gray-500 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
+                        <input type="file" onChange={handleFileChange} className="mt-1 text-sm text-gray-500 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[var(--color-primary-50)] file:text-[var(--color-primary-700)] hover:file:bg-[var(--color-primary-100)]"/>
                     )}
                 </div>
 
@@ -137,7 +137,7 @@ const TestResultGroup: React.FC<{
 
                 {/* Save Button */}
                 <div className="lg:col-span-2 flex justify-end">
-                    <button onClick={handleSave} className="bg-indigo-600 text-white py-2 px-6 rounded-lg hover:bg-indigo-700">ذخیره نتیجه</button>
+                    <button onClick={handleSave} className="bg-[var(--color-primary-600)] text-white py-2 px-6 rounded-lg hover:bg-[var(--color-primary-700)]">ذخیره نتیجه</button>
                 </div>
             </div>
         </div>
@@ -163,7 +163,7 @@ const TestView: React.FC<TestViewProps> = ({ selectedCandidateId, onSelectCandid
       <div className="text-center p-10 bg-white rounded-lg shadow-sm">
         <h3 className="text-xl font-bold text-gray-700">مدیریت آزمون‌ها</h3>
         <p className="mt-2 text-gray-500">برای مشاهده، ارسال یا ثبت نتایج آزمون، لطفا ابتدا یک متقاضی را انتخاب کنید.</p>
-        <button onClick={onSelectCandidateClick} className="mt-4 bg-indigo-600 text-white font-bold py-2 px-5 rounded-lg hover:bg-indigo-700">
+        <button onClick={onSelectCandidateClick} className="mt-4 bg-[var(--color-primary-600)] text-white font-bold py-2 px-5 rounded-lg hover:bg-[var(--color-primary-700)]">
           انتخاب متقاضی
         </button>
       </div>

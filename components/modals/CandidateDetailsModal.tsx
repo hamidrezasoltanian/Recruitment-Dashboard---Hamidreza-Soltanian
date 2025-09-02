@@ -170,7 +170,7 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
                       </div>
                       <div>
                            <label className="block text-sm font-medium text-gray-700 mb-1">ساعت مصاحبه</label>
-                           <input type="time" value={interviewTime} onChange={e => setInterviewTime(e.target.value)} className="w-full border rounded-lg shadow-sm p-3 text-gray-800 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-gray-300"/>
+                           <input type="time" value={interviewTime} onChange={e => setInterviewTime(e.target.value)} className="w-full border rounded-lg shadow-sm p-3 text-gray-800 bg-white focus:ring-2 focus:ring-[var(--color-primary-500)] focus:border-[var(--color-primary-500)] border-gray-300"/>
                       </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -181,8 +181,8 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
               </div>
 
              {/* Process Timeline */}
-              <div className="p-4 bg-indigo-50 rounded-lg">
-                  <h4 className="font-bold text-indigo-800 mb-3">فرآیند استخدام</h4>
+              <div className="p-4 bg-[var(--color-primary-50)] rounded-lg">
+                  <h4 className="font-bold text-[var(--color-primary-800)] mb-3">فرآیند استخدام</h4>
                   <ProcessTimeline 
                       stages={stages.filter(s => s.id !== 'archived' && s.id !== 'rejected' && s.id !== 'hired')}
                       candidate={candidate}
@@ -221,8 +221,8 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
                       {candidate.comments.length === 0 && <p className="text-sm text-gray-500">یادداشتی ثبت نشده است.</p>}
                    </div>
                    <div className="flex gap-2">
-                      <input type="text" value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="یادداشت جدید..." className="flex-grow border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-                      <button onClick={handleAddComment} className="bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700">ثبت</button>
+                      <input type="text" value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="یادداشت جدید..." className="flex-grow border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[var(--color-primary-500)] focus:border-[var(--color-primary-500)] sm:text-sm" />
+                      <button onClick={handleAddComment} className="bg-[var(--color-primary-600)] text-white py-2 px-4 rounded-lg hover:bg-[var(--color-primary-700)]">ثبت</button>
                    </div>
               </div>
           </div>

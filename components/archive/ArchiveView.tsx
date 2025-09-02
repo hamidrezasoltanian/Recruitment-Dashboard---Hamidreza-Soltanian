@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useCandidates } from '../../contexts/CandidatesContext';
 import { Candidate } from '../../types';
@@ -38,7 +37,7 @@ const ArchiveView: React.FC<ArchiveViewProps> = ({ onViewDetails }) => {
                     <StarRating rating={candidate.rating} readOnly />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-4 space-x-reverse">
-                    <button onClick={() => onViewDetails(candidate)} className="text-indigo-600 hover:text-indigo-900">مشاهده جزئیات</button>
+                    <button onClick={() => onViewDetails(candidate)} className="text-[var(--color-primary-600)] hover:text-[var(--color-primary-900)]">مشاهده جزئیات</button>
                     <button onClick={() => unarchiveCandidate(candidate.id)} className="text-green-600 hover:text-green-900">خروج از آرشیو</button>
                   </td>
                 </tr>

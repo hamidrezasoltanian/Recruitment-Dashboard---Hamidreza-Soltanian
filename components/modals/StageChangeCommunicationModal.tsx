@@ -113,7 +113,7 @@ const StageChangeCommunicationModal: React.FC<StageChangeCommunicationModalProps
                 type="checkbox"
                 checked={sendNotification}
                 onChange={(e) => setSendNotification(e.target.checked)}
-                className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                className="h-4 w-4 text-[var(--color-primary-600)] border-gray-300 rounded"
               />
               <label htmlFor="send-notification-checkbox" className="mr-2 block text-sm text-gray-900">
                 ارسال پیام اطلاع‌رسانی به متقاضی
@@ -129,14 +129,14 @@ const StageChangeCommunicationModal: React.FC<StageChangeCommunicationModalProps
                       <button
                         type="button"
                         onClick={() => setCommunicationType('email')}
-                        className={`relative inline-flex items-center px-4 py-2 rounded-r-md border border-gray-300 text-sm font-medium transition-colors ${communicationType === 'email' ? 'bg-indigo-600 text-white z-10' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                        className={`relative inline-flex items-center px-4 py-2 rounded-r-md border border-gray-300 text-sm font-medium transition-colors ${communicationType === 'email' ? 'bg-[var(--color-primary-600)] text-white z-10' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
                       >
                         ایمیل
                       </button>
                       <button
                         type="button"
                         onClick={() => setCommunicationType('whatsapp')}
-                        className={`-ml-px relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium transition-colors ${communicationType === 'whatsapp' ? 'bg-indigo-600 text-white z-10' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                        className={`-ml-px relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium transition-colors ${communicationType === 'whatsapp' ? 'bg-[var(--color-primary-600)] text-white z-10' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
                       >
                         واتسپ
                       </button>
@@ -167,7 +167,7 @@ const StageChangeCommunicationModal: React.FC<StageChangeCommunicationModalProps
 
         <div className="flex justify-end gap-4 pt-4">
           <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 py-2 px-6 rounded-lg hover:bg-gray-300 transition-colors">انصراف</button>
-          <button type="button" onClick={handleConfirm} className="bg-indigo-600 text-white py-2 px-6 rounded-lg hover:bg-indigo-700 transition-colors">
+          <button type="button" onClick={handleConfirm} className="bg-[var(--color-primary-600)] text-white py-2 px-6 rounded-lg hover:bg-[var(--color-primary-700)] transition-colors">
             {sendNotification && hasAnyTemplate ? 'انتقال و ارسال پیام' : 'انتقال بدون اطلاع‌رسانی'}
           </button>
         </div>

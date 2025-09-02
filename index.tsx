@@ -6,6 +6,7 @@ import { CandidatesProvider } from './contexts/CandidatesContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { TemplateProvider } from './contexts/TemplateContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -15,16 +16,18 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <ToastProvider>
-      <AuthProvider>
-        <SettingsProvider>
-          <TemplateProvider>
-            <CandidatesProvider>
-              <App />
-            </CandidatesProvider>
-          </TemplateProvider>
-        </SettingsProvider>
-      </AuthProvider>
-    </ToastProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <SettingsProvider>
+            <TemplateProvider>
+              <CandidatesProvider>
+                <App />
+              </CandidatesProvider>
+            </TemplateProvider>
+          </SettingsProvider>
+        </AuthProvider>
+      </ToastProvider>
+    </ThemeProvider>
   </React.StrictMode>
 );

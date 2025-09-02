@@ -7,6 +7,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { useTemplates } from '../../contexts/TemplateContext';
 import { aiService } from '../../services/aiService';
 import { useCandidates } from '../../contexts/CandidatesContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const UserManagementPanel: React.FC = () => {
   const { users, addUser, updateUser, deleteUser, changePassword, currentUser } = useAuth();
@@ -91,7 +92,7 @@ const UserManagementPanel: React.FC = () => {
           <h3 className="font-bold mb-2">لیست کاربران</h3>
           <div className="space-y-2">
             {activeUsers.map(u => (
-              <div key={u.username} className={`p-2 rounded-md cursor-pointer flex justify-between items-center ${editingUser?.username === u.username || (isAdding && !editingUser) ? 'bg-indigo-100' : 'hover:bg-gray-100'}`} onClick={() => handleSelectUserForEdit(u)}>
+              <div key={u.username} className={`p-2 rounded-md cursor-pointer flex justify-between items-center ${editingUser?.username === u.username || (isAdding && !editingUser) ? 'bg-[var(--color-primary-100)]' : 'hover:bg-gray-100'}`} onClick={() => handleSelectUserForEdit(u)}>
                 <span>{u.name} ({u.isAdmin ? 'ادمین' : 'کارشناس'})</span>
                 { u.username !== currentUser?.username &&
                     <button onClick={(e) => { e.stopPropagation(); handleDelete(u.username); }} className="text-red-500 hover:text-red-700 text-xs px-1">حذف</button>
@@ -99,7 +100,7 @@ const UserManagementPanel: React.FC = () => {
               </div>
             ))}
           </div>
-           <button onClick={handleAddNew} className={`mt-4 w-full font-bold py-2 px-4 rounded-lg transition-colors ${isAdding ? 'bg-indigo-200 text-indigo-800' : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'}`}>+ افزودن کاربر جدید</button>
+           <button onClick={handleAddNew} className={`mt-4 w-full font-bold py-2 px-4 rounded-lg transition-colors ${isAdding ? 'bg-[var(--color-primary-200)] text-[var(--color-primary-800)]' : 'bg-[var(--color-primary-100)] text-[var(--color-primary-700)] hover:bg-[var(--color-primary-200)]'}`}>+ افزودن کاربر جدید</button>
         </div>
 
         <div className="md:col-span-2">
@@ -120,12 +121,12 @@ const UserManagementPanel: React.FC = () => {
                         <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={isAdding ? 'ضروری' : 'برای عدم تغییر، خالی بگذارید'} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
                     </div>
                      <div className="flex items-center">
-                        <input id="isAdmin" type="checkbox" checked={isAdmin} onChange={e => setIsAdmin(e.target.checked)} disabled={currentUser?.username === username} className="h-4 w-4 text-indigo-600 border-gray-300 rounded disabled:opacity-50"/>
+                        <input id="isAdmin" type="checkbox" checked={isAdmin} onChange={e => setIsAdmin(e.target.checked)} disabled={currentUser?.username === username} className="h-4 w-4 text-[var(--color-primary-600)] border-gray-300 rounded disabled:opacity-50"/>
                         <label htmlFor="isAdmin" className="mr-2 block text-sm text-gray-900">دسترسی ادمین</label>
                     </div>
                     <div className="flex justify-end gap-2">
                          <button onClick={() => { setEditingUser(null); setIsAdding(false); }} className="bg-gray-200 text-gray-800 py-2 px-4 rounded-lg">انصراف</button>
-                         <button onClick={handleSave} className="bg-indigo-600 text-white py-2 px-4 rounded-lg">ذخیره</button>
+                         <button onClick={handleSave} className="bg-[var(--color-primary-600)] text-white py-2 px-4 rounded-lg">ذخیره</button>
                     </div>
                  </div>
             </div>
@@ -161,9 +162,9 @@ const SourceManagementPanel: React.FC = () => {
                     value={newSource} 
                     onChange={e => setNewSource(e.target.value)} 
                     placeholder="افزودن منبع جدید..." 
-                    className="flex-grow border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="flex-grow border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[var(--color-primary-500)] focus:border-[var(--color-primary-500)] sm:text-sm"
                 />
-                <button onClick={handleAddSource} className="bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700">افزودن</button>
+                <button onClick={handleAddSource} className="bg-[var(--color-primary-600)] text-white py-2 px-4 rounded-lg hover:bg-[var(--color-primary-700)]">افزودن</button>
              </div>
         </div>
     );
@@ -233,7 +234,7 @@ const StageManagementPanel: React.FC = () => {
             placeholder="افزودن مرحله جدید..."
             className="flex-grow border border-gray-300 rounded-md shadow-sm py-2 px-3 sm:text-sm"
           />
-          <button onClick={handleAddStage} className="bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700">افزودن</button>
+          <button onClick={handleAddStage} className="bg-[var(--color-primary-600)] text-white py-2 px-4 rounded-lg hover:bg-[var(--color-primary-700)]">افزودن</button>
         </div>
       </div>
     );
@@ -321,13 +322,13 @@ const TemplateManagementPanel: React.FC = () => {
         <h3 className="font-bold mb-2">لیست قالب‌ها</h3>
         <div className="space-y-2">
           {templates.map(t => (
-            <div key={t.id} className={`p-2 rounded-md cursor-pointer flex justify-between items-center ${editingTemplate?.id === t.id ? 'bg-indigo-100' : 'hover:bg-gray-100'}`} onClick={() => handleSelectTemplate(t)}>
+            <div key={t.id} className={`p-2 rounded-md cursor-pointer flex justify-between items-center ${editingTemplate?.id === t.id ? 'bg-[var(--color-primary-100)]' : 'hover:bg-gray-100'}`} onClick={() => handleSelectTemplate(t)}>
               <span className="truncate">{t.name}</span>
               <button onClick={(e) => { e.stopPropagation(); handleDelete(t.id); }} className="text-red-500 hover:text-red-700 text-xs px-1 flex-shrink-0">حذف</button>
             </div>
           ))}
         </div>
-        <button onClick={handleAddNew} className={`mt-4 w-full font-bold py-2 px-4 rounded-lg transition-colors ${isAdding ? 'bg-indigo-200 text-indigo-800' : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'}`}>+ افزودن قالب جدید</button>
+        <button onClick={handleAddNew} className={`mt-4 w-full font-bold py-2 px-4 rounded-lg transition-colors ${isAdding ? 'bg-[var(--color-primary-200)] text-[var(--color-primary-800)]' : 'bg-[var(--color-primary-100)] text-[var(--color-primary-700)] hover:bg-[var(--color-primary-200)]'}`}>+ افزودن قالب جدید</button>
       </div>
 
       <div className="md:col-span-2">
@@ -358,7 +359,7 @@ const TemplateManagementPanel: React.FC = () => {
               <div>
                  <div className="flex justify-between items-center">
                     <label className="block text-sm font-medium text-gray-700">محتوای قالب</label>
-                    <button onClick={handleGenerateWithAI} disabled={isAiLoading} className="text-sm text-indigo-600 hover:text-indigo-800 disabled:opacity-50">
+                    <button onClick={handleGenerateWithAI} disabled={isAiLoading} className="text-sm text-[var(--color-primary-600)] hover:text-[var(--color-primary-800)] disabled:opacity-50">
                         {isAiLoading ? 'در حال پردازش...' : 'تولید با AI ✨'}
                     </button>
                  </div>
@@ -367,7 +368,7 @@ const TemplateManagementPanel: React.FC = () => {
               </div>
               <div className="flex justify-end gap-2">
                 <button onClick={handleCancel} className="bg-gray-200 text-gray-800 py-2 px-4 rounded-lg">انصراف</button>
-                <button onClick={handleSave} className="bg-indigo-600 text-white py-2 px-4 rounded-lg">ذخیره</button>
+                <button onClick={handleSave} className="bg-[var(--color-primary-600)] text-white py-2 px-4 rounded-lg">ذخیره</button>
               </div>
             </div>
           </div>
@@ -451,7 +452,7 @@ const CompanyProfilePanel: React.FC = () => {
                  </div>
                  <div className="flex gap-2">
                      <input type="text" value={newJobTitle} onChange={e => setNewJobTitle(e.target.value)} placeholder="افزودن موقعیت جدید..." className="flex-grow border border-gray-300 rounded-md shadow-sm py-2 px-3 sm:text-sm" />
-                     <button onClick={handleAddJob} className="bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700">افزودن</button>
+                     <button onClick={handleAddJob} className="bg-[var(--color-primary-600)] text-white py-2 px-4 rounded-lg hover:bg-[var(--color-primary-700)]">افزودن</button>
                  </div>
             </div>
         </div>
@@ -555,13 +556,13 @@ const TestLibraryPanel: React.FC = () => {
                 <h3 className="font-bold mb-2">لیست آزمون‌ها</h3>
                 <div className="space-y-2 max-h-96 overflow-y-auto">
                     {testLibrary.map(t => (
-                        <div key={t.id} className={`p-2 rounded-md cursor-pointer flex justify-between items-center ${editingTest?.id === t.id ? 'bg-indigo-100' : 'hover:bg-gray-100'}`} onClick={() => handleSelectTest(t)}>
+                        <div key={t.id} className={`p-2 rounded-md cursor-pointer flex justify-between items-center ${editingTest?.id === t.id ? 'bg-[var(--color-primary-100)]' : 'hover:bg-gray-100'}`} onClick={() => handleSelectTest(t)}>
                            <span className="truncate">{t.name}</span>
                             <button onClick={(e) => { e.stopPropagation(); handleDelete(t.id); }} className="text-red-500 hover:text-red-700 text-xs px-1 flex-shrink-0">حذف</button>
                         </div>
                     ))}
                 </div>
-                <button onClick={handleAddNew} className={`mt-4 w-full font-bold py-2 px-4 rounded-lg transition-colors ${isAdding ? 'bg-indigo-200 text-indigo-800' : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'}`}>+ افزودن آزمون جدید</button>
+                <button onClick={handleAddNew} className={`mt-4 w-full font-bold py-2 px-4 rounded-lg transition-colors ${isAdding ? 'bg-[var(--color-primary-200)] text-[var(--color-primary-800)]' : 'bg-[var(--color-primary-100)] text-[var(--color-primary-700)] hover:bg-[var(--color-primary-200)]'}`}>+ افزودن آزمون جدید</button>
             </div>
             <div className="md:col-span-2">
                 {(editingTest || isAdding) && (
@@ -578,7 +579,7 @@ const TestLibraryPanel: React.FC = () => {
                             </div>
                             <div className="flex justify-end gap-2">
                                 <button onClick={handleCancel} className="bg-gray-200 text-gray-800 py-2 px-4 rounded-lg">انصراف</button>
-                                <button onClick={handleSave} className="bg-indigo-600 text-white py-2 px-4 rounded-lg">ذخیره</button>
+                                <button onClick={handleSave} className="bg-[var(--color-primary-600)] text-white py-2 px-4 rounded-lg">ذخیره</button>
                             </div>
                         </div>
                     </div>
@@ -588,6 +589,62 @@ const TestLibraryPanel: React.FC = () => {
     )
 }
 
+const AppearancePanel: React.FC = () => {
+    const { theme, setTheme, setCustomBackground, setDefaultBackground } = useTheme();
+    const { addToast } = useToast();
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+    const themes = [
+        { id: 'indigo', name: 'نیلی', color: '#4f46e5' },
+        { id: 'blue', name: 'آبی', color: '#2563eb' },
+        { id: 'teal', name: 'سبزآبی', color: '#0d9488' },
+        { id: 'rose', name: 'رز', color: '#e11d48' },
+    ];
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            if (file.size > 2 * 1024 * 1024) { // 2MB limit
+                addToast('حجم فایل باید کمتر از ۲ مگابایت باشد.', 'error');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                if(typeof e.target?.result === 'string') {
+                    setCustomBackground(e.target.result);
+                    addToast('پس‌زمینه با موفقیت تغییر کرد.', 'success');
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+            <div>
+                <h3 className="text-lg font-bold text-gray-800 mb-3">تم رنگی</h3>
+                <div className="flex flex-wrap gap-4">
+                    {themes.map(t => (
+                        <div key={t.id} className="flex flex-col items-center gap-2 cursor-pointer" onClick={() => setTheme(t.id as any)}>
+                            <div style={{ backgroundColor: t.color }} className={`w-12 h-12 rounded-full ring-2 ${theme === t.id ? 'ring-offset-2 ring-[var(--color-primary-500)]' : 'ring-transparent'}`}></div>
+                            <span className={`text-sm font-medium ${theme === t.id ? 'text-[var(--color-primary-600)]' : 'text-gray-600'}`}>{t.name}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <div>
+                <h3 className="text-lg font-bold text-gray-800 mb-3">پس‌زمینه</h3>
+                <div className="flex flex-wrap items-center gap-4">
+                     <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/png, image/jpeg, image/gif, image/webp" className="hidden"/>
+                     <button onClick={() => fileInputRef.current?.click()} className="bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700">آپلود تصویر پس‌زمینه</button>
+                     <button onClick={setDefaultBackground} className="bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300">حذف پس‌زمینه</button>
+                </div>
+                 <p className="text-xs text-gray-500 mt-2">فایل‌های کمتر از ۲ مگابایت توصیه می‌شود.</p>
+            </div>
+        </div>
+    );
+};
+
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -595,13 +652,13 @@ interface SettingsModalProps {
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-    type Tab = 'profile' | 'stages' | 'users' | 'sources' | 'templates' | 'apiKey' | 'tests';
-    const [activeTab, setActiveTab] = useState<Tab>('profile');
+    type Tab = 'appearance' | 'profile' | 'stages' | 'users' | 'sources' | 'templates' | 'apiKey' | 'tests';
+    const [activeTab, setActiveTab] = useState<Tab>('appearance');
 
     const tabClasses = (tabName: Tab) => 
         `whitespace-nowrap py-2 px-4 font-medium text-sm rounded-t-lg transition-colors cursor-pointer ${
             activeTab === tabName 
-            ? 'bg-white border-gray-200 border-l border-t border-r -mb-px text-indigo-600' 
+            ? 'bg-white border-gray-200 border-l border-t border-r -mb-px text-[var(--color-primary-600)]' 
             : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
         }`;
 
@@ -610,6 +667,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             <div className="w-full">
                 <div className="border-b border-gray-200">
                     <nav className="flex flex-wrap space-x-2 space-x-reverse">
+                        <button onClick={() => setActiveTab('appearance')} className={tabClasses('appearance')}>ظاهر برنامه</button>
                         <button onClick={() => setActiveTab('profile')} className={tabClasses('profile')}>پروفایل شرکت</button>
                         <button onClick={() => setActiveTab('stages')} className={tabClasses('stages')}>مراحل کانبان</button>
                         <button onClick={() => setActiveTab('tests')} className={tabClasses('tests')}>کتابخانه آزمون</button>
@@ -620,6 +678,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                     </nav>
                 </div>
                 <div className="pt-6 bg-white p-6 rounded-b-lg">
+                    {activeTab === 'appearance' && <AppearancePanel />}
                     {activeTab === 'profile' && <CompanyProfilePanel />}
                     {activeTab === 'stages' && <StageManagementPanel />}
                     {activeTab === 'users' && <UserManagementPanel />}

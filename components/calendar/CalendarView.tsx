@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { useCandidates } from '../../contexts/CandidatesContext';
 import { Candidate } from '../../types';
@@ -15,7 +14,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ onViewDetails }) => {
   const [currentDate, setCurrentDate] = useState(() => new persianDate());
 
   const candidatesWithInterview = useMemo(() => 
-    candidates.filter(c => c.stage === 'interview' && c.interviewDate),
+    candidates.filter(c => c.interviewDate && (c.stage.includes('interview') || c.stage === 'hired')),
     [candidates]
   );
 
@@ -62,7 +61,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ onViewDetails }) => {
             const isToday = new persianDate().format('YYYY/MM/DD') === `${monthData.year}/${String(monthData.month).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
             return (
                 <div key={day} className="border rounded-md border-gray-200 bg-gray-50 p-2 min-h-[120px] flex flex-col">
-                    <span className={`w-8 h-8 flex items-center justify-center rounded-full text-sm ${isToday ? 'bg-indigo-600 text-white font-bold' : ''}`}>{day}</span>
+                    <span className={`w-8 h-8 flex items-center justify-center rounded-full text-sm ${isToday ? 'bg-[var(--color-primary-600)] text-white font-bold' : ''}`}>{day}</span>
                     <div className="flex-grow mt-1 space-y-1 overflow-y-auto">
                         {dayCandidates.map(c => (
                             <div key={c.id} onClick={() => onViewDetails(c)} className="bg-blue-100 text-blue-800 text-xs p-1 rounded-md cursor-pointer hover:bg-blue-200 truncate">

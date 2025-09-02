@@ -94,7 +94,7 @@ const KamaDatePicker: React.FC<KamaDatePickerProps> = ({ value, onChange }) => {
                 type="text"
                 defaultValue={value}
                 onBlur={handleBlur}
-                className="w-full border rounded-lg shadow-sm p-3 date-input text-gray-800 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 border-gray-300"
+                className="w-full border rounded-lg shadow-sm p-3 date-input text-gray-800 bg-white focus:ring-2 focus:ring-[var(--color-primary-500)] focus:border-[var(--color-primary-500)] border-gray-300"
                 placeholder="YYYY/MM/DD"
                 autoComplete="off"
             />

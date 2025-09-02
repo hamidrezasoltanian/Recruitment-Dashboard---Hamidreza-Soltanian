@@ -117,10 +117,10 @@ const App: React.FC = () => {
 
   return (
     <>
-      <div className="min-h-screen">
+      <div className="min-h-screen flex flex-col">
         <Header onSettingsClick={() => setSettingsModalOpen(true)} />
         <Tabs activeView={activeView} setActiveView={setActiveView} />
-        <main className="p-4 md:p-6 lg:p-8">
+        <main className="p-4 md:p-6 lg:p-8 flex-grow">
             {activeView === 'dashboard' && <DashboardSummary candidates={candidates} />}
             {renderView()}
         </main>

@@ -35,7 +35,7 @@ const LoginScreen: React.FC = () => {
                 type="text"
                 autoComplete="username"
                 required
-                className="relative block w-full px-3 py-3 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md appearance-none focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                className="relative block w-full px-3 py-3 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md appearance-none focus:outline-none focus:ring-[var(--color-primary-500)] focus:border-[var(--color-primary-500)] focus:z-10 sm:text-sm"
                 placeholder="نام کاربری"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -49,7 +49,7 @@ const LoginScreen: React.FC = () => {
                 type="password"
                 autoComplete="current-password"
                 required
-                className="relative block w-full px-3 py-3 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md appearance-none focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                className="relative block w-full px-3 py-3 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md appearance-none focus:outline-none focus:ring-[var(--color-primary-500)] focus:border-[var(--color-primary-500)] focus:z-10 sm:text-sm"
                 placeholder="رمز عبور"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -62,7 +62,7 @@ const LoginScreen: React.FC = () => {
           <div>
             <button
               type="submit"
-              className="relative flex justify-center w-full px-4 py-3 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md group hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="relative flex justify-center w-full px-4 py-3 text-sm font-medium text-white bg-[var(--color-primary-600)] border border-transparent rounded-md group hover:bg-[var(--color-primary-700)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--color-primary-500)]"
             >
               ورود
             </button>

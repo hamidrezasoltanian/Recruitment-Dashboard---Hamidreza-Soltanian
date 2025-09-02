@@ -8,6 +8,7 @@ interface SettingsContextType {
   addSource: (source: string) => void;
   deleteSource: (source: string) => void;
   stages: KanbanStage[];
+  setStageOrder: (orderedStages: KanbanStage[]) => void;
   addStage: (title: string) => void;
   updateStage: (id: string, title: string) => void;
   deleteStage: (id: string) => void;
@@ -102,6 +103,11 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
   const deleteSource = (sourceToDelete: string) => {
     setSources(prev => prev.filter(s => s !== sourceToDelete));
     addToast(`منبع "${sourceToDelete}" حذف شد.`, 'success');
+  };
+
+  const setStageOrder = (orderedStages: KanbanStage[]) => {
+    setStages(orderedStages);
+    addToast("ترتیب مراحل ذخیره شد.", "success");
   };
 
   const addStage = (title: string) => {
@@ -201,7 +207,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     addToast("آزمون حذف شد.", 'success');
   };
 
-  const value = { sources, addSource, deleteSource, stages, addStage, updateStage, deleteStage, companyProfile, updateCompanyDetails, addJobPosition, updateJobPosition, deleteJobPosition, testLibrary, addTest, updateTest, deleteTest };
+  const value = { sources, addSource, deleteSource, stages, setStageOrder, addStage, updateStage, deleteStage, companyProfile, updateCompanyDetails, addJobPosition, updateJobPosition, deleteJobPosition, testLibrary, addTest, updateTest, deleteTest };
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 };
