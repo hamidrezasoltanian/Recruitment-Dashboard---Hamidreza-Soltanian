@@ -1,4 +1,5 @@
-import express from 'express';
+
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -32,7 +33,7 @@ const startServer = async () => {
     // --- Frontend Catch-all Route ---
     // This route serves the index.html for any request that doesn't match an API route or a static file.
     // This is crucial for client-side routing (e.g., React Router) to work.
-    app.get('*', (req: express.Request, res: express.Response) => {
+    app.get('*', (req: Request, res: Response) => {
         if (!req.originalUrl.startsWith('/api')) {
             res.sendFile(path.join(frontendDistPath, 'index.html'));
         } else {
