@@ -72,9 +72,10 @@ const TestResultGroup: React.FC<TestResultGroupProps> = ({ test, result, candida
             try {
                 await dbService.saveTestFile(testFileId, file);
                 await updateTestResult(candidateId, test.id, {
-                    file: { name: file.name, type: file.type }
+                    file: { name: file.name, type: file.type },
+                    status: 'review' // Automatically set status to review on upload
                 });
-                addToast(`فایل برای آزمون ${test.name} آپلود شد.`, 'success');
+                addToast(`فایل آپلود و وضعیت به "نیاز به بررسی" تغییر کرد.`, 'success');
                 if (filePreview) URL.revokeObjectURL(filePreview);
                 setFilePreview(URL.createObjectURL(file));
             } catch (err) {
@@ -168,9 +169,10 @@ const TestView: React.FC<TestViewProps> = ({ initialExpandedCandidateId }) => {
 
   const candidatesWithSentTests = useMemo(() => {
     const activeStages = ['hired', 'rejected', 'archived'];
-    return candidates.filter(c =>
-      c.testResults && c.testResults.length > 0 && !activeStages.includes(c.stage)
-    );
+    return candidates.filter(c => {
+        const hasSentTest = c.testResults?.some(r => r.status !== 'not_sent');
+        return hasSentTest && !activeStages.includes(c.stage)
+    });
   }, [candidates]);
   
   const handleSelectCandidateForNewTest = (candidateId: string) => {
@@ -207,12 +209,9 @@ const TestView: React.FC<TestViewProps> = ({ initialExpandedCandidateId }) => {
       ) : (
         <div className="space-y-4">
           {candidatesWithSentTests.map(candidate => {
-            const candidateTests = candidate.testResults?.map(result => ({
-                result,
-                testDetails: testLibrary.find(t => t.id === result.testId)
-            })).filter(item => item.testDetails);
-
-            const pendingCount = candidateTests?.filter(t => t.result.status === 'pending').length || 0;
+            const sentTests = candidate.testResults?.filter(r => r.status !== 'not_sent') || [];
+            const pendingCount = sentTests.filter(r => r.status === 'pending').length;
+            const totalSentCount = sentTests.length;
 
             return (
               <div key={candidate.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -226,7 +225,7 @@ const TestView: React.FC<TestViewProps> = ({ initialExpandedCandidateId }) => {
                   </div>
                   <div className="flex items-center gap-4">
                     <span className="text-sm font-medium text-gray-700">
-                      {candidateTests?.length || 0} آزمون
+                      {totalSentCount} آزمون ارسال شده
                       {pendingCount > 0 && ` (${pendingCount} در انتظار)`}
                     </span>
                     <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-gray-500 transition-transform ${expandedCandidateId === candidate.id ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -237,17 +236,20 @@ const TestView: React.FC<TestViewProps> = ({ initialExpandedCandidateId }) => {
                 
                 {expandedCandidateId === candidate.id && (
                   <div className="p-4 border-t border-gray-200 bg-gray-50 space-y-4">
-                    {candidateTests && candidateTests.length > 0 ? (
-                        candidateTests.map(({result, testDetails}) => (
-                            <TestResultGroup
-                                key={testDetails!.id}
-                                test={testDetails!}
-                                result={result}
-                                candidateId={candidate.id}
-                            />
-                        ))
+                    {testLibrary.length > 0 ? (
+                        testLibrary.map(testItem => {
+                            const result = candidate.testResults?.find(r => r.testId === testItem.id);
+                            return (
+                                <TestResultGroup
+                                    key={testItem.id}
+                                    test={testItem}
+                                    result={result}
+                                    candidateId={candidate.id}
+                                />
+                            );
+                        })
                     ) : (
-                        <p className="text-sm text-gray-500">آزمونی برای این متقاضی ثبت نشده است.</p>
+                        <p className="text-center text-gray-500 py-4">هیچ آزمونی در کتابخانه آزمون‌ها تعریف نشده است. لطفاً از تنظیمات اضافه کنید.</p>
                     )}
                   </div>
                 )}
