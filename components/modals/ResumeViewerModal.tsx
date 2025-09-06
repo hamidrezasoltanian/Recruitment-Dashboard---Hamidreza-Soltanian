@@ -40,10 +40,10 @@ const ResumeViewerModal: React.FC<ResumeViewerModalProps> = ({ isOpen, onClose, 
   const title = file ? `مشاهده رزومه: ${file.name}` : 'مشاهده رزومه';
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title}>
+    <Modal isOpen={isOpen} onClose={onClose} title={title} size="xl">
       <div className="space-y-4">
         {isPdf && fileUrl ? (
-          <iframe src={fileUrl} className="w-full h-[75vh] border rounded-md" title="Resume Preview"></iframe>
+          <iframe src={fileUrl} className="w-full h-[85vh] border rounded-md" title="Resume Preview"></iframe>
         ) : file ? (
           <div className="p-8 text-center bg-gray-100 rounded-lg">
             <h3 className="text-lg font-bold text-gray-800">پیش‌نمایش برای این نوع فایل در دسترس نیست.</h3>

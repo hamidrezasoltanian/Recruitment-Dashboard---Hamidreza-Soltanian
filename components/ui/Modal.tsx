@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, ReactNode } from 'react';
 import ReactDOM from 'react-dom';
 
@@ -7,9 +6,10 @@ interface ModalProps {
   onClose: () => void;
   children: ReactNode;
   title: string;
+  size?: 'default' | 'large' | 'xl';
 }
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title }) => {
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title, size = 'default' }) => {
   const modalRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -29,8 +29,14 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title }) => {
     }
   };
   
+  const sizeClasses = {
+    default: 'w-11/12 max-w-2xl',
+    large: 'w-11/12 max-w-4xl',
+    xl: 'w-11/12 max-w-7xl',
+  };
+
   const modalContent = (
-    <dialog ref={modalRef} onKeyDown={handleKeyDown} onClose={onClose} className="p-0 rounded-xl shadow-2xl w-11/12 max-w-2xl bg-gray-50 backdrop:bg-black/50">
+    <dialog ref={modalRef} onKeyDown={handleKeyDown} onClose={onClose} className={`p-0 rounded-xl shadow-2xl bg-gray-50 backdrop:bg-black/50 ${sizeClasses[size]}`}>
       <div className="sticky top-0 bg-gray-50 z-10 p-4 border-b border-gray-200 flex justify-between items-center">
         <h2 className="text-xl font-bold text-gray-800">{title}</h2>
         <button onClick={onClose} className="text-gray-500 hover:text-gray-800 transition-colors">

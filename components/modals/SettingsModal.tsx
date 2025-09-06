@@ -308,7 +308,23 @@ const TemplateManagementPanel: React.FC = () => {
           setIsAiLoading(false);
       }
   };
+
+  const handleCopyVariable = (variable: string) => {
+    navigator.clipboard.writeText(variable);
+    addToast(`متغیر ${variable} کپی شد!`, 'success');
+  };
   
+  const availableVariables = [
+    { name: '{{candidateName}}', desc: 'نام کامل متقاضی' },
+    { name: '{{position}}', desc: 'موقعیت شغلی' },
+    { name: '{{interviewDate}}', desc: 'تاریخ مصاحبه' },
+    { name: '{{interviewTime}}', desc: 'ساعت مصاحبه' },
+    { name: '{{stageName}}', desc: 'نام مرحله جدید (فقط برای اطلاع‌رسانی)' },
+    { name: '{{companyName}}', desc: 'نام شرکت' },
+    { name: '{{companyWebsite}}', desc: 'وب‌سایت شرکت' },
+    { name: '{{companyAddress}}', desc: 'آدرس شرکت' },
+  ];
+
   const renderForm = () => (
     <div className="bg-gray-50 rounded-lg p-4 mt-2 border border-[var(--color-primary-200)]">
       <h3 className="font-bold mb-4">{editingId === 'new' ? 'افزودن قالب جدید' : 'ویرایش قالب'}</h3>
@@ -340,8 +356,23 @@ const TemplateManagementPanel: React.FC = () => {
                   {isAiLoading ? 'در حال پردازش...' : 'تولید با AI ✨'}
               </button>
            </div>
-          <textarea value={content} onChange={e => setContent(e.target.value)} rows={8} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3" placeholder="محتوای خود را وارد کنید یا با AI تولید کنید. از متغیرها استفاده کنید."></textarea>
-           <p className="text-xs text-gray-500 mt-1">{'متغیرهای مجاز: `{{candidateName}}`, `{{position}}`, `{{interviewDate}}`, `{{companyName}}`, `{{companyAddress}}`, `{{stageName}}`'}</p>
+          <textarea value={content} onChange={e => setContent(e.target.value)} rows={8} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3" placeholder="محتوای خود را وارد کنید یا با AI تولید کنید."></textarea>
+           
+          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="text-sm font-bold text-blue-800 mb-2">متغیرهای در دسترس (برای کپی کلیک کنید)</h4>
+                <div className="flex flex-wrap gap-2">
+                    {availableVariables.map(variable => (
+                        <button 
+                          key={variable.name}
+                          onClick={() => handleCopyVariable(variable.name)}
+                          title={variable.desc}
+                          className="px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs font-mono hover:bg-blue-200 transition-colors"
+                        >
+                            {variable.name}
+                        </button>
+                    ))}
+                </div>
+          </div>
         </div>
         <div className="flex justify-end gap-2">
           <button onClick={handleCancel} className="bg-gray-200 text-gray-800 py-2 px-4 rounded-lg">انصراف</button>
@@ -726,7 +757,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         }`;
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="تنظیمات">
+        <Modal isOpen={isOpen} onClose={onClose} title="تنظیمات" size="large">
             <div className="w-full">
                 <div className="border-b border-gray-200">
                     <nav className="flex flex-wrap space-x-2 space-x-reverse">
