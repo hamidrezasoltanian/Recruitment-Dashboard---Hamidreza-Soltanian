@@ -9,6 +9,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { useSettings } from '../../contexts/SettingsContext';
 import KamaDatePicker from '../ui/KamaDatePicker';
 import ProcessTimeline from '../ui/ProcessTimeline';
+import { EmailIcon, WhatsappIcon } from '../ui/Icons';
 
 declare const persianDate: any;
 
@@ -20,16 +21,17 @@ interface CandidateDetailsModalProps {
   onStageChangeRequest: (info: StageChangeInfo) => void;
   onNavigateToTests: (candidateId: string) => void;
   onOpenCommunicationModal: (candidate: Candidate, type: 'email' | 'whatsapp') => void;
+  onViewResume: (file: File) => void;
 }
 
-const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, onClose, candidate, onEdit, onStageChangeRequest, onNavigateToTests, onOpenCommunicationModal }) => {
+const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, onClose, candidate, onEdit, onStageChangeRequest, onNavigateToTests, onOpenCommunicationModal, onViewResume }) => {
   const { addComment, updateCandidate, addCustomHistoryEntry } = useCandidates();
   const { companyProfile, stages } = useSettings();
   const { user } = useAuth();
   const { addToast } = useToast();
   
   const [newComment, setNewComment] = useState('');
-  const [isDownloading, setIsDownloading] = useState(false);
+  const [isLoadingResume, setIsLoadingResume] = useState(false);
   const [customHistoryEvent, setCustomHistoryEvent] = useState('');
   const [interviewDate, setInterviewDate] = useState('');
   const [interviewTime, setInterviewTime] = useState('');
@@ -81,27 +83,20 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
       addToast('تاریخ مصاحبه حذف شد.', 'success');
   };
   
-  const handleDownloadResume = async () => {
+  const handleViewResume = async () => {
     if (!candidate.hasResume) return;
-    setIsDownloading(true);
+    setIsLoadingResume(true);
     try {
         const file = await dbService.getResume(candidate.id);
         if (file) {
-            const url = URL.createObjectURL(file);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `resume_${candidate.name.replace(/\s/g, '_')}.${file.name.split('.').pop()}`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
+            onViewResume(file);
         } else {
             addToast('فایل رزومه یافت نشد.', 'error');
         }
     } catch(err) {
-        addToast('خطا در دانلود رزومه.', 'error');
+        addToast('خطا در بارگذاری رزومه.', 'error');
     } finally {
-        setIsDownloading(false);
+        setIsLoadingResume(false);
     }
   };
 
@@ -232,13 +227,19 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
                   <button onClick={() => onStageChangeRequest({candidate, newStage: stages.find(s=>s.id==='rejected')!})} className="w-full text-white bg-red-600 hover:bg-red-700 rounded-lg py-2 transition-colors">رد کردن متقاضی</button>
                   <button onClick={() => onStageChangeRequest({candidate, newStage: stages.find(s=>s.id==='hired')!})} className="w-full text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg py-2 transition-colors">استخدام کردن</button>
                    {candidate.hasResume && (
-                      <button onClick={handleDownloadResume} disabled={isDownloading} className="w-full text-white bg-green-600 hover:bg-green-700 rounded-lg py-2 transition-colors disabled:bg-gray-400">
-                          {isDownloading ? 'در حال دانلود...' : 'دانلود رزومه'}
+                      <button onClick={handleViewResume} disabled={isLoadingResume} className="w-full text-white bg-green-600 hover:bg-green-700 rounded-lg py-2 transition-colors disabled:bg-gray-400">
+                          {isLoadingResume ? 'در حال بارگذاری...' : 'مشاهده رزومه'}
                       </button>
                    )}
                    <div className="border-t pt-3 mt-3 space-y-3 border-gray-300">
-                      <button onClick={() => onOpenCommunicationModal(candidate, 'email')} className="w-full text-white bg-sky-600 hover:bg-sky-700 rounded-lg py-2 transition-colors">ارسال ایمیل سفارشی</button>
-                      <button onClick={() => onOpenCommunicationModal(candidate, 'whatsapp')} className="w-full text-white bg-teal-600 hover:bg-teal-700 rounded-lg py-2 transition-colors">ارسال واتسپ سفارشی</button>
+                      <button onClick={() => onOpenCommunicationModal(candidate, 'email')} className="w-full text-white bg-sky-600 hover:bg-sky-700 rounded-lg py-2 transition-colors flex items-center justify-center gap-2">
+                        <EmailIcon className="h-5 w-5" />
+                        <span>ارسال ایمیل سفارشی</span>
+                      </button>
+                      <button onClick={() => onOpenCommunicationModal(candidate, 'whatsapp')} className="w-full text-white bg-teal-600 hover:bg-teal-700 rounded-lg py-2 transition-colors flex items-center justify-center gap-2">
+                        <WhatsappIcon className="h-5 w-5" />
+                        <span>ارسال واتسپ سفارشی</span>
+                      </button>
                    </div>
               </div>
           </div>

@@ -17,6 +17,7 @@ import DashboardSummary from './components/dashboard/DashboardSummary';
 import LoginScreen from './components/auth/LoginScreen';
 import KanbanControls from './components/kanban/KanbanControls';
 import CommunicationModal from './components/modals/CommunicationModal';
+import ResumeViewerModal from './components/modals/ResumeViewerModal';
 
 
 const App: React.FC = () => {
@@ -41,6 +42,8 @@ const App: React.FC = () => {
     candidate: Candidate | null;
     type: 'email' | 'whatsapp';
   }>({ isOpen: false, candidate: null, type: 'email' });
+  
+  const [resumeViewerState, setResumeViewerState] = useState<{isOpen: boolean, file: File | null}>({ isOpen: false, file: null });
 
 
   // State to auto-expand a candidate in TestView
@@ -135,6 +138,11 @@ const App: React.FC = () => {
     setDetailsModalOpen(false);
   };
   
+  const handleOpenResumeViewer = (file: File) => {
+    setDetailsModalOpen(false); // Close details modal
+    setResumeViewerState({ isOpen: true, file: file });
+  };
+
   const handleViewChange = (view: View) => {
     if (activeView === 'tests' && view !== 'tests') {
         setInitialExpandedInTests(null);
@@ -210,6 +218,7 @@ const App: React.FC = () => {
         onStageChangeRequest={handleStageChangeRequest}
         onNavigateToTests={handleNavigateToTests}
         onOpenCommunicationModal={handleOpenCommunicationModal}
+        onViewResume={handleOpenResumeViewer}
       />
       {user?.isAdmin && (
         <SettingsModal 
@@ -234,6 +243,11 @@ const App: React.FC = () => {
             actionType="general"
         />
       )}
+      <ResumeViewerModal
+        isOpen={resumeViewerState.isOpen}
+        onClose={() => setResumeViewerState({ isOpen: false, file: null })}
+        file={resumeViewerState.file}
+      />
     </>
   );
 };

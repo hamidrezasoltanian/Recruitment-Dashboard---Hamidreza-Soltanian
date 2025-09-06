@@ -5,6 +5,7 @@ import { useTemplates } from '../../contexts/TemplateContext';
 import { templateService } from '../../services/templateService';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useToast } from '../../contexts/ToastContext';
+import { EmailIcon, WhatsappIcon } from '../ui/Icons';
 
 interface StageChangeCommunicationModalProps {
   isOpen: boolean;
@@ -133,15 +134,17 @@ const StageChangeCommunicationModal: React.FC<StageChangeCommunicationModalProps
                         type="button"
                         onClick={() => setCommunicationType('email')}
                         className={`relative inline-flex items-center px-4 py-2 rounded-r-md border border-gray-300 text-sm font-medium transition-colors ${communicationType === 'email' ? 'bg-[var(--color-primary-600)] text-white z-10' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                        title="ایمیل"
                       >
-                        ایمیل
+                        <EmailIcon className="h-5 w-5" />
                       </button>
                       <button
                         type="button"
                         onClick={() => setCommunicationType('whatsapp')}
                         className={`-ml-px relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium transition-colors ${communicationType === 'whatsapp' ? 'bg-[var(--color-primary-600)] text-white z-10' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                        title="واتسپ"
                       >
-                        واتسپ
+                        <WhatsappIcon className="h-5 w-5" />
                       </button>
                     </div>
                   </div>

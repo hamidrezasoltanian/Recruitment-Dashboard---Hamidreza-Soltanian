@@ -3,6 +3,7 @@ import Modal from '../ui/Modal';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useCandidates } from '../../contexts/CandidatesContext';
 import { useToast } from '../../contexts/ToastContext';
+import { EmailIcon, WhatsappIcon } from '../ui/Icons';
 
 interface TestSelectionModalProps {
   isOpen: boolean;
@@ -107,8 +108,14 @@ const TestSelectionModal: React.FC<TestSelectionModalProps> = ({ isOpen, onClose
 
         <div className="flex justify-end gap-4 pt-4">
           <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 py-2 px-6 rounded-lg hover:bg-gray-300">انصراف</button>
-          <button type="button" onClick={() => handleSend('whatsapp')} className="bg-green-600 text-white py-2 px-6 rounded-lg hover:bg-green-700">ارسال با واتس‌اپ</button>
-          <button type="button" onClick={() => handleSend('email')} className="bg-[var(--color-primary-600)] text-white py-2 px-6 rounded-lg hover:bg-[var(--color-primary-700)]">ارسال با ایمیل</button>
+          <button type="button" onClick={() => handleSend('whatsapp')} className="bg-green-600 text-white py-2 px-6 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2">
+            <WhatsappIcon className="h-5 w-5" />
+            <span>ارسال با واتس‌اپ</span>
+          </button>
+          <button type="button" onClick={() => handleSend('email')} className="bg-[var(--color-primary-600)] text-white py-2 px-6 rounded-lg hover:bg-[var(--color-primary-700)] flex items-center justify-center gap-2">
+            <EmailIcon className="h-5 w-5" />
+            <span>ارسال با ایمیل</span>
+          </button>
         </div>
       </div>
     </Modal>

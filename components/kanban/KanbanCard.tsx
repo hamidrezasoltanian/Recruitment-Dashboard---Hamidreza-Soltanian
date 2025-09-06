@@ -3,6 +3,7 @@ import { useDraggable } from '@dnd-kit/core';
 import { Candidate } from '../../types';
 import StarRating from '../ui/StarRating';
 import { getJobColor } from '../../utils/colorUtils';
+import { WhatsappIcon } from '../ui/Icons';
 
 declare const persianDate: any;
 
@@ -106,7 +107,7 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ candidate, onViewDetails, onEdi
                 <p>موبایل: <span dir="ltr">{candidate.phone || 'ندارد'}</span></p>
                 {candidate.phone && (
                     <a href={`https://wa.me/${whatsappNumber}`} target="_blank" rel="noopener noreferrer" className="text-green-500 hover:text-green-600" title="ارسال پیام در واتس‌اپ" data-action="whatsapp">
-                       <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 12c0 1.74.44 3.37 1.25 4.81L2 22l5.34-1.38c1.38.75 2.94 1.18 4.57 1.18h.01c5.46 0 9.91-4.45 9.91-9.91C21.96 6.45 17.5 2 12.04 2zM9.53 8.3c.24-.12.55-.21.77-.23.29-.03.58.13.8.38.22.25.77 1.02.77 1.02s.22.25.34.38c.12.12.25.14.38.12s.8-.38.8-.38l.38-.18c.22-.12.38-.06.55.12l.77.9c.17.17.21.36.14.55s-.3.55-.42.67c-.12.12-.25.18-.38.18s-.3-.03-.3-.03l-1.15-.67c-.22-.12-.47-.03-.6.22l-.67.83c-.15.18-.34.25-.53.21s-.42-.22-.74-.42c-1.9-1.15-3.17-3.23-3.26-3.38-.09-.15-.77-1.02-.77-1.02s-.12-.25 0-.47c.12-.22.25-.28.34-.34z"/></svg>
+                       <WhatsappIcon className="w-5 h-5" />
                     </a>
                 )}
             </div>
