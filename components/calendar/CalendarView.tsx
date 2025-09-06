@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useCandidates } from '../../contexts/CandidatesContext';
 import { Candidate } from '../../types';
+import { getJobColor } from '../../utils/colorUtils';
 
 // Let TypeScript know about the global persianDate object
 declare const persianDate: any;
@@ -37,7 +38,15 @@ const CalendarView: React.FC<CalendarViewProps> = ({ onViewDetails }) => {
   
   const getCandidatesForDay = (day: number) => {
       const dateStr = `${monthData.year}/${String(monthData.month).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
-      return candidatesWithInterview.filter(c => c.interviewDate === dateStr);
+      return candidatesWithInterview
+        .filter(c => c.interviewDate === dateStr)
+        .sort((a, b) => {
+          // Sort by interview time, putting candidates without a time at the end
+          if (a.interviewTime && b.interviewTime) {
+            return a.interviewTime.localeCompare(b.interviewTime);
+          }
+          return a.interviewTime ? -1 : 1;
+        });
   };
 
   const weekDays = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
@@ -62,12 +71,24 @@ const CalendarView: React.FC<CalendarViewProps> = ({ onViewDetails }) => {
             return (
                 <div key={day} className="border rounded-md border-gray-200 bg-gray-50 p-2 min-h-[120px] flex flex-col">
                     <span className={`w-8 h-8 flex items-center justify-center rounded-full text-sm ${isToday ? 'bg-[var(--color-primary-600)] text-white font-bold' : ''}`}>{day}</span>
-                    <div className="flex-grow mt-1 space-y-1 overflow-y-auto">
-                        {dayCandidates.map(c => (
-                            <div key={c.id} onClick={() => onViewDetails(c)} className="bg-blue-100 text-blue-800 text-xs p-1 rounded-md cursor-pointer hover:bg-blue-200 truncate">
-                                {c.name}
+                    <div className="flex-grow mt-1 space-y-1 overflow-y-auto kanban-cards pr-1"> {/* Re-using kanban-cards for custom scrollbar */}
+                        {dayCandidates.map(c => {
+                          const jobColor = getJobColor(c.position);
+                          return (
+                            <div 
+                              key={c.id} 
+                              onClick={() => onViewDetails(c)} 
+                              className="bg-white text-right p-1.5 rounded-md cursor-pointer hover:shadow-md transition-shadow border-r-4"
+                              style={{ borderColor: jobColor }}
+                            >
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-bold text-gray-800 truncate pr-1">{c.name}</span>
+                                    {c.interviewTime && <span className="text-xs font-semibold text-white bg-[var(--color-primary-500)] px-1.5 py-0.5 rounded">{c.interviewTime}</span>}
+                                </div>
+                                <p className="text-[10px] text-gray-500 mt-1 truncate pr-1">{c.position}</p>
                             </div>
-                        ))}
+                          )
+                        })}
                     </div>
                 </div>
             )
