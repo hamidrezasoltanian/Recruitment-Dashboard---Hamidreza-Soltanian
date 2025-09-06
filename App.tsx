@@ -31,7 +31,7 @@ const App: React.FC = () => {
   const [initialStage, setInitialStage] = useState<StageId>('inbox');
   
   const [isDetailsModalOpen, setDetailsModalOpen] = useState(false);
-  const [candidateToView, setCandidateToView] = useState<Candidate | null>(null);
+  const [candidateToViewId, setCandidateToViewId] = useState<string | null>(null);
 
   const [isSettingsModalOpen, setSettingsModalOpen] = useState(false);
   
@@ -89,6 +89,10 @@ const App: React.FC = () => {
     return processedCandidates;
 }, [candidates, filters, sortBy]);
 
+  const candidateToView = useMemo(() => {
+    return candidateToViewId ? candidates.find(c => c.id === candidateToViewId) : null;
+  }, [candidates, candidateToViewId]);
+
 
   const handleOpenAddModal = (stage?: StageId) => {
     setCandidateToEdit(null);
@@ -97,16 +101,21 @@ const App: React.FC = () => {
   };
 
   const handleOpenEditModal = (candidate: Candidate) => {
-    setCandidateToView(null);
+    setCandidateToViewId(null);
     setDetailsModalOpen(false);
     setCandidateToEdit(candidate);
     setAddEditModalOpen(true);
   };
   
   const handleOpenDetailsModal = (candidate: Candidate) => {
-    setCandidateToView(candidate);
+    setCandidateToViewId(candidate.id);
     setDetailsModalOpen(true);
   };
+
+  const handleCloseDetailsModal = () => {
+    setDetailsModalOpen(false);
+    setCandidateToViewId(null);
+  }
 
   const handleSaveCandidate = (candidate: Candidate, resumeFile?: File) => {
     if (candidateToEdit) {
@@ -212,7 +221,7 @@ const App: React.FC = () => {
       />
       <CandidateDetailsModal
         isOpen={isDetailsModalOpen}
-        onClose={() => setDetailsModalOpen(false)}
+        onClose={handleCloseDetailsModal}
         candidate={candidateToView}
         onEdit={handleOpenEditModal}
         onStageChangeRequest={handleStageChangeRequest}
@@ -240,7 +249,6 @@ const App: React.FC = () => {
             onClose={() => setCommunicationConfig({ isOpen: false, candidate: null, type: 'email' })}
             candidate={communicationConfig.candidate}
             communicationType={communicationConfig.type}
-            actionType="general"
         />
       )}
       <ResumeViewerModal

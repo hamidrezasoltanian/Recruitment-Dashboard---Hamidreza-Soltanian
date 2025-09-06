@@ -11,7 +11,6 @@ interface CommunicationModalProps {
   onClose: () => void;
   candidate: Candidate;
   communicationType: 'email' | 'whatsapp';
-  actionType: 'offer' | 'invite' | 'general';
 }
 
 const CommunicationModal: React.FC<CommunicationModalProps> = ({
@@ -19,7 +18,6 @@ const CommunicationModal: React.FC<CommunicationModalProps> = ({
   onClose,
   candidate,
   communicationType,
-  actionType,
 }) => {
   const { templates } = useTemplates();
   const { companyProfile } = useSettings();
@@ -75,29 +73,26 @@ const CommunicationModal: React.FC<CommunicationModalProps> = ({
         addToast("پیام نمی‌تواند خالی باشد.", "error");
         return;
     }
-    if (actionType === 'offer' && !position) {
-        addToast("لطفا یک موقعیت شغلی انتخاب کنید.", "error");
-        return;
+
+    if (communicationType === 'email') {
+        const subject = `پیام از طرف ${companyProfile.name}`;
+        window.open(`mailto:${candidate.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`, '_blank');
+        addToast(`ایمیل برای ${candidate.name} آماده ارسال شد.`, 'success');
+    } else { // whatsapp
+        const whatsappNumber = candidate.phone ? candidate.phone.replace(/[^0-9]/g, '').replace(/^0/, '98') : '';
+        if (whatsappNumber) {
+            window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank');
+            addToast(`پیام واتسپ برای ${candidate.name} آماده ارسال شد.`, 'success');
+        } else {
+            addToast("شماره واتس‌اپ برای این متقاضی ثبت نشده.", "error");
+            return; // Don't proceed if no number
+        }
     }
-    // In a real app, this would integrate with an email/messaging service
-    console.log({
-        to: communicationType === 'email' ? candidate.email : candidate.phone,
-        type: communicationType,
-        message: message
-    });
-    alert(`پیام زیر (به صورت نمایشی) ارسال شد:\n\n${message}`);
+    
     onClose();
   };
   
-  const getActionText = () => {
-    switch (actionType) {
-        case 'offer': return 'پیشنهاد شغلی';
-        case 'invite': return 'دعوت به مصاحبه';
-        case 'general': return 'پیام سفارشی';
-        default: return '';
-    }
-  };
-  const title = `ارسال ${communicationType === 'email' ? 'ایمیل' : 'واتسپ'} ${getActionText()}`;
+  const title = `ارسال پیام سفارشی ${communicationType === 'email' ? 'ایمیل' : 'واتسپ'}`;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
@@ -118,7 +113,7 @@ const CommunicationModal: React.FC<CommunicationModalProps> = ({
           {relevantTemplates.length === 0 && <p className="text-xs text-red-500 mt-1">هیچ قالب {communicationType === 'email' ? 'ایمیل' : 'واتسپ'} یافت نشد. لطفا از تنظیمات اضافه کنید.</p>}
         </div>
 
-        {actionType === 'offer' || (templateService.hasPlaceholder(templates.find(t => t.id === selectedTemplateId)?.content, 'position')) ? (
+        {templateService.hasPlaceholder(templates.find(t => t.id === selectedTemplateId)?.content, 'position') ? (
            <div>
              <label htmlFor="position-title" className="block text-sm font-medium text-gray-700">عنوان موقعیت شغلی</label>
              <select
