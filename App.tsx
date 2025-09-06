@@ -13,8 +13,6 @@ import AddEditCandidateModal from './components/modals/AddEditCandidateModal';
 import CandidateDetailsModal from './components/modals/CandidateDetailsModal';
 import SettingsModal from './components/modals/SettingsModal';
 import StageChangeCommunicationModal from './components/modals/StageChangeCommunicationModal';
-import SelectCandidateModal from './components/modals/SelectCandidateModal';
-import TestSelectionModal from './components/modals/TestSelectionModal';
 import DashboardSummary from './components/dashboard/DashboardSummary';
 import LoginScreen from './components/auth/LoginScreen';
 import KanbanControls from './components/kanban/KanbanControls';
@@ -45,10 +43,8 @@ const App: React.FC = () => {
   }>({ isOpen: false, candidate: null, type: 'email' });
 
 
-  // Test View States
-  const [testCandidateId, setTestCandidateId] = useState<string | null>(null);
-  const [isSelectCandidateModalOpen, setSelectCandidateModalOpen] = useState(false);
-  const [isTestSelectionModalOpen, setTestSelectionModalOpen] = useState(false);
+  // State to auto-expand a candidate in TestView
+  const [initialExpandedInTests, setInitialExpandedInTests] = useState<string | null>(null);
   
   // Filter and Sort States
   const [filters, setFilters] = useState({ search: '', position: '', source: '' });
@@ -129,7 +125,7 @@ const App: React.FC = () => {
   };
   
   const handleNavigateToTests = (candidateId: string) => {
-    setTestCandidateId(candidateId);
+    setInitialExpandedInTests(candidateId);
     setActiveView('tests');
     setDetailsModalOpen(false); // Close details modal if open
   };
@@ -138,15 +134,18 @@ const App: React.FC = () => {
     setCommunicationConfig({ isOpen: true, candidate, type });
     setDetailsModalOpen(false);
   };
+  
+  const handleViewChange = (view: View) => {
+    if (activeView === 'tests' && view !== 'tests') {
+        setInitialExpandedInTests(null);
+    }
+    setActiveView(view);
+  };
 
   const renderView = () => {
     switch (activeView) {
       case 'tests':
-        return <TestView 
-                  selectedCandidateId={testCandidateId} 
-                  onSelectCandidateClick={() => setSelectCandidateModalOpen(true)}
-                  onSendTestClick={() => setTestSelectionModalOpen(true)}
-               />;
+        return <TestView initialExpandedCandidateId={initialExpandedInTests} />;
       case 'calendar':
         return <CalendarView onViewDetails={handleOpenDetailsModal} />;
       case 'archive':
@@ -183,7 +182,7 @@ const App: React.FC = () => {
     <>
       <div className="min-h-screen flex flex-col">
         <Header onSettingsClick={() => setSettingsModalOpen(true)} onAddCandidateClick={() => handleOpenAddModal()} />
-        <Tabs activeView={activeView} setActiveView={setActiveView} />
+        <Tabs activeView={activeView} setActiveView={handleViewChange} />
         <main className="p-4 md:p-6 lg:p-8 flex-grow">
             {activeView === 'dashboard' && <DashboardSummary candidates={candidates} />}
             {renderView()}
@@ -234,22 +233,6 @@ const App: React.FC = () => {
             communicationType={communicationConfig.type}
             actionType="general"
         />
-      )}
-      {/* Test Modals */}
-      <SelectCandidateModal
-        isOpen={isSelectCandidateModalOpen}
-        onClose={() => setSelectCandidateModalOpen(false)}
-        onSelect={(id) => {
-          setTestCandidateId(id);
-          setSelectCandidateModalOpen(false);
-        }}
-      />
-      {testCandidateId && (
-          <TestSelectionModal
-            isOpen={isTestSelectionModalOpen}
-            onClose={() => setTestSelectionModalOpen(false)}
-            candidateId={testCandidateId}
-          />
       )}
     </>
   );

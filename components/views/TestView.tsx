@@ -1,21 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useCandidates } from '../../contexts/CandidatesContext';
 import { useSettings } from '../../contexts/SettingsContext';
 import { TestResult, TestLibraryItem, Candidate } from '../../types';
 import { dbService } from '../../services/dbService';
 import { useToast } from '../../contexts/ToastContext';
+import SelectCandidateModal from '../modals/SelectCandidateModal';
+import TestSelectionModal from '../modals/TestSelectionModal';
 
-interface TestViewProps {
-  selectedCandidateId: string | null;
-  onSelectCandidateClick: () => void;
-  onSendTestClick: () => void;
-}
-
-const TestResultGroup: React.FC<{
+interface TestResultGroupProps {
   test: TestLibraryItem;
   result: TestResult | undefined;
   candidateId: string;
-}> = ({ test, result, candidateId }) => {
+}
+
+const TestResultGroup: React.FC<TestResultGroupProps> = ({ test, result, candidateId }) => {
     const { updateTestResult } = useCandidates();
     const { addToast } = useToast();
 
@@ -37,6 +35,8 @@ const TestResultGroup: React.FC<{
                 } catch (e) {
                     console.error("Failed to load test file preview", e);
                 }
+            } else {
+                setFilePreview(null);
             }
         };
         loadPreview();
@@ -47,6 +47,13 @@ const TestResultGroup: React.FC<{
             }
         }
     }, [result?.file, testFileId]);
+    
+    // Update local state if result prop changes
+    useEffect(() => {
+        setScore(result?.score || '');
+        setNotes(result?.notes || '');
+        setStatus(result?.status || 'not_sent');
+    }, [result]);
 
 
     const handleSave = () => {
@@ -68,7 +75,6 @@ const TestResultGroup: React.FC<{
                     file: { name: file.name, type: file.type }
                 });
                 addToast(`فایل برای آزمون ${test.name} آپلود شد.`, 'success');
-                // Refresh preview
                 if (filePreview) URL.revokeObjectURL(filePreview);
                 setFilePreview(URL.createObjectURL(file));
             } catch (err) {
@@ -144,55 +150,125 @@ const TestResultGroup: React.FC<{
     )
 }
 
-const TestView: React.FC<TestViewProps> = ({ selectedCandidateId, onSelectCandidateClick, onSendTestClick }) => {
+interface TestViewProps {
+  initialExpandedCandidateId: string | null;
+}
+
+const TestView: React.FC<TestViewProps> = ({ initialExpandedCandidateId }) => {
   const { candidates } = useCandidates();
   const { testLibrary } = useSettings();
-  const [candidate, setCandidate] = useState<Candidate | null>(null);
-
+  
+  const [expandedCandidateId, setExpandedCandidateId] = useState<string | null>(initialExpandedCandidateId);
+  const [isSelectCandidateModalOpen, setSelectCandidateModalOpen] = useState(false);
+  const [candidateToSendTest, setCandidateToSendTest] = useState<string | null>(null);
+  
   useEffect(() => {
-    if (selectedCandidateId) {
-      const found = candidates.find(c => c.id === selectedCandidateId);
-      setCandidate(found || null);
-    } else {
-      setCandidate(null);
-    }
-  }, [selectedCandidateId, candidates]);
+    setExpandedCandidateId(initialExpandedCandidateId);
+  }, [initialExpandedCandidateId]);
 
-  if (!candidate) {
-    return (
-      <div className="text-center p-10 bg-white rounded-lg shadow-sm">
-        <h3 className="text-xl font-bold text-gray-700">مدیریت آزمون‌ها</h3>
-        <p className="mt-2 text-gray-500">برای مشاهده، ارسال یا ثبت نتایج آزمون، لطفا ابتدا یک متقاضی را انتخاب کنید.</p>
-        <button onClick={onSelectCandidateClick} className="mt-4 bg-[var(--color-primary-600)] text-white font-bold py-2 px-5 rounded-lg hover:bg-[var(--color-primary-700)]">
-          انتخاب متقاضی
-        </button>
-      </div>
+  const candidatesWithSentTests = useMemo(() => {
+    const activeStages = ['hired', 'rejected', 'archived'];
+    return candidates.filter(c =>
+      c.testResults && c.testResults.length > 0 && !activeStages.includes(c.stage)
     );
-  }
+  }, [candidates]);
+  
+  const handleSelectCandidateForNewTest = (candidateId: string) => {
+    setCandidateToSendTest(candidateId);
+    setSelectCandidateModalOpen(false);
+  };
+  
+  const toggleExpand = (candidateId: string) => {
+    setExpandedCandidateId(prevId => prevId === candidateId ? null : candidateId);
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap justify-between items-center gap-4 bg-white p-4 rounded-lg shadow-sm">
         <div>
-            <h2 className="text-2xl font-bold text-gray-800">مدیریت آزمون: {candidate.name}</h2>
-            <p className="text-sm text-gray-500">{candidate.position}</p>
+          <h2 className="text-2xl font-bold text-gray-800">مدیریت آزمون‌ها</h2>
+          <p className="text-sm text-gray-500">مشاهده و ثبت نتایج آزمون‌های ارسال شده برای متقاضیان فعال.</p>
         </div>
         <div>
-          <button onClick={onSelectCandidateClick} className="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 mr-2">تغییر متقاضی</button>
-          <button onClick={onSendTestClick} className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600">ارسال آزمون جدید</button>
+          <button 
+            onClick={() => setSelectCandidateModalOpen(true)} 
+            className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600"
+          >
+            ارسال آزمون به متقاضی
+          </button>
         </div>
       </div>
 
-      <div className="space-y-4">
-        {testLibrary.map(test => (
-          <TestResultGroup 
-            key={test.id} 
-            test={test} 
-            result={(candidate.testResults || []).find(r => r.testId === test.id)}
-            candidateId={candidate.id}
-          />
-        ))}
-      </div>
+      {candidatesWithSentTests.length === 0 ? (
+        <div className="text-center p-10 bg-white rounded-lg shadow-sm">
+          <h3 className="text-xl font-bold text-gray-700">هیچ آزمونی ارسال نشده است</h3>
+          <p className="mt-2 text-gray-500">برای ارسال آزمون به یک متقاضی، از دکمه "ارسال آزمون به متقاضی" استفاده کنید.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {candidatesWithSentTests.map(candidate => {
+            const candidateTests = candidate.testResults?.map(result => ({
+                result,
+                testDetails: testLibrary.find(t => t.id === result.testId)
+            })).filter(item => item.testDetails);
+
+            const pendingCount = candidateTests?.filter(t => t.result.status === 'pending').length || 0;
+
+            return (
+              <div key={candidate.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                <div 
+                  onClick={() => toggleExpand(candidate.id)} 
+                  className="p-4 cursor-pointer hover:bg-gray-50 flex justify-between items-center"
+                >
+                  <div>
+                    <p className="font-bold text-lg text-[var(--color-primary-700)]">{candidate.name}</p>
+                    <p className="text-sm text-gray-600">{candidate.position}</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm font-medium text-gray-700">
+                      {candidateTests?.length || 0} آزمون
+                      {pendingCount > 0 && ` (${pendingCount} در انتظار)`}
+                    </span>
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-gray-500 transition-transform ${expandedCandidateId === candidate.id ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+                
+                {expandedCandidateId === candidate.id && (
+                  <div className="p-4 border-t border-gray-200 bg-gray-50 space-y-4">
+                    {candidateTests && candidateTests.length > 0 ? (
+                        candidateTests.map(({result, testDetails}) => (
+                            <TestResultGroup
+                                key={testDetails!.id}
+                                test={testDetails!}
+                                result={result}
+                                candidateId={candidate.id}
+                            />
+                        ))
+                    ) : (
+                        <p className="text-sm text-gray-500">آزمونی برای این متقاضی ثبت نشده است.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      
+      <SelectCandidateModal
+        isOpen={isSelectCandidateModalOpen}
+        onClose={() => setSelectCandidateModalOpen(false)}
+        onSelect={handleSelectCandidateForNewTest}
+      />
+      {candidateToSendTest && (
+        <TestSelectionModal
+          isOpen={!!candidateToSendTest}
+          onClose={() => setCandidateToSendTest(null)}
+          candidateId={candidateToSendTest}
+        />
+      )}
     </div>
   );
 };
