@@ -243,59 +243,52 @@ const StageManagementPanel: React.FC = () => {
 const TemplateManagementPanel: React.FC = () => {
   const { templates, addTemplate, updateTemplate, deleteTemplate } = useTemplates();
   const { stages } = useSettings();
-  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
-  const [isAdding, setIsAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null | 'new'>(null);
+  
+  // Form state
   const [name, setName] = useState('');
   const [content, setContent] = useState('');
   const [type, setType] = useState<'email' | 'whatsapp'>('email');
   const [stageId, setStageId] = useState<string>('');
+  
   const [isAiLoading, setIsAiLoading] = useState(false);
   const { addToast } = useToast();
 
-  React.useEffect(() => {
-    if (editingTemplate) {
-      setName(editingTemplate.name);
-      setContent(editingTemplate.content);
-      setType(editingTemplate.type);
-      setStageId(editingTemplate.stageId || '');
-    } else {
-      setName('');
-      setContent('');
-      setType('email');
-      setStageId('');
-    }
-  }, [editingTemplate]);
+  const handleAddNewClick = () => {
+    setEditingId('new');
+    setName('');
+    setContent('');
+    setType('email');
+    setStageId('');
+  };
 
-  const handleSelectTemplate = (template: Template) => {
-    setIsAdding(false);
-    setEditingTemplate(template);
+  const handleEditClick = (template: Template) => {
+    setEditingId(template.id);
+    setName(template.name);
+    setContent(template.content);
+    setType(template.type);
+    setStageId(template.stageId || '');
   };
-  
-  const handleAddNew = () => {
-    setIsAdding(true);
-    setEditingTemplate(null);
-  };
-  
+
   const handleCancel = () => {
-      setIsAdding(false);
-      setEditingTemplate(null);
-  }
+    setEditingId(null);
+  };
 
   const handleSave = () => {
     const templateData = { name, content, type, stageId: stageId || undefined };
-    if (isAdding) {
+    if (editingId === 'new') {
       addTemplate(templateData);
-    } else if (editingTemplate) {
-      updateTemplate({ ...editingTemplate, ...templateData });
+    } else if (editingId) {
+      updateTemplate({ id: editingId, ...templateData });
     }
-    handleCancel();
+    setEditingId(null);
   };
   
   const handleDelete = (id: string) => {
       if(window.confirm('آیا از حذف این قالب مطمئن هستید؟')) {
           deleteTemplate(id);
-          if (editingTemplate?.id === id) {
-              handleCancel();
+          if (editingId === id) {
+              setEditingId(null);
           }
       }
   };
@@ -315,68 +308,98 @@ const TemplateManagementPanel: React.FC = () => {
           setIsAiLoading(false);
       }
   };
+  
+  const renderForm = () => (
+    <div className="bg-gray-50 rounded-lg p-4 mt-2 border border-[var(--color-primary-200)]">
+      <h3 className="font-bold mb-4">{editingId === 'new' ? 'افزودن قالب جدید' : 'ویرایش قالب'}</h3>
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">نام قالب (مثلا: ایمیل پیشنهاد شغلی)</label>
+          <input type="text" value={name} onChange={e => setName(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3" />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">نوع</label>
+              <select value={type} onChange={e => setType(e.target.value as 'email' | 'whatsapp')} className="mt-1 block w-full border border-gray-300 bg-white rounded-md shadow-sm py-2 px-3">
+                <option value="email">ایمیل</option>
+                <option value="whatsapp">واتسپ</option>
+              </select>
+            </div>
+             <div>
+              <label className="block text-sm font-medium text-gray-700">مربوط به مرحله (اختیاری)</label>
+              <select value={stageId} onChange={e => setStageId(e.target.value)} className="mt-1 block w-full border border-gray-300 bg-white rounded-md shadow-sm py-2 px-3">
+                <option value="">عمومی</option>
+                {stages.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
+              </select>
+            </div>
+        </div>
+        <div>
+           <div className="flex justify-between items-center">
+              <label className="block text-sm font-medium text-gray-700">محتوای قالب</label>
+              <button onClick={handleGenerateWithAI} disabled={isAiLoading} className="text-sm text-[var(--color-primary-600)] hover:text-[var(--color-primary-800)] disabled:opacity-50">
+                  {isAiLoading ? 'در حال پردازش...' : 'تولید با AI ✨'}
+              </button>
+           </div>
+          <textarea value={content} onChange={e => setContent(e.target.value)} rows={8} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3" placeholder="محتوای خود را وارد کنید یا با AI تولید کنید. از متغیرها استفاده کنید."></textarea>
+           <p className="text-xs text-gray-500 mt-1">{'متغیرهای مجاز: `{{candidateName}}`, `{{position}}`, `{{interviewDate}}`, `{{companyName}}`, `{{companyAddress}}`, `{{stageName}}`'}</p>
+        </div>
+        <div className="flex justify-end gap-2">
+          <button onClick={handleCancel} className="bg-gray-200 text-gray-800 py-2 px-4 rounded-lg">انصراف</button>
+          <button onClick={handleSave} className="bg-[var(--color-primary-600)] text-white py-2 px-4 rounded-lg">ذخیره</button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div className="md:col-span-1">
-        <h3 className="font-bold mb-2">لیست قالب‌ها</h3>
-        <div className="space-y-2">
-          {templates.map(t => (
-            <div key={t.id} className={`p-2 rounded-md cursor-pointer flex justify-between items-center ${editingTemplate?.id === t.id ? 'bg-[var(--color-primary-100)]' : 'hover:bg-gray-100'}`} onClick={() => handleSelectTemplate(t)}>
-              <span className="truncate">{t.name}</span>
-              <button onClick={(e) => { e.stopPropagation(); handleDelete(t.id); }} className="text-red-500 hover:text-red-700 text-xs px-1 flex-shrink-0">حذف</button>
-            </div>
-          ))}
-        </div>
-        <button onClick={handleAddNew} className={`mt-4 w-full font-bold py-2 px-4 rounded-lg transition-colors ${isAdding ? 'bg-[var(--color-primary-200)] text-[var(--color-primary-800)]' : 'bg-[var(--color-primary-100)] text-[var(--color-primary-700)] hover:bg-[var(--color-primary-200)]'}`}>+ افزودن قالب جدید</button>
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-bold text-gray-800">مدیریت قالب‌ها</h3>
+        {editingId === null && (
+          <button 
+            onClick={handleAddNewClick} 
+            className="bg-[var(--color-primary-600)] text-white font-bold py-2 px-4 rounded-lg hover:bg-[var(--color-primary-700)] transition-colors text-sm"
+          >
+            + افزودن قالب جدید
+          </button>
+        )}
       </div>
 
-      <div className="md:col-span-2">
-        {(editingTemplate || isAdding) && (
-          <div className="p-4 bg-gray-50 rounded-lg">
-            <h3 className="font-bold mb-4">{isAdding ? 'افزودن قالب جدید' : `ویرایش قالب: ${editingTemplate?.name}`}</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">نام قالب (مثلا: ایمیل پیشنهاد شغلی)</label>
-                <input type="text" value={name} onChange={e => setName(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">نوع</label>
-                    <select value={type} onChange={e => setType(e.target.value as 'email' | 'whatsapp')} className="mt-1 block w-full border border-gray-300 bg-white rounded-md shadow-sm py-2 px-3">
-                      <option value="email">ایمیل</option>
-                      <option value="whatsapp">واتسپ</option>
-                    </select>
+      {editingId === 'new' && renderForm()}
+
+      <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+        {templates.map(template => (
+          <div key={template.id} className="p-4 bg-white rounded-lg shadow-sm border border-gray-200">
+            {editingId === template.id ? (
+              renderForm()
+            ) : (
+              <div className="flex justify-between items-start gap-4">
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-gray-900 break-words">{template.name}</p>
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${template.type === 'email' ? 'bg-sky-100 text-sky-800' : 'bg-green-100 text-green-800'}`}>
+                          {template.type === 'email' ? 'ایمیل' : 'واتسپ'}
+                      </span>
+                      {template.stageId && (
+                          <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-200 text-gray-700">
+                              مرحله: {stages.find(s => s.id === template.stageId)?.title || 'نامشخص'}
+                          </span>
+                      )}
                   </div>
-                   <div>
-                    <label className="block text-sm font-medium text-gray-700">مربوط به مرحله (اختیاری)</label>
-                    <select value={stageId} onChange={e => setStageId(e.target.value)} className="mt-1 block w-full border border-gray-300 bg-white rounded-md shadow-sm py-2 px-3">
-                      <option value="">عمومی</option>
-                      {stages.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
-                    </select>
-                  </div>
+                </div>
+                <div className="flex-shrink-0 flex items-center gap-3">
+                  <button onClick={() => handleEditClick(template)} className="text-blue-600 hover:text-blue-800 text-sm font-medium">ویرایش</button>
+                  <button onClick={() => handleDelete(template.id)} className="text-red-500 hover:text-red-700 text-sm font-medium">حذف</button>
+                </div>
               </div>
-              <div>
-                 <div className="flex justify-between items-center">
-                    <label className="block text-sm font-medium text-gray-700">محتوای قالب</label>
-                    <button onClick={handleGenerateWithAI} disabled={isAiLoading} className="text-sm text-[var(--color-primary-600)] hover:text-[var(--color-primary-800)] disabled:opacity-50">
-                        {isAiLoading ? 'در حال پردازش...' : 'تولید با AI ✨'}
-                    </button>
-                 </div>
-                <textarea value={content} onChange={e => setContent(e.target.value)} rows={8} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3" placeholder="محتوای خود را وارد کنید یا با AI تولید کنید. از متغیرها استفاده کنید."></textarea>
-                 <p className="text-xs text-gray-500 mt-1">{'متغیرهای مجاز: `{{candidateName}}`, `{{position}}`, `{{interviewDate}}`, `{{companyName}}`, `{{companyAddress}}`, `{{stageName}}`'}</p>
-              </div>
-              <div className="flex justify-end gap-2">
-                <button onClick={handleCancel} className="bg-gray-200 text-gray-800 py-2 px-4 rounded-lg">انصراف</button>
-                <button onClick={handleSave} className="bg-[var(--color-primary-600)] text-white py-2 px-4 rounded-lg">ذخیره</button>
-              </div>
-            </div>
+            )}
           </div>
-        )}
+        ))}
       </div>
     </div>
   );
 };
+
 
 const CompanyProfilePanel: React.FC = () => {
     const { companyProfile, updateCompanyDetails, addJobPosition, updateJobPosition, deleteJobPosition } = useSettings();
