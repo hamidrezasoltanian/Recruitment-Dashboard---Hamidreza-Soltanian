@@ -132,7 +132,7 @@ const CommunicationModal: React.FC<CommunicationModalProps> = ({
                     <option key={job.id} value={job.title}>{job.title}</option>
                 ))}
               </select>
-              {companyProfile.jobPositions.length === 0 && <p className="text-xs text-red-500 mt-1">هیچ موقعیت شغلی تعریف نشده. لطفا از تنظیمات > پروفایل شرکت اضافه کنید.</p>}
+              {companyProfile.jobPositions.length === 0 && <p className="text-xs text-red-500 mt-1">هیچ موقعیت شغلی تعریف نشده. لطفا از تنظیمات {' > '} پروفایل شرکت اضافه کنید.</p>}
            </div>
         ) : null}
 
