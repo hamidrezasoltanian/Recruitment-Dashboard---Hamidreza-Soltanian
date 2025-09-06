@@ -18,6 +18,7 @@ import TestSelectionModal from './components/modals/TestSelectionModal';
 import DashboardSummary from './components/dashboard/DashboardSummary';
 import LoginScreen from './components/auth/LoginScreen';
 import KanbanControls from './components/kanban/KanbanControls';
+import CommunicationModal from './components/modals/CommunicationModal';
 
 
 const App: React.FC = () => {
@@ -36,6 +37,13 @@ const App: React.FC = () => {
   const [isSettingsModalOpen, setSettingsModalOpen] = useState(false);
   
   const [stageChangeInfo, setStageChangeInfo] = useState<StageChangeInfo | null>(null);
+
+  const [communicationConfig, setCommunicationConfig] = useState<{
+    isOpen: boolean;
+    candidate: Candidate | null;
+    type: 'email' | 'whatsapp';
+  }>({ isOpen: false, candidate: null, type: 'email' });
+
 
   // Test View States
   const [testCandidateId, setTestCandidateId] = useState<string | null>(null);
@@ -126,6 +134,11 @@ const App: React.FC = () => {
     setDetailsModalOpen(false); // Close details modal if open
   };
 
+  const handleOpenCommunicationModal = (candidate: Candidate, type: 'email' | 'whatsapp') => {
+    setCommunicationConfig({ isOpen: true, candidate, type });
+    setDetailsModalOpen(false);
+  };
+
   const renderView = () => {
     switch (activeView) {
       case 'tests':
@@ -197,6 +210,7 @@ const App: React.FC = () => {
         onEdit={handleOpenEditModal}
         onStageChangeRequest={handleStageChangeRequest}
         onNavigateToTests={handleNavigateToTests}
+        onOpenCommunicationModal={handleOpenCommunicationModal}
       />
       {user?.isAdmin && (
         <SettingsModal 
@@ -210,6 +224,15 @@ const App: React.FC = () => {
           onClose={() => setStageChangeInfo(null)}
           stageChangeInfo={stageChangeInfo}
           onConfirm={handleConfirmStageChange}
+        />
+      )}
+      {communicationConfig.candidate && (
+        <CommunicationModal
+            isOpen={communicationConfig.isOpen}
+            onClose={() => setCommunicationConfig({ isOpen: false, candidate: null, type: 'email' })}
+            candidate={communicationConfig.candidate}
+            communicationType={communicationConfig.type}
+            actionType="general"
         />
       )}
       {/* Test Modals */}

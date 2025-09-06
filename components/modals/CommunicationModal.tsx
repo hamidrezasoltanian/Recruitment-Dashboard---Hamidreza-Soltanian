@@ -11,7 +11,7 @@ interface CommunicationModalProps {
   onClose: () => void;
   candidate: Candidate;
   communicationType: 'email' | 'whatsapp';
-  actionType: 'offer' | 'invite';
+  actionType: 'offer' | 'invite' | 'general';
 }
 
 const CommunicationModal: React.FC<CommunicationModalProps> = ({
@@ -43,15 +43,11 @@ const CommunicationModal: React.FC<CommunicationModalProps> = ({
         setSelectedTemplateId('');
       }
       
-      if (companyProfile.jobPositions.length > 0) {
-        setPosition(companyProfile.jobPositions[0].title);
-      } else {
-        setPosition('');
-      }
+      setPosition(candidate.position || (companyProfile.jobPositions.length > 0 ? companyProfile.jobPositions[0].title : ''));
       
       setMessage('');
     }
-  }, [isOpen, relevantTemplates, companyProfile]);
+  }, [isOpen, relevantTemplates, companyProfile, candidate]);
 
   useEffect(() => {
     if (!selectedTemplateId) {
@@ -93,7 +89,15 @@ const CommunicationModal: React.FC<CommunicationModalProps> = ({
     onClose();
   };
   
-  const title = `ارسال ${communicationType === 'email' ? 'ایمیل' : 'واتسپ'} ${actionType === 'offer' ? 'پیشنهاد شغلی' : 'دعوت به مصاحبه'}`;
+  const getActionText = () => {
+    switch (actionType) {
+        case 'offer': return 'پیشنهاد شغلی';
+        case 'invite': return 'دعوت به مصاحبه';
+        case 'general': return 'پیام سفارشی';
+        default: return '';
+    }
+  };
+  const title = `ارسال ${communicationType === 'email' ? 'ایمیل' : 'واتسپ'} ${getActionText()}`;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>

@@ -19,9 +19,10 @@ interface CandidateDetailsModalProps {
   onEdit: (candidate: Candidate) => void;
   onStageChangeRequest: (info: StageChangeInfo) => void;
   onNavigateToTests: (candidateId: string) => void;
+  onOpenCommunicationModal: (candidate: Candidate, type: 'email' | 'whatsapp') => void;
 }
 
-const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, onClose, candidate, onEdit, onStageChangeRequest, onNavigateToTests }) => {
+const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, onClose, candidate, onEdit, onStageChangeRequest, onNavigateToTests, onOpenCommunicationModal }) => {
   const { addComment, updateCandidate, addCustomHistoryEntry } = useCandidates();
   const { companyProfile, stages } = useSettings();
   const { user } = useAuth();
@@ -65,11 +66,6 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
   }
 
   const handleUpdateInterview = () => {
-      const isInterviewStage = candidate.stage === 'interview-1' || candidate.stage === 'interview-2';
-      if (!isInterviewStage) {
-          addToast(`لطفا ابتدا متقاضی را به مرحله مصاحبه منتقل کنید.`, 'error');
-          return;
-      }
       if (!interviewDate) {
         addToast('لطفا تاریخ را انتخاب کنید.', 'error');
         return;
@@ -240,6 +236,10 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
                           {isDownloading ? 'در حال دانلود...' : 'دانلود رزومه'}
                       </button>
                    )}
+                   <div className="border-t pt-3 mt-3 space-y-3 border-gray-300">
+                      <button onClick={() => onOpenCommunicationModal(candidate, 'email')} className="w-full text-white bg-sky-600 hover:bg-sky-700 rounded-lg py-2 transition-colors">ارسال ایمیل سفارشی</button>
+                      <button onClick={() => onOpenCommunicationModal(candidate, 'whatsapp')} className="w-full text-white bg-teal-600 hover:bg-teal-700 rounded-lg py-2 transition-colors">ارسال واتسپ سفارشی</button>
+                   </div>
               </div>
           </div>
         </div>

@@ -59,8 +59,6 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
     }
   }, [candidateToEdit, initialStage, isOpen, availableSources, companyProfile]);
   
-  const isInterviewStage = stage === 'interview-1' || stage === 'interview-2';
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const newCandidate: Candidate = {
@@ -70,8 +68,8 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
       comments: candidateToEdit?.comments || [],
       ...candidateToEdit,
       name, email, phone, position, source, stage, rating,
-      interviewDate: isInterviewStage ? interviewDate : undefined,
-      interviewTime: isInterviewStage ? interviewTime : undefined,
+      interviewDate: interviewDate || undefined,
+      interviewTime: interviewTime || undefined,
       hasResume: !!resumeFile || candidateToEdit?.hasResume,
     };
     onSave(newCandidate, resumeFile);
@@ -128,18 +126,16 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
               ))}
             </select>
           </div>
-           {isInterviewStage && (
-             <div className="md:col-span-2 grid grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">تاریخ مصاحبه</label>
-                    <KamaDatePicker value={interviewDate} onChange={handleDateChange} />
-                </div>
-                <div>
-                    <label htmlFor="interviewTime" className="block text-sm font-medium text-gray-700 mb-1">ساعت مصاحبه</label>
-                    <input type="time" id="interviewTime" value={interviewTime} onChange={e => setInterviewTime(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-3 px-3 focus:outline-none focus:ring-[var(--color-primary-500)] focus:border-[var(--color-primary-500)] sm:text-sm" />
-                </div>
-             </div>
-           )}
+           <div className="md:col-span-2 grid grid-cols-2 gap-4">
+              <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">تاریخ مصاحبه</label>
+                  <KamaDatePicker value={interviewDate} onChange={handleDateChange} />
+              </div>
+              <div>
+                  <label htmlFor="interviewTime" className="block text-sm font-medium text-gray-700 mb-1">ساعت مصاحبه</label>
+                  <input type="time" id="interviewTime" value={interviewTime} onChange={e => setInterviewTime(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm py-3 px-3 focus:outline-none focus:ring-[var(--color-primary-500)] focus:border-[var(--color-primary-500)] sm:text-sm" />
+              </div>
+           </div>
            <div>
               <label className="block text-sm font-medium text-gray-700">رزومه</label>
               <input ref={resumeInputRef} type="file" onChange={handleFileChange} accept=".pdf,.doc,.docx" className="mt-1 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[var(--color-primary-50)] file:text-[var(--color-primary-700)] hover:file:bg-[var(--color-primary-100)]"/>

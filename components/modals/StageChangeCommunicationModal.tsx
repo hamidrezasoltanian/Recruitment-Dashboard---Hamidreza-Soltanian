@@ -37,19 +37,26 @@ const StageChangeCommunicationModal: React.FC<StageChangeCommunicationModalProps
     return templates.find(t => t.stageId === newStage.id && t.type === 'whatsapp');
   }, [templates, newStage.id]);
   
+  const hasAnyTemplate = useMemo(() => !!emailTemplate || !!whatsappTemplate, [emailTemplate, whatsappTemplate]);
   const relevantTemplate = communicationType === 'email' ? emailTemplate : whatsappTemplate;
 
+  // Effect to initialize state when the modal opens for a new candidate/stage
   useEffect(() => {
-    // Set initial communication type when modal opens or stage changes
-    if(isOpen) {
-        if (emailTemplate) {
-            setCommunicationType('email');
-        } else if (whatsappTemplate) {
-            setCommunicationType('whatsapp');
-        }
+    if (isOpen) {
+      // Set the default communication type based on template availability
+      if (emailTemplate) {
+        setCommunicationType('email');
+      } else if (whatsappTemplate) {
+        setCommunicationType('whatsapp');
+      }
+      
+      // Enable the notification checkbox by default ONLY if a template exists
+      setSendNotification(hasAnyTemplate);
     }
-  }, [isOpen, emailTemplate, whatsappTemplate]);
-  
+  }, [isOpen, emailTemplate, whatsappTemplate, hasAnyTemplate]);
+
+  // Effect to update the message preview when dependencies change
+  // This no longer resets the user's checkbox preference
   useEffect(() => {
     if (relevantTemplate) {
       const finalMessage = templateService.replacePlaceholders(
@@ -63,10 +70,8 @@ const StageChangeCommunicationModal: React.FC<StageChangeCommunicationModalProps
         }
       );
       setMessage(finalMessage);
-      setSendNotification(true);
     } else {
       setMessage('');
-      setSendNotification(false);
     }
   }, [relevantTemplate, candidate, newStage, companyProfile]);
 
@@ -95,8 +100,6 @@ const StageChangeCommunicationModal: React.FC<StageChangeCommunicationModalProps
   };
 
   const title = `تغییر مرحله به "${newStage.title}"`;
-
-  const hasAnyTemplate = emailTemplate || whatsappTemplate;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
