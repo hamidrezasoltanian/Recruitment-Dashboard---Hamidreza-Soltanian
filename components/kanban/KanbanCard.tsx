@@ -2,6 +2,7 @@ import React from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { Candidate } from '../../types';
 import StarRating from '../ui/StarRating';
+import { getJobColor } from '../../utils/colorUtils';
 
 declare const persianDate: any;
 
@@ -17,9 +18,12 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ candidate, onViewDetails, onEdi
     data: { candidate },
   });
 
+  const jobColor = getJobColor(candidate.position);
+
   const style = transform ? {
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-  } : undefined;
+    borderRight: `5px solid ${jobColor}`,
+  } : { borderRight: `5px solid ${jobColor}` };
   
   const hasTestResult = candidate.testResults && candidate.testResults.some(r => r.file);
   const whatsappNumber = candidate.phone ? candidate.phone.replace(/[^0-9]/g, '').replace(/^0/, '98') : '';
@@ -29,10 +33,10 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ candidate, onViewDetails, onEdi
     const actionElement = (e.target as HTMLElement).closest('[data-action]');
     const action = actionElement?.getAttribute('data-action');
 
-    if (action === 'email' || action === 'whatsapp') {
+    if (action === 'email' || action === 'whatsapp' || action === 'edit') {
       // Allow default browser action for links, and stop this event from bubbling
-      // up to any other handlers that might, for instance, open the details modal.
       e.stopPropagation();
+      if(action === 'edit') onEdit(candidate);
       return;
     }
     
@@ -83,7 +87,7 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ candidate, onViewDetails, onEdi
                     </span>
                 )}
                  <button 
-                    onClick={(e) => { e.stopPropagation(); onEdit(candidate); }} 
+                    data-action="edit"
                     className="text-gray-400 hover:text-[var(--color-primary-600)] transition-colors"
                     aria-label={`ویرایش ${candidate.name}`}
                 >

@@ -14,14 +14,13 @@ import {
   horizontalListSortingStrategy,
   useSortable
 } from '@dnd-kit/sortable';
-import { useCandidates } from '../../contexts/CandidatesContext';
 import { useSettings } from '../../contexts/SettingsContext';
 import { Candidate, StageId, StageChangeInfo, KanbanStage } from '../../types';
 import KanbanColumn from './KanbanColumn';
 import KanbanCard from './KanbanCard';
 
 interface KanbanBoardProps {
-  onAddCandidate: (stage: StageId) => void;
+  candidates: Candidate[];
   onViewDetails: (candidate: Candidate) => void;
   onEdit: (candidate: Candidate) => void;
   onStageChangeRequest: (info: StageChangeInfo) => void;
@@ -50,8 +49,7 @@ const SortableKanbanColumn: React.FC<{ stage: KanbanStage; children: React.React
 };
 
 
-const KanbanBoard: React.FC<KanbanBoardProps> = ({ onAddCandidate, onViewDetails, onEdit, onStageChangeRequest }) => {
-  const { candidates } = useCandidates();
+const KanbanBoard: React.FC<KanbanBoardProps> = ({ candidates, onViewDetails, onEdit, onStageChangeRequest }) => {
   const { stages, setStageOrder } = useSettings();
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -119,7 +117,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ onAddCandidate, onViewDetails
                   id={stage.id}
                   title={stage.title}
                   candidates={candidatesByStage[stage.id] || []}
-                  onAddCandidate={onAddCandidate}
                   onViewDetails={onViewDetails}
                   onEdit={onEdit}
                 />
@@ -136,7 +133,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ onAddCandidate, onViewDetails
               id={activeStage.id}
               title={activeStage.title}
               candidates={candidatesByStage[activeStage.id] || []}
-              onAddCandidate={() => {}}
               onViewDetails={() => {}}
               onEdit={() => {}}
             />

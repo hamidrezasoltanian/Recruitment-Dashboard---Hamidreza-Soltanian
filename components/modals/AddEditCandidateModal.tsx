@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Candidate, StageId } from '../../types';
 import { DEFAULT_SOURCES } from '../../constants';
 import Modal from '../ui/Modal';
@@ -18,6 +18,7 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
   const { sources, companyProfile, stages } = useSettings();
   const availableSources = sources.length > 0 ? sources : DEFAULT_SOURCES;
   const kanbanStages = stages.filter(s => s.id !== 'archived');
+  const resumeInputRef = useRef<HTMLInputElement>(null);
   
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -53,6 +54,9 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
       setInterviewTime('');
     }
     setResumeFile(undefined);
+    if (resumeInputRef.current) {
+        resumeInputRef.current.value = '';
+    }
   }, [candidateToEdit, initialStage, isOpen, availableSources, companyProfile]);
   
   const isInterviewStage = stage === 'interview-1' || stage === 'interview-2';
@@ -138,7 +142,7 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
            )}
            <div>
               <label className="block text-sm font-medium text-gray-700">رزومه</label>
-              <input type="file" onChange={handleFileChange} accept=".pdf,.doc,.docx" className="mt-1 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[var(--color-primary-50)] file:text-[var(--color-primary-700)] hover:file:bg-[var(--color-primary-100)]"/>
+              <input ref={resumeInputRef} type="file" onChange={handleFileChange} accept=".pdf,.doc,.docx" className="mt-1 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[var(--color-primary-50)] file:text-[var(--color-primary-700)] hover:file:bg-[var(--color-primary-100)]"/>
               {candidateToEdit?.hasResume && !resumeFile && <p className="text-xs text-green-600 mt-1">رزومه قبلا آپلود شده است.</p>}
            </div>
            <div>

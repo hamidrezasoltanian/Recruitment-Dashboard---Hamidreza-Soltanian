@@ -7,12 +7,11 @@ interface KanbanColumnProps {
   id: StageId;
   title: string;
   candidates: Candidate[];
-  onAddCandidate: (stage: StageId) => void;
   onViewDetails: (candidate: Candidate) => void;
   onEdit: (candidate: Candidate) => void;
 }
 
-const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, candidates, onAddCandidate, onViewDetails, onEdit }) => {
+const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, candidates, onViewDetails, onEdit }) => {
   const { setNodeRef, isOver } = useDroppable({ id });
 
   return (
@@ -30,12 +29,6 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, candidates, onAd
             <KanbanCard key={candidate.id} candidate={candidate} onViewDetails={onViewDetails} onEdit={onEdit} />
           ))}
         </div>
-        <button
-          onClick={() => onAddCandidate(id)}
-          className="mt-4 w-full bg-[var(--color-primary-100)] text-[var(--color-primary-700)] hover:bg-[var(--color-primary-200)] font-bold py-2 px-4 rounded-lg transition-colors"
-        >
-          + افزودن متقاضی
-        </button>
       </div>
     </div>
   );

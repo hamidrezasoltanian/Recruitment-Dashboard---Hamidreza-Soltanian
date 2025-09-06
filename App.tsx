@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { useCandidates } from './contexts/CandidatesContext';
 import { Candidate, StageId, View, StageChangeInfo } from './types';
@@ -17,6 +17,7 @@ import SelectCandidateModal from './components/modals/SelectCandidateModal';
 import TestSelectionModal from './components/modals/TestSelectionModal';
 import DashboardSummary from './components/dashboard/DashboardSummary';
 import LoginScreen from './components/auth/LoginScreen';
+import KanbanControls from './components/kanban/KanbanControls';
 
 
 const App: React.FC = () => {
@@ -40,11 +41,51 @@ const App: React.FC = () => {
   const [testCandidateId, setTestCandidateId] = useState<string | null>(null);
   const [isSelectCandidateModalOpen, setSelectCandidateModalOpen] = useState(false);
   const [isTestSelectionModalOpen, setTestSelectionModalOpen] = useState(false);
+  
+  // Filter and Sort States
+  const [filters, setFilters] = useState({ search: '', position: '', source: '' });
+  const [sortBy, setSortBy] = useState('createdAt');
+
+  const handleFilterChange = (newFilters: Partial<typeof filters>) => {
+      setFilters(prev => ({ ...prev, ...newFilters }));
+  };
+
+  const filteredAndSortedCandidates = useMemo(() => {
+    let processedCandidates = [...candidates];
+
+    // Filtering
+    if (filters.search) {
+        processedCandidates = processedCandidates.filter(c => 
+            c.name.toLowerCase().includes(filters.search.toLowerCase())
+        );
+    }
+    if (filters.position) {
+        processedCandidates = processedCandidates.filter(c => c.position === filters.position);
+    }
+    if (filters.source) {
+        processedCandidates = processedCandidates.filter(c => c.source === filters.source);
+    }
+
+    // Sorting
+    processedCandidates.sort((a, b) => {
+        switch (sortBy) {
+            case 'name':
+                return a.name.localeCompare(b.name, 'fa');
+            case 'rating':
+                return b.rating - a.rating;
+            case 'createdAt':
+            default:
+                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+    });
+    
+    return processedCandidates;
+}, [candidates, filters, sortBy]);
 
 
-  const handleOpenAddModal = (stage: StageId) => {
+  const handleOpenAddModal = (stage?: StageId) => {
     setCandidateToEdit(null);
-    setInitialStage(stage);
+    setInitialStage(stage || 'inbox');
     setAddEditModalOpen(true);
   };
 
@@ -99,12 +140,22 @@ const App: React.FC = () => {
         return <ArchiveView onViewDetails={handleOpenDetailsModal} />;
       case 'dashboard':
       default:
-        return <KanbanBoard 
-          onAddCandidate={handleOpenAddModal} 
-          onEdit={handleOpenEditModal} 
-          onViewDetails={handleOpenDetailsModal} 
-          onStageChangeRequest={handleStageChangeRequest}
-        />;
+        return (
+          <>
+            <KanbanControls 
+              filters={filters}
+              onFilterChange={handleFilterChange}
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+            />
+            <KanbanBoard 
+              candidates={filteredAndSortedCandidates}
+              onEdit={handleOpenEditModal} 
+              onViewDetails={handleOpenDetailsModal} 
+              onStageChangeRequest={handleStageChangeRequest}
+            />
+          </>
+        );
     }
   };
 
@@ -118,7 +169,7 @@ const App: React.FC = () => {
   return (
     <>
       <div className="min-h-screen flex flex-col">
-        <Header onSettingsClick={() => setSettingsModalOpen(true)} />
+        <Header onSettingsClick={() => setSettingsModalOpen(true)} onAddCandidateClick={() => handleOpenAddModal()} />
         <Tabs activeView={activeView} setActiveView={setActiveView} />
         <main className="p-4 md:p-6 lg:p-8 flex-grow">
             {activeView === 'dashboard' && <DashboardSummary candidates={candidates} />}

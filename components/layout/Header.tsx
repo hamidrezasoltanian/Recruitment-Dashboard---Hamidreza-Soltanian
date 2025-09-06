@@ -8,9 +8,10 @@ declare const persianDate: any;
 
 interface HeaderProps {
     onSettingsClick: () => void;
+    onAddCandidateClick: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onSettingsClick }) => {
+const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick }) => {
   const { user, logout } = useAuth();
   const { candidates, setCandidates } = useCandidates();
   const { addToast } = useToast();
@@ -82,7 +83,13 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick }) => {
 
   return (
     <header className="bg-white shadow-md p-4 flex flex-wrap justify-between items-center sticky top-0 z-30 gap-4">
-      <h1 className="text-xl md:text-2xl font-bold text-gray-800">داشبورد استخدام</h1>
+      <div className="flex items-center gap-4">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-800">داشبورد استخدام</h1>
+        <button onClick={onAddCandidateClick} className="text-sm bg-[var(--color-primary-600)] hover:bg-[var(--color-primary-700)] text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
+            <span>افزودن سریع</span>
+        </button>
+      </div>
       
       <div className="flex items-center gap-2 flex-wrap">
         <button onClick={handleBulkReminder} className="text-sm bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">یادآور مصاحبه</button>

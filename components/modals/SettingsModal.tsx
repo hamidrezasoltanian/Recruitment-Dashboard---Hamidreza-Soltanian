@@ -501,93 +501,133 @@ const ApiKeyPanel: React.FC = () => {
 
 const TestLibraryPanel: React.FC = () => {
     const { testLibrary, addTest, updateTest, deleteTest } = useSettings();
-    const [editingTest, setEditingTest] = useState<TestLibraryItem | null>(null);
-    const [isAdding, setIsAdding] = useState(false);
-    const [name, setName] = useState('');
-    const [url, setUrl] = useState('');
-
-    useEffect(() => {
-        if(editingTest) {
-            setName(editingTest.name);
-            setUrl(editingTest.url);
-            setIsAdding(false);
-        } else {
-            setName('');
-            setUrl('');
-        }
-    }, [editingTest]);
-
-    const handleSelectTest = (test: TestLibraryItem) => {
-        setEditingTest(test);
-        setIsAdding(false);
-    }
     
-    const handleAddNew = () => {
-        setEditingTest(null);
-        setIsAdding(true);
-    }
+    // State for inline editing
+    const [editingTestId, setEditingTestId] = useState<string | null>(null);
+    const [editedName, setEditedName] = useState('');
+    const [editedUrl, setEditedUrl] = useState('');
 
-    const handleCancel = () => {
-        setEditingTest(null);
-        setIsAdding(false);
-    }
+    // State for adding a new test
+    const [isAdding, setIsAdding] = useState(false);
+    const [newName, setNewName] = useState('');
+    const [newUrl, setNewUrl] = useState('');
 
-    const handleSave = () => {
-        if(isAdding) {
-            addTest({ name, url });
-        } else if (editingTest) {
-            updateTest({ ...editingTest, name, url });
+    const handleEditClick = (test: TestLibraryItem) => {
+        setEditingTestId(test.id);
+        setEditedName(test.name);
+        setEditedUrl(test.url);
+        setIsAdding(false); // Ensure add form is closed
+    };
+
+    const handleCancelEdit = () => {
+        setEditingTestId(null);
+    };
+
+    const handleSaveEdit = () => {
+        if (editingTestId) {
+            updateTest({ id: editingTestId, name: editedName, url: editedUrl });
+            setEditingTestId(null);
         }
-        handleCancel();
+    };
+    
+    const handleAddNewClick = () => {
+        setIsAdding(true);
+        setNewName('');
+        setNewUrl('');
+        setEditingTestId(null); // Ensure edit mode is closed
+    };
+    
+    const handleCancelAdd = () => {
+        setIsAdding(false);
+    };
+
+    const handleSaveNew = () => {
+        addTest({ name: newName, url: newUrl });
+        setIsAdding(false);
     };
 
     const handleDelete = (id: string) => {
         if (window.confirm("آیا از حذف این آزمون از کتابخانه مطمئن هستید؟")) {
             deleteTest(id);
-            if(editingTest?.id === id) {
-                handleCancel();
+            if (editingTestId === id) {
+                setEditingTestId(null);
             }
         }
     };
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-1">
-                <h3 className="font-bold mb-2">لیست آزمون‌ها</h3>
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {testLibrary.map(t => (
-                        <div key={t.id} className={`p-2 rounded-md cursor-pointer flex justify-between items-center ${editingTest?.id === t.id ? 'bg-[var(--color-primary-100)]' : 'hover:bg-gray-100'}`} onClick={() => handleSelectTest(t)}>
-                           <span className="truncate">{t.name}</span>
-                            <button onClick={(e) => { e.stopPropagation(); handleDelete(t.id); }} className="text-red-500 hover:text-red-700 text-xs px-1 flex-shrink-0">حذف</button>
-                        </div>
-                    ))}
-                </div>
-                <button onClick={handleAddNew} className={`mt-4 w-full font-bold py-2 px-4 rounded-lg transition-colors ${isAdding ? 'bg-[var(--color-primary-200)] text-[var(--color-primary-800)]' : 'bg-[var(--color-primary-100)] text-[var(--color-primary-700)] hover:bg-[var(--color-primary-200)]'}`}>+ افزودن آزمون جدید</button>
-            </div>
-            <div className="md:col-span-2">
-                {(editingTest || isAdding) && (
-                    <div className="p-4 bg-gray-50 rounded-lg">
-                        <h3 className="font-bold mb-4">{isAdding ? 'افزودن آزمون جدید' : `ویرایش آزمون: ${editingTest?.name}`}</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">نام آزمون</label>
-                                <input type="text" value={name} onChange={e => setName(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">لینک (URL)</label>
-                                <input type="url" value={url} onChange={e => setUrl(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
-                            </div>
-                            <div className="flex justify-end gap-2">
-                                <button onClick={handleCancel} className="bg-gray-200 text-gray-800 py-2 px-4 rounded-lg">انصراف</button>
-                                <button onClick={handleSave} className="bg-[var(--color-primary-600)] text-white py-2 px-4 rounded-lg">ذخیره</button>
-                            </div>
-                        </div>
-                    </div>
+        <div className="space-y-4">
+            <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold text-gray-800">کتابخانه آزمون‌ها</h3>
+                {!isAdding && (
+                    <button 
+                        onClick={handleAddNewClick} 
+                        className="bg-[var(--color-primary-600)] text-white font-bold py-2 px-4 rounded-lg hover:bg-[var(--color-primary-700)] transition-colors text-sm"
+                    >
+                        + افزودن آزمون جدید
+                    </button>
                 )}
             </div>
+
+            {isAdding && (
+                <div className="p-4 bg-gray-100 rounded-lg space-y-3 border border-[var(--color-primary-200)]">
+                     <h4 className="font-bold">آزمون جدید</h4>
+                     <div>
+                        <label className="block text-sm font-medium text-gray-700">نام آزمون</label>
+                        <input type="text" value={newName} onChange={e => setNewName(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">لینک (URL)</label>
+                        <input type="url" value={newUrl} onChange={e => setNewUrl(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                        <button onClick={handleCancelAdd} className="bg-gray-200 text-gray-800 py-2 px-4 rounded-lg text-sm">انصراف</button>
+                        <button onClick={handleSaveNew} className="bg-green-600 text-white py-2 px-4 rounded-lg text-sm">ذخیره</button>
+                    </div>
+                </div>
+            )}
+
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+                {testLibrary.map(test => (
+                    <div key={test.id} className="p-4 bg-white rounded-lg shadow-sm border border-gray-200">
+                        {editingTestId === test.id ? (
+                            // Edit Mode
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">نام آزمون</label>
+                                    <input type="text" value={editedName} onChange={e => setEditedName(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">لینک (URL)</label>
+                                    <input type="url" value={editedUrl} onChange={e => setEditedUrl(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
+                                </div>
+                                <div className="flex justify-end items-center gap-2 pt-2">
+                                    <button onClick={handleCancelEdit} className="bg-gray-200 text-gray-800 py-2 px-4 rounded-lg text-sm">انصراف</button>
+                                    <button onClick={handleSaveEdit} className="bg-green-600 text-white py-2 px-4 rounded-lg text-sm">ذخیره تغییرات</button>
+                                </div>
+                            </div>
+                        ) : (
+                            // View Mode
+                            <div className="flex justify-between items-start gap-4">
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-gray-900 break-words">{test.name}</p>
+                                    <a href={test.url} target="_blank" rel="noopener noreferrer" className="text-sm text-[var(--color-primary-600)] hover:underline break-all">
+                                        {test.url}
+                                    </a>
+                                </div>
+                                <div className="flex-shrink-0 flex items-center gap-3">
+                                    <button onClick={() => handleEditClick(test)} className="text-blue-600 hover:text-blue-800 text-sm font-medium">ویرایش</button>
+                                    <button onClick={() => handleDelete(test.id)} className="text-red-500 hover:text-red-700 text-sm font-medium">حذف</button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
         </div>
-    )
-}
+    );
+};
+
 
 const AppearancePanel: React.FC = () => {
     const { theme, setTheme, setCustomBackground, setDefaultBackground } = useTheme();
