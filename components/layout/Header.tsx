@@ -9,9 +9,10 @@ declare const persianDate: any;
 interface HeaderProps {
     onSettingsClick: () => void;
     onAddCandidateClick: () => void;
+    onOpenBulkCommModal: (candidates: Candidate[]) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick }) => {
+const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick, onOpenBulkCommModal }) => {
   const { user, logout } = useAuth();
   const { candidates, setCandidates } = useCandidates();
   const { addToast } = useToast();
@@ -104,9 +105,7 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick })
         });
 
         if (upcomingInterviews.length > 0) {
-            const names = upcomingInterviews.map(c => `- ${c.name} (${c.position})`).join('\n');
-            alert(`یادآوری برای مصاحبه‌های زیر در امروز و فردا:\n\n${names}`);
-            addToast(`${upcomingInterviews.length} یادآور مصاحبه یافت شد.`, 'success');
+            onOpenBulkCommModal(upcomingInterviews);
         } else {
             addToast('هیچ مصاحبه‌ای برای امروز یا فردا وجود ندارد.', 'success');
         }
@@ -128,7 +127,7 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick })
       </div>
       
       <div className="flex items-center gap-2 flex-wrap">
-        <button onClick={handleBulkReminder} className="text-sm bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">یادآور مصاحبه</button>
+        <button onClick={handleBulkReminder} className="text-sm bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">یادآور گروهی</button>
         <button onClick={handleBackup} className="text-sm bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">پشتیبان‌گیری</button>
         <input type="file" id="restore-input" ref={restoreInputRef} className="hidden" accept=".json" onChange={handleRestore} />
         <button onClick={handleRestoreClick} className="text-sm bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">بازیابی</button>

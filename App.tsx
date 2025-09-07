@@ -18,6 +18,7 @@ import LoginScreen from './components/auth/LoginScreen';
 import KanbanControls from './components/kanban/KanbanControls';
 import CommunicationModal from './components/modals/CommunicationModal';
 import ResumeViewerModal from './components/modals/ResumeViewerModal';
+import BulkCommunicationModal from './components/modals/BulkCommunicationModal';
 
 
 const App: React.FC = () => {
@@ -43,6 +44,8 @@ const App: React.FC = () => {
   }>({ isOpen: false, candidate: null });
   
   const [resumeViewerState, setResumeViewerState] = useState<{isOpen: boolean, file: File | null}>({ isOpen: false, file: null });
+
+  const [bulkCommConfig, setBulkCommConfig] = useState<{ isOpen: boolean; candidates: Candidate[] }>({ isOpen: false, candidates: [] });
 
 
   // State to auto-expand a candidate in TestView
@@ -158,6 +161,10 @@ const App: React.FC = () => {
     setActiveView(view);
   };
 
+  const handleOpenBulkCommModal = (candidates: Candidate[]) => {
+    setBulkCommConfig({ isOpen: true, candidates: candidates });
+  };
+
   const renderView = () => {
     switch (activeView) {
       case 'tests':
@@ -197,7 +204,11 @@ const App: React.FC = () => {
   return (
     <>
       <div className="min-h-screen flex flex-col">
-        <Header onSettingsClick={() => setSettingsModalOpen(true)} onAddCandidateClick={() => handleOpenAddModal()} />
+        <Header 
+          onSettingsClick={() => setSettingsModalOpen(true)} 
+          onAddCandidateClick={() => handleOpenAddModal()}
+          onOpenBulkCommModal={handleOpenBulkCommModal}
+        />
         <Tabs activeView={activeView} setActiveView={handleViewChange} />
         <main className="p-4 md:p-6 lg:p-8 flex-grow">
             {activeView === 'dashboard' && <DashboardSummary candidates={candidates} />}
@@ -253,6 +264,11 @@ const App: React.FC = () => {
         isOpen={resumeViewerState.isOpen}
         onClose={() => setResumeViewerState({ isOpen: false, file: null })}
         file={resumeViewerState.file}
+      />
+      <BulkCommunicationModal
+        isOpen={bulkCommConfig.isOpen}
+        onClose={() => setBulkCommConfig({ isOpen: false, candidates: [] })}
+        candidates={bulkCommConfig.candidates}
       />
     </>
   );
