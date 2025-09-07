@@ -146,22 +146,18 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
   };
 
   const handleSendReminder = () => {
-    if (!interviewDate) {
+    if (!candidate || !interviewDate) {
       addToast('لطفا ابتدا تاریخ مصاحبه را مشخص کنید.', 'error');
       return;
     }
 
-    const canSendEmail = !!emailReminderTemplate;
-    const canSendWhatsapp = !!whatsappReminderTemplate;
-    const whatsappNumber = candidate.phone ? candidate.phone.replace(/[^0-9]/g, '').replace(/^0/, '98') : '';
+    const successfulSends: string[] = [];
+    const failedReasons: string[] = [];
 
-    let emailOpened = false;
-    let whatsappOpened = false;
-
-    // Send Email
-    if (canSendEmail) {
+    // --- Attempt to send Email ---
+    if (emailReminderTemplate) {
       const emailMessage = templateService.replacePlaceholders(
-        emailReminderTemplate!.content,
+        emailReminderTemplate.content,
         candidate,
         {
           companyName: companyProfile.name,
@@ -169,14 +165,17 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
           companyWebsite: companyProfile.website,
         }
       );
-      window.open(`mailto:${candidate.email}?subject=یادآوری مصاحبه&body=${encodeURIComponent(emailMessage)}`, '_blank');
-      emailOpened = true;
+      window.open(`mailto:${candidate.email}?subject=یادآوری مصاحبه&body=${encodeURIComponent(emailMessage)}`);
+      successfulSends.push('ایمیل');
+    } else {
+      failedReasons.push('قالب ایمیل یافت نشد');
     }
 
-    // Send WhatsApp
-    if (canSendWhatsapp && whatsappNumber) {
+    // --- Attempt to send WhatsApp ---
+    const whatsappNumber = candidate.phone ? candidate.phone.replace(/[^0-9]/g, '').replace(/^0/, '98') : '';
+    if (whatsappReminderTemplate && whatsappNumber) {
       const whatsappMessage = templateService.replacePlaceholders(
-        whatsappReminderTemplate!.content,
+        whatsappReminderTemplate.content,
         candidate,
         {
           companyName: companyProfile.name,
@@ -185,31 +184,20 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
         }
       );
       window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`, '_blank');
-      whatsappOpened = true;
-    }
-
-    // Report results
-    if (emailOpened && whatsappOpened) {
-      addToast('یادآورهای ایمیل و واتسپ آماده ارسال شدند.', 'success');
-    } else if (emailOpened) {
-      addToast('یادآور ایمیل آماده ارسال شد.', 'success');
-      if (canSendWhatsapp && !whatsappNumber) {
-        addToast('شماره واتسپ برای ارسال یادآور موجود نیست.', 'error');
-      }
-    } else if (whatsappOpened) {
-      addToast('یادآور واتسپ آماده ارسال شد.', 'success');
+      successfulSends.push('واتسپ');
     } else {
-      if (!canSendEmail && !canSendWhatsapp) {
-        addToast('هیچ قالب یادآوری (ایمیل/واتسپ) یافت نشد. لطفا از تنظیمات اضافه کنید.', 'error');
-      } else if (canSendWhatsapp && !whatsappNumber) {
-        addToast('شماره واتسپ برای ارسال یادآور موجود نیست.', 'error');
-      } else {
-        addToast('ارسال یادآور با خطا مواجه شد.', 'error');
-      }
+      if (!whatsappReminderTemplate) failedReasons.push('قالب واتسپ یافت نشد');
+      if (!whatsappNumber) failedReasons.push('شماره واتسپ نامعتبر است');
     }
 
-    if (emailOpened || whatsappOpened) {
-      addCustomHistoryEntry(candidate.id, 'یادآور مصاحبه ارسال شد');
+    // --- Report Results to User ---
+    if (successfulSends.length > 0) {
+      addToast(`یادآورهای ${successfulSends.join(' و ')} آماده ارسال شدند.`, 'success');
+      addCustomHistoryEntry(candidate.id, `یادآور مصاحبه ارسال شد (${successfulSends.join(', ')})`);
+    }
+
+    if (failedReasons.length > 0) {
+      addToast(`ارسال ناموفق: ${failedReasons.join('، ')}`, 'error');
     }
   };
 

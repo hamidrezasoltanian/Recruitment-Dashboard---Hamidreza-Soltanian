@@ -111,12 +111,12 @@ export const DEFAULT_TEMPLATES: Template[] = [
         id: 'tpl_whatsapp_invite_reminder',
         name: 'واتسپ یادآوری مصاحبه',
         type: 'whatsapp',
-        content: `سلام {{candidateName}} عزیز، خواستم یادآوری کنم که جلسه مصاحبه شما برای موقعیت شغلی «{{position}}» در تاریخ {{interviewDate}} ساعت {{interviewTime}} برگزار خواهد شد. بی‌صبرانه منتظر دیدارتون هستیم.`
+        content: `یادآوری مصاحبه: سلام {{candidateName}} عزیز. جلسه مصاحبه شما برای موقعیت «{{position}}» در تاریخ {{interviewDate}} ساعت {{interviewTime}} است. منتظر دیدار شما هستیم.`
     },
     {
         id: 'tpl_email_invite_reminder',
         name: 'ایمیل یادآوری مصاحبه',
         type: 'email',
-        content: `سلام {{candidateName}} عزیز،\n\nاین یک پیام یادآوری برای جلسه مصاحبه شما برای موقعیت شغلی «{{position}}» است.\n\nزمان مصاحبه: تاریخ {{interviewDate}} ساعت {{interviewTime}}.\nمکان: {{companyAddress}}\n\nبی‌صبرانه منتظر دیدار شما هستیم.` + emailFooter
+        content: `سلام {{candidateName}} عزیز،\n\nاین یک پیام یادآوری برای جلسه مصاحبه شما برای موقعیت شغلی «{{position}}» است.\n\nزمان مصاحبه: {{interviewDate}} ساعت {{interviewTime}}\nمکان: {{companyAddress}}\n\nمنتظر دیدار شما هستیم.` + emailFooter
     }
 ];

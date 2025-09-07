@@ -71,8 +71,11 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick })
     const tomorrow = today.add('days', 1);
     const tomorrowStr = tomorrow.format('YYYY/MM/DD');
 
+    // Filter out candidates who are already hired, rejected, or archived.
+    const nonActiveStages = ['hired', 'rejected', 'archived'];
+
     const upcomingInterviews = candidates.filter(c => 
-      c.interviewDate === todayStr || c.interviewDate === tomorrowStr
+      !nonActiveStages.includes(c.stage) && (c.interviewDate === todayStr || c.interviewDate === tomorrowStr)
     );
 
     if (upcomingInterviews.length > 0) {
