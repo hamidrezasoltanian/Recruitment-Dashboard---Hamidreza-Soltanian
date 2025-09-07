@@ -66,24 +66,38 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick })
   };
   
   const handleBulkReminder = () => {
-    const today = new persianDate();
-    const todayStr = today.format('YYYY/MM/DD');
-    const tomorrow = today.add('days', 1);
-    const tomorrowStr = tomorrow.format('YYYY/MM/DD');
+    try {
+        const today = new persianDate().startOf('day');
+        const tomorrow = new persianDate().add('days', 1).startOf('day');
 
-    // Filter out candidates who are already hired, rejected, or archived.
-    const nonActiveStages = ['hired', 'rejected', 'archived'];
+        const nonActiveStages = ['hired', 'rejected', 'archived'];
 
-    const upcomingInterviews = candidates.filter(c => 
-      !nonActiveStages.includes(c.stage) && (c.interviewDate === todayStr || c.interviewDate === tomorrowStr)
-    );
+        const upcomingInterviews = candidates.filter(c => {
+            if (!c.interviewDate || nonActiveStages.includes(c.stage)) {
+                return false;
+            }
+            try {
+                // Parse the date string (which can have Farsi/Latin digits) into a date object for comparison.
+                const interviewPDate = new persianDate(c.interviewDate.split('/').map(Number)).startOf('day');
+                
+                // Check if the interview date is today or tomorrow.
+                return interviewPDate.isSame(today, 'day') || interviewPDate.isSame(tomorrow, 'day');
+            } catch (e) {
+                console.error(`Invalid date format for candidate ${c.name}: ${c.interviewDate}`, e);
+                return false;
+            }
+        });
 
-    if (upcomingInterviews.length > 0) {
-      const names = upcomingInterviews.map(c => `- ${c.name} (${c.position})`).join('\n');
-      alert(`یادآوری برای مصاحبه‌های زیر در امروز و فردا:\n\n${names}`);
-      addToast(`${upcomingInterviews.length} یادآور مصاحبه یافت شد.`, 'success');
-    } else {
-        addToast('هیچ مصاحبه‌ای برای امروز یا فردا وجود ندارد.', 'success');
+        if (upcomingInterviews.length > 0) {
+            const names = upcomingInterviews.map(c => `- ${c.name} (${c.position})`).join('\n');
+            alert(`یادآوری برای مصاحبه‌های زیر در امروز و فردا:\n\n${names}`);
+            addToast(`${upcomingInterviews.length} یادآور مصاحبه یافت شد.`, 'success');
+        } else {
+            addToast('هیچ مصاحبه‌ای برای امروز یا فردا وجود ندارد.', 'success');
+        }
+    } catch (e) {
+        console.error("Error in handleBulkReminder:", e);
+        addToast('خطا در بررسی یادآورها.', 'error');
     }
   };
 
