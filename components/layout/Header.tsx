@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCandidates } from '../../contexts/CandidatesContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Candidate } from '../../types';
+import { migrationService } from '../../services/migrationService';
 
 declare const persianDate: any;
 
@@ -23,13 +24,20 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick, o
       addToast('هیچ داده‌ای برای پشتیبان‌گیری وجود ندارد.', 'error');
       return;
     }
-    const dataStr = JSON.stringify(candidates, null, 2);
+    const appVersion = process.env.APP_VERSION || '1.1.0';
+    const backupData = {
+        version: appVersion,
+        createdAt: new Date().toISOString(),
+        candidates: candidates
+    };
+
+    const dataStr = JSON.stringify(backupData, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement('a');
     link.href = url;
     const date = new Date().toISOString().slice(0, 10);
-    link.download = `recruitment_backup_${date}.json`;
+    link.download = `recruitment_backup_v${appVersion}_${date}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -50,15 +58,35 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick, o
       try {
         const text = e.target?.result;
         if (typeof text !== 'string') throw new Error('File content is not valid');
-        const restoredCandidates = JSON.parse(text) as Candidate[];
-        // Basic validation
-        if (!Array.isArray(restoredCandidates) || !restoredCandidates.every(c => c.id && c.name && c.stage)) {
-            throw new Error('فایل پشتیبان معتبر نیست.');
+        
+        const data = JSON.parse(text);
+        let candidatesToRestore: Candidate[];
+        let backupVersion = '1.0.0'; // Default for old format
+
+        if (Array.isArray(data)) {
+            // Old backup format: just an array of candidates
+            candidatesToRestore = data;
+        } else if (data && data.candidates && data.version) {
+            // New backup format with metadata
+            candidatesToRestore = data.candidates;
+            backupVersion = data.version;
+        } else {
+            throw new Error('فرمت فایل پشتیبان ناشناخته است.');
         }
-        setCandidates(restoredCandidates);
-        addToast('داده‌ها با موفقیت بازیابی شدند.', 'success');
-      } catch (error) {
-        addToast('خطا در بازیابی فایل. لطفاً از معتبر بودن فایل اطمینان حاصل کنید.', 'error');
+
+        // Migrate data structure to the current version if needed
+        const migratedCandidates = migrationService.migrate(candidatesToRestore, backupVersion);
+
+        // Basic validation after potential migration
+        if (!Array.isArray(migratedCandidates) || !migratedCandidates.every(c => c.id && c.name && c.stage)) {
+            throw new Error('فایل پشتیبان پس از مهاجرت، معتبر نیست.');
+        }
+
+        setCandidates(migratedCandidates);
+        // Toast is shown within the setCandidates function from the context
+        
+      } catch (error: any) {
+        addToast(error.message || 'خطا در بازیابی فایل. لطفاً از معتبر بودن فایل اطمینان حاصل کنید.', 'error');
         console.error("Restore error:", error);
       }
     };

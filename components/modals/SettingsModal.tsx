@@ -309,9 +309,36 @@ const TemplateManagementPanel: React.FC = () => {
       }
   };
 
-  const handleCopyVariable = (variable: string) => {
-    navigator.clipboard.writeText(variable);
-    addToast(`متغیر ${variable} کپی شد!`, 'success');
+  const handleCopyVariable = async (variable: string) => {
+    try {
+      await navigator.clipboard.writeText(variable);
+      addToast(`متغیر ${variable} کپی شد!`, 'success');
+    } catch (err) {
+      console.warn('Could not copy text with clipboard API: ', err);
+      // Fallback for older browsers or non-secure contexts
+      const textArea = document.createElement("textarea");
+      textArea.value = variable;
+      // Make the textarea out of sight
+      textArea.style.position = "fixed";
+      textArea.style.top = "-9999px";
+      textArea.style.left = "-9999px";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          addToast(`متغیر ${variable} کپی شد!`, 'success');
+        } else {
+          throw new Error('Fallback copy command failed.');
+        }
+      } catch (execErr) {
+        console.error('Fallback copy failed: ', execErr);
+        addToast('خطا در کپی کردن متغیر.', 'error');
+      } finally {
+        document.body.removeChild(textArea);
+      }
+    }
   };
   
   const availableVariables = [
