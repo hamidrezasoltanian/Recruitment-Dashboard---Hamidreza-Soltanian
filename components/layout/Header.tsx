@@ -65,10 +65,18 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick })
     event.target.value = ''; // Reset input
   };
   
+  // Helper function to convert Persian/Arabic numerals to Latin, making date parsing reliable.
+  const toLatinDigits = (s: string) => {
+    if (!s) return '';
+    return s.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d).toString())
+            .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString());
+  };
+
   const handleBulkReminder = () => {
     try {
-        const today = new persianDate().startOf('day');
-        const tomorrow = new persianDate().add('days', 1).startOf('day');
+        // Use string comparison for robustness, as persianDate object comparison can be tricky.
+        const todayStr = new persianDate().format('YYYY/MM/DD');
+        const tomorrowStr = new persianDate().add('days', 1).format('YYYY/MM/DD');
 
         const nonActiveStages = ['hired', 'rejected', 'archived'];
 
@@ -77,13 +85,20 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick })
                 return false;
             }
             try {
-                // Parse the date string (which can have Farsi/Latin digits) into a date object for comparison.
-                const interviewPDate = new persianDate(c.interviewDate.split('/').map(Number)).startOf('day');
+                // 1. Convert any non-Latin digits to Latin digits.
+                const latinDateStr = toLatinDigits(c.interviewDate);
+
+                // 2. Parse the cleaned string into a date object.
+                const interviewPDate = new persianDate(latinDateStr.split('/').map(Number));
                 
-                // Check if the interview date is today or tomorrow.
-                return interviewPDate.isSame(today, 'day') || interviewPDate.isSame(tomorrow, 'day');
+                // 3. Format it to a standard YYYY/MM/DD format for reliable comparison.
+                const formattedInterviewDate = interviewPDate.format('YYYY/MM/DD');
+
+                // 4. Compare strings.
+                return formattedInterviewDate === todayStr || formattedInterviewDate === tomorrowStr;
             } catch (e) {
-                console.error(`Invalid date format for candidate ${c.name}: ${c.interviewDate}`, e);
+                // This catch block will handle errors if the date string is fundamentally malformed (e.g., "abc/def/ghi").
+                console.error(`Could not parse date for candidate ${c.name}: '${c.interviewDate}'`, e);
                 return false;
             }
         });
