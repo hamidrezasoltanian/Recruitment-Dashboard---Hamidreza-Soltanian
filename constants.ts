@@ -111,7 +111,12 @@ export const DEFAULT_TEMPLATES: Template[] = [
         id: 'tpl_whatsapp_invite_reminder',
         name: 'واتسپ یادآوری مصاحبه',
         type: 'whatsapp',
-        // No stageId, this is a generic reminder, not a stage change notification
         content: `سلام {{candidateName}} عزیز، خواستم یادآوری کنم که جلسه مصاحبه شما برای موقعیت شغلی «{{position}}» فردا در تاریخ {{interviewDate}} ساعت {{interviewTime}} برگزار خواهد شد. بی‌صبرانه منتظر دیدارتون هستیم.`
+    },
+    {
+        id: 'tpl_email_invite_reminder',
+        name: 'ایمیل یادآوری مصاحبه',
+        type: 'email',
+        content: `سلام {{candidateName}} عزیز،\n\nاین یک پیام یادآوری برای جلسه مصاحبه شما برای موقعیت شغلی «{{position}}» است.\n\nزمان مصاحبه: فردا در تاریخ {{interviewDate}} ساعت {{interviewTime}}.\nمکان: {{companyAddress}}\n\nبی‌صبرانه منتظر دیدار شما هستیم.` + emailFooter
     }
 ];

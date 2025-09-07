@@ -1,23 +1,22 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import Modal from '../ui/Modal';
-import { Candidate, Template } from '../../types';
+import { Candidate } from '../../types';
 import { useTemplates } from '../../contexts/TemplateContext';
 import { templateService } from '../../services/templateService';
 import { useToast } from '../../contexts/ToastContext';
 import { useSettings } from '../../contexts/SettingsContext';
+import { EmailIcon, WhatsappIcon } from '../ui/Icons';
 
 interface CommunicationModalProps {
   isOpen: boolean;
   onClose: () => void;
   candidate: Candidate;
-  communicationType: 'email' | 'whatsapp';
 }
 
 const CommunicationModal: React.FC<CommunicationModalProps> = ({
   isOpen,
   onClose,
   candidate,
-  communicationType,
 }) => {
   const { templates } = useTemplates();
   const { companyProfile } = useSettings();
@@ -27,16 +26,11 @@ const CommunicationModal: React.FC<CommunicationModalProps> = ({
   const [message, setMessage] = useState('');
   const [position, setPosition] = useState('');
 
-  const relevantTemplates = useMemo(() => 
-    templates.filter(t => t.type === communicationType),
-    [templates, communicationType]
-  );
-
   useEffect(() => {
     // Reset state on open
     if (isOpen) {
-      if (relevantTemplates.length > 0) {
-        setSelectedTemplateId(relevantTemplates[0].id);
+      if (templates.length > 0) {
+        setSelectedTemplateId(templates[0].id);
       } else {
         setSelectedTemplateId('');
       }
@@ -45,7 +39,7 @@ const CommunicationModal: React.FC<CommunicationModalProps> = ({
       
       setMessage('');
     }
-  }, [isOpen, relevantTemplates, companyProfile, candidate]);
+  }, [isOpen, templates, companyProfile, candidate]);
 
   useEffect(() => {
     if (!selectedTemplateId) {
@@ -68,13 +62,13 @@ const CommunicationModal: React.FC<CommunicationModalProps> = ({
     }
   }, [selectedTemplateId, templates, candidate, position, companyProfile]);
 
-  const handleSend = () => {
+  const handleSend = (platform: 'email' | 'whatsapp') => {
     if (!message.trim()) {
         addToast("پیام نمی‌تواند خالی باشد.", "error");
         return;
     }
 
-    if (communicationType === 'email') {
+    if (platform === 'email') {
         const subject = `پیام از طرف ${companyProfile.name}`;
         window.open(`mailto:${candidate.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`, '_blank');
         addToast(`ایمیل برای ${candidate.name} آماده ارسال شد.`, 'success');
@@ -92,7 +86,7 @@ const CommunicationModal: React.FC<CommunicationModalProps> = ({
     onClose();
   };
   
-  const title = `ارسال پیام سفارشی ${communicationType === 'email' ? 'ایمیل' : 'واتسپ'}`;
+  const title = `ارسال پیام به ${candidate.name}`;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
@@ -106,11 +100,11 @@ const CommunicationModal: React.FC<CommunicationModalProps> = ({
             className="mt-1 block w-full border border-gray-300 bg-white rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           >
             <option value="" disabled>یک قالب انتخاب کنید...</option>
-            {relevantTemplates.map(t => (
-              <option key={t.id} value={t.id}>{t.name}</option>
+            {templates.map(t => (
+              <option key={t.id} value={t.id}>{t.name} ({t.type === 'email' ? 'ایمیل' : 'واتسپ'})</option>
             ))}
           </select>
-          {relevantTemplates.length === 0 && <p className="text-xs text-red-500 mt-1">هیچ قالب {communicationType === 'email' ? 'ایمیل' : 'واتسپ'} یافت نشد. لطفا از تنظیمات اضافه کنید.</p>}
+          {templates.length === 0 && <p className="text-xs text-red-500 mt-1">هیچ قالبی یافت نشد. لطفا از تنظیمات اضافه کنید.</p>}
         </div>
 
         {templateService.hasPlaceholder(templates.find(t => t.id === selectedTemplateId)?.content, 'position') ? (
@@ -144,7 +138,14 @@ const CommunicationModal: React.FC<CommunicationModalProps> = ({
 
         <div className="flex justify-end gap-4 pt-4">
           <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 py-2 px-6 rounded-lg hover:bg-gray-300 transition-colors">انصراف</button>
-          <button type="button" onClick={handleSend} className="bg-indigo-600 text-white py-2 px-6 rounded-lg hover:bg-indigo-700 transition-colors">ارسال</button>
+          <button type="button" onClick={() => handleSend('whatsapp')} disabled={!candidate.phone} className="bg-teal-600 text-white py-2 px-6 rounded-lg hover:bg-teal-700 flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed">
+            <WhatsappIcon className="w-5 h-5"/>
+            <span>ارسال با واتسپ</span>
+          </button>
+          <button type="button" onClick={() => handleSend('email')} className="bg-sky-600 text-white py-2 px-6 rounded-lg hover:bg-sky-700 flex items-center gap-2">
+            <EmailIcon className="w-5 h-5"/>
+            <span>ارسال با ایمیل</span>
+          </button>
         </div>
       </div>
     </Modal>

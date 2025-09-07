@@ -40,8 +40,7 @@ const App: React.FC = () => {
   const [communicationConfig, setCommunicationConfig] = useState<{
     isOpen: boolean;
     candidate: Candidate | null;
-    type: 'email' | 'whatsapp';
-  }>({ isOpen: false, candidate: null, type: 'email' });
+  }>({ isOpen: false, candidate: null });
   
   const [resumeViewerState, setResumeViewerState] = useState<{isOpen: boolean, file: File | null}>({ isOpen: false, file: null });
 
@@ -142,8 +141,8 @@ const App: React.FC = () => {
     setDetailsModalOpen(false); // Close details modal if open
   };
 
-  const handleOpenCommunicationModal = (candidate: Candidate, type: 'email' | 'whatsapp') => {
-    setCommunicationConfig({ isOpen: true, candidate, type });
+  const handleOpenCommunicationModal = (candidate: Candidate) => {
+    setCommunicationConfig({ isOpen: true, candidate });
     setDetailsModalOpen(false);
   };
   
@@ -246,9 +245,8 @@ const App: React.FC = () => {
       {communicationConfig.candidate && (
         <CommunicationModal
             isOpen={communicationConfig.isOpen}
-            onClose={() => setCommunicationConfig({ isOpen: false, candidate: null, type: 'email' })}
+            onClose={() => setCommunicationConfig({ isOpen: false, candidate: null })}
             candidate={communicationConfig.candidate}
-            communicationType={communicationConfig.type}
         />
       )}
       <ResumeViewerModal

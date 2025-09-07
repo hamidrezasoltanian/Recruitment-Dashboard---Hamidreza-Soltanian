@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Candidate, Comment, StageChangeInfo } from '../../types';
 import Modal from '../ui/Modal';
 import StarRating from '../ui/StarRating';
@@ -9,7 +9,8 @@ import { useToast } from '../../contexts/ToastContext';
 import { useSettings } from '../../contexts/SettingsContext';
 import KamaDatePicker from '../ui/KamaDatePicker';
 import ProcessTimeline from '../ui/ProcessTimeline';
-import { EmailIcon, WhatsappIcon } from '../ui/Icons';
+import { useTemplates } from '../../contexts/TemplateContext';
+import { templateService } from '../../services/templateService';
 
 declare const persianDate: any;
 
@@ -20,13 +21,14 @@ interface CandidateDetailsModalProps {
   onEdit: (candidate: Candidate) => void;
   onStageChangeRequest: (info: StageChangeInfo) => void;
   onNavigateToTests: (candidateId: string) => void;
-  onOpenCommunicationModal: (candidate: Candidate, type: 'email' | 'whatsapp') => void;
+  onOpenCommunicationModal: (candidate: Candidate) => void;
   onViewResume: (file: File) => void;
 }
 
 const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, onClose, candidate, onEdit, onStageChangeRequest, onNavigateToTests, onOpenCommunicationModal, onViewResume }) => {
   const { addComment, updateCandidate, addCustomHistoryEntry } = useCandidates();
   const { companyProfile, stages } = useSettings();
+  const { templates } = useTemplates();
   const { user } = useAuth();
   const { addToast } = useToast();
   
@@ -35,6 +37,13 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
   const [customHistoryEvent, setCustomHistoryEvent] = useState('');
   const [interviewDate, setInterviewDate] = useState('');
   const [interviewTime, setInterviewTime] = useState('');
+
+  const emailReminderTemplate = useMemo(() => {
+    return templates.find(t => t.id === 'tpl_email_invite_reminder');
+  }, [templates]);
+  const whatsappReminderTemplate = useMemo(() => {
+    return templates.find(t => t.id === 'tpl_whatsapp_invite_reminder');
+  }, [templates]);
   
   useEffect(() => {
     if (isOpen && candidate) {
@@ -136,6 +145,57 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
     }
   };
 
+  const handleSendReminder = () => {
+    if (!interviewDate) {
+        addToast('لطفا ابتدا تاریخ مصاحبه را مشخص کنید.', 'error');
+        return;
+    }
+
+    let remindersSent = 0;
+
+    // Send Email
+    if (emailReminderTemplate) {
+        const emailMessage = templateService.replacePlaceholders(
+            emailReminderTemplate.content,
+            candidate,
+            { 
+                companyName: companyProfile.name,
+                companyAddress: companyProfile.address,
+                companyWebsite: companyProfile.website
+            }
+        );
+        window.open(`mailto:${candidate.email}?subject=یادآوری مصاحبه&body=${encodeURIComponent(emailMessage)}`, '_blank');
+        remindersSent++;
+    }
+
+    // Send WhatsApp
+    if (whatsappReminderTemplate) {
+        const whatsappNumber = candidate.phone ? candidate.phone.replace(/[^0-9]/g, '').replace(/^0/, '98') : '';
+        if (whatsappNumber) {
+            const whatsappMessage = templateService.replacePlaceholders(
+                whatsappReminderTemplate.content,
+                candidate,
+                 { 
+                    companyName: companyProfile.name,
+                    companyAddress: companyProfile.address,
+                    companyWebsite: companyProfile.website
+                }
+            );
+            window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`, '_blank');
+            remindersSent++;
+        } else if (emailReminderTemplate) { // Only show error if whatsapp was the ONLY option
+            addToast("شماره واتس‌اپ برای ارسال یادآور موجود نیست.", 'error');
+        }
+    }
+
+    if (remindersSent > 0) {
+        addToast('یادآورهای مصاحبه آماده ارسال شدند.', 'success');
+        addCustomHistoryEntry(candidate.id, 'یادآور مصاحبه ارسال شد');
+    } else {
+        addToast('هیچ قالب یادآوری (ایمیل/واتسپ) یافت نشد. لطفا از تنظیمات اضافه کنید.', 'error');
+    }
+  };
+
 
   return (
     <>
@@ -164,10 +224,11 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
                            <input type="time" value={interviewTime} onChange={e => setInterviewTime(e.target.value)} className="w-full border rounded-lg shadow-sm p-3 text-gray-800 bg-white focus:ring-2 focus:ring-[var(--color-primary-500)] focus:border-[var(--color-primary-500)] border-gray-300"/>
                       </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                      <button onClick={handleUpdateInterview} className="flex-1 text-white bg-green-500 hover:bg-green-600 rounded-lg py-2 text-sm">ذخیره تاریخ</button>
-                      <button onClick={handleAddToGoogleCalendar} disabled={!interviewDate || !interviewTime} className="flex-1 text-white bg-sky-500 hover:bg-sky-600 rounded-lg py-2 text-sm disabled:bg-gray-400 disabled:cursor-not-allowed">افزودن به تقویم گوگل</button>
-                      <button onClick={handleRemoveInterview} className="flex-1 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg py-2 text-sm">حذف تاریخ</button>
+                  <div className="grid grid-cols-2 gap-2">
+                      <button onClick={handleUpdateInterview} className="text-white bg-green-500 hover:bg-green-600 rounded-lg py-2 text-sm">ذخیره تاریخ</button>
+                      <button onClick={handleSendReminder} disabled={!interviewDate || (!emailReminderTemplate && !whatsappReminderTemplate)} className="text-white bg-amber-500 hover:bg-amber-600 rounded-lg py-2 text-sm disabled:bg-gray-400 disabled:cursor-not-allowed">ارسال یادآور</button>
+                      <button onClick={handleAddToGoogleCalendar} disabled={!interviewDate || !interviewTime} className="text-white bg-sky-500 hover:bg-sky-600 rounded-lg py-2 text-sm disabled:bg-gray-400 disabled:cursor-not-allowed">افزودن به تقویم گوگل</button>
+                      <button onClick={handleRemoveInterview} className="text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg py-2 text-sm">حذف تاریخ</button>
                   </div>
               </div>
 
@@ -232,13 +293,11 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
                       </button>
                    )}
                    <div className="border-t pt-3 mt-3 space-y-3 border-gray-300">
-                      <button onClick={() => onOpenCommunicationModal(candidate, 'email')} className="w-full text-white bg-sky-600 hover:bg-sky-700 rounded-lg py-2 transition-colors flex items-center justify-center gap-2">
-                        <EmailIcon className="h-5 w-5" />
-                        <span>ارسال ایمیل سفارشی</span>
-                      </button>
-                      <button onClick={() => onOpenCommunicationModal(candidate, 'whatsapp')} className="w-full text-white bg-teal-600 hover:bg-teal-700 rounded-lg py-2 transition-colors flex items-center justify-center gap-2">
-                        <WhatsappIcon className="h-5 w-5" />
-                        <span>ارسال واتسپ سفارشی</span>
+                      <button onClick={() => onOpenCommunicationModal(candidate)} className="w-full text-white bg-sky-600 hover:bg-sky-700 rounded-lg py-2 transition-colors flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M18 5v8a2 2 0 01-2 2h-5l-5 4v-4H4a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2zM7 8H5v2h2V8zm2 0h2v2H9V8zm6 0h-2v2h2V8z" clipRule="evenodd" />
+                        </svg>
+                        <span>ارسال پیام سفارشی</span>
                       </button>
                    </div>
               </div>

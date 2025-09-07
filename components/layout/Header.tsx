@@ -71,10 +71,15 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick })
     const tomorrow = today.add('days', 1);
     const tomorrowStr = tomorrow.format('YYYY/MM/DD');
 
-    const upcomingInterviews = candidates.filter(c => c.stage === 'interview' && (c.interviewDate === todayStr || c.interviewDate === tomorrowStr));
+    const upcomingInterviews = candidates.filter(c => 
+      c.stage.startsWith('interview-') && 
+      (c.interviewDate === todayStr || c.interviewDate === tomorrowStr)
+    );
 
-    if(upcomingInterviews.length > 0) {
-        addToast(`${upcomingInterviews.length} مصاحبه برای امروز و فردا برنامه‌ریزی شده است.`, 'success');
+    if (upcomingInterviews.length > 0) {
+      const names = upcomingInterviews.map(c => `- ${c.name} (${c.position})`).join('\n');
+      alert(`یادآوری برای مصاحبه‌های زیر در امروز و فردا:\n\n${names}`);
+      addToast(`${upcomingInterviews.length} یادآور مصاحبه یافت شد.`, 'success');
     } else {
         addToast('هیچ مصاحبه‌ای برای امروز یا فردا وجود ندارد.', 'success');
     }
