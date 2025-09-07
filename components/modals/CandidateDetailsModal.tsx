@@ -147,52 +147,69 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
 
   const handleSendReminder = () => {
     if (!interviewDate) {
-        addToast('لطفا ابتدا تاریخ مصاحبه را مشخص کنید.', 'error');
-        return;
+      addToast('لطفا ابتدا تاریخ مصاحبه را مشخص کنید.', 'error');
+      return;
     }
 
-    let remindersSent = 0;
+    const canSendEmail = !!emailReminderTemplate;
+    const canSendWhatsapp = !!whatsappReminderTemplate;
+    const whatsappNumber = candidate.phone ? candidate.phone.replace(/[^0-9]/g, '').replace(/^0/, '98') : '';
+
+    let emailOpened = false;
+    let whatsappOpened = false;
 
     // Send Email
-    if (emailReminderTemplate) {
-        const emailMessage = templateService.replacePlaceholders(
-            emailReminderTemplate.content,
-            candidate,
-            { 
-                companyName: companyProfile.name,
-                companyAddress: companyProfile.address,
-                companyWebsite: companyProfile.website
-            }
-        );
-        window.open(`mailto:${candidate.email}?subject=یادآوری مصاحبه&body=${encodeURIComponent(emailMessage)}`, '_blank');
-        remindersSent++;
+    if (canSendEmail) {
+      const emailMessage = templateService.replacePlaceholders(
+        emailReminderTemplate!.content,
+        candidate,
+        {
+          companyName: companyProfile.name,
+          companyAddress: companyProfile.address,
+          companyWebsite: companyProfile.website,
+        }
+      );
+      window.open(`mailto:${candidate.email}?subject=یادآوری مصاحبه&body=${encodeURIComponent(emailMessage)}`, '_blank');
+      emailOpened = true;
     }
 
     // Send WhatsApp
-    if (whatsappReminderTemplate) {
-        const whatsappNumber = candidate.phone ? candidate.phone.replace(/[^0-9]/g, '').replace(/^0/, '98') : '';
-        if (whatsappNumber) {
-            const whatsappMessage = templateService.replacePlaceholders(
-                whatsappReminderTemplate.content,
-                candidate,
-                 { 
-                    companyName: companyProfile.name,
-                    companyAddress: companyProfile.address,
-                    companyWebsite: companyProfile.website
-                }
-            );
-            window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`, '_blank');
-            remindersSent++;
-        } else if (emailReminderTemplate) { // Only show error if whatsapp was the ONLY option
-            addToast("شماره واتس‌اپ برای ارسال یادآور موجود نیست.", 'error');
+    if (canSendWhatsapp && whatsappNumber) {
+      const whatsappMessage = templateService.replacePlaceholders(
+        whatsappReminderTemplate!.content,
+        candidate,
+        {
+          companyName: companyProfile.name,
+          companyAddress: companyProfile.address,
+          companyWebsite: companyProfile.website,
         }
+      );
+      window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`, '_blank');
+      whatsappOpened = true;
     }
 
-    if (remindersSent > 0) {
-        addToast('یادآورهای مصاحبه آماده ارسال شدند.', 'success');
-        addCustomHistoryEntry(candidate.id, 'یادآور مصاحبه ارسال شد');
+    // Report results
+    if (emailOpened && whatsappOpened) {
+      addToast('یادآورهای ایمیل و واتسپ آماده ارسال شدند.', 'success');
+    } else if (emailOpened) {
+      addToast('یادآور ایمیل آماده ارسال شد.', 'success');
+      if (canSendWhatsapp && !whatsappNumber) {
+        addToast('شماره واتسپ برای ارسال یادآور موجود نیست.', 'error');
+      }
+    } else if (whatsappOpened) {
+      addToast('یادآور واتسپ آماده ارسال شد.', 'success');
     } else {
+      if (!canSendEmail && !canSendWhatsapp) {
         addToast('هیچ قالب یادآوری (ایمیل/واتسپ) یافت نشد. لطفا از تنظیمات اضافه کنید.', 'error');
+      } else if (canSendWhatsapp && !whatsappNumber) {
+        addToast('شماره واتسپ برای ارسال یادآور موجود نیست.', 'error');
+      } else {
+        addToast('ارسال یادآور با خطا مواجه شد.', 'error');
+      }
+    }
+
+    if (emailOpened || whatsappOpened) {
+      addCustomHistoryEntry(candidate.id, 'یادآور مصاحبه ارسال شد');
     }
   };
 

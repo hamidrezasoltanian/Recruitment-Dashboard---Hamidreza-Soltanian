@@ -72,8 +72,7 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick })
     const tomorrowStr = tomorrow.format('YYYY/MM/DD');
 
     const upcomingInterviews = candidates.filter(c => 
-      c.stage.startsWith('interview-') && 
-      (c.interviewDate === todayStr || c.interviewDate === tomorrowStr)
+      c.interviewDate === todayStr || c.interviewDate === tomorrowStr
     );
 
     if (upcomingInterviews.length > 0) {
