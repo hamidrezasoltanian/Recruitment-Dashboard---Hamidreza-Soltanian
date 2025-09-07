@@ -19,7 +19,7 @@ const CommunicationModal: React.FC<CommunicationModalProps> = ({
   candidate,
 }) => {
   const { templates } = useTemplates();
-  const { companyProfile } = useSettings();
+  const { companyProfile, stages } = useSettings();
   const { addToast } = useToast();
   
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
@@ -48,6 +48,7 @@ const CommunicationModal: React.FC<CommunicationModalProps> = ({
     }
     const template = templates.find(t => t.id === selectedTemplateId);
     if (template) {
+      const currentStage = stages.find(s => s.id === candidate.stage);
       const finalMessage = templateService.replacePlaceholders(
         template.content,
         candidate,
@@ -55,12 +56,13 @@ const CommunicationModal: React.FC<CommunicationModalProps> = ({
             position, 
             companyName: companyProfile.name,
             companyAddress: companyProfile.address,
-            companyWebsite: companyProfile.website
+            companyWebsite: companyProfile.website,
+            stageName: currentStage?.title || candidate.stage,
         }
       );
       setMessage(finalMessage);
     }
-  }, [selectedTemplateId, templates, candidate, position, companyProfile]);
+  }, [selectedTemplateId, templates, candidate, position, companyProfile, stages]);
 
   const handleSend = (platform: 'email' | 'whatsapp') => {
     if (!message.trim()) {

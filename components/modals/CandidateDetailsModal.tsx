@@ -11,6 +11,7 @@ import KamaDatePicker from '../ui/KamaDatePicker';
 import ProcessTimeline from '../ui/ProcessTimeline';
 import { useTemplates } from '../../contexts/TemplateContext';
 import { templateService } from '../../services/templateService';
+import { EmailIcon, WhatsappIcon } from '../ui/Icons';
 
 declare const persianDate: any;
 
@@ -145,59 +146,38 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
     }
   };
 
-  const handleSendReminder = () => {
+  const handleSendReminder = (platform: 'email' | 'whatsapp') => {
     if (!candidate || !interviewDate) {
       addToast('لطفا ابتدا تاریخ مصاحبه را مشخص کنید.', 'error');
       return;
     }
+    
+    const placeholders = {
+        companyName: companyProfile.name,
+        companyAddress: companyProfile.address,
+        companyWebsite: companyProfile.website,
+    };
 
-    const successfulSends: string[] = [];
-    const failedReasons: string[] = [];
-
-    // --- Attempt to send Email ---
-    if (emailReminderTemplate) {
-      const emailMessage = templateService.replacePlaceholders(
-        emailReminderTemplate.content,
-        candidate,
-        {
-          companyName: companyProfile.name,
-          companyAddress: companyProfile.address,
-          companyWebsite: companyProfile.website,
+    if (platform === 'email') {
+        if (emailReminderTemplate) {
+            const emailMessage = templateService.replacePlaceholders(emailReminderTemplate.content, candidate, placeholders);
+            window.open(`mailto:${candidate.email}?subject=یادآوری مصاحبه&body=${encodeURIComponent(emailMessage)}`);
+            addToast('یادآور ایمیل آماده ارسال شد.', 'success');
+            addCustomHistoryEntry(candidate.id, 'یادآور مصاحبه (ایمیل) ارسال شد');
+        } else {
+            addToast('قالب ایمیل یادآوری یافت نشد.', 'error');
         }
-      );
-      window.open(`mailto:${candidate.email}?subject=یادآوری مصاحبه&body=${encodeURIComponent(emailMessage)}`);
-      successfulSends.push('ایمیل');
-    } else {
-      failedReasons.push('قالب ایمیل یافت نشد');
-    }
-
-    // --- Attempt to send WhatsApp ---
-    const whatsappNumber = candidate.phone ? candidate.phone.replace(/[^0-9]/g, '').replace(/^0/, '98') : '';
-    if (whatsappReminderTemplate && whatsappNumber) {
-      const whatsappMessage = templateService.replacePlaceholders(
-        whatsappReminderTemplate.content,
-        candidate,
-        {
-          companyName: companyProfile.name,
-          companyAddress: companyProfile.address,
-          companyWebsite: companyProfile.website,
+    } else { // whatsapp
+        const whatsappNumber = candidate.phone ? candidate.phone.replace(/[^0-9]/g, '').replace(/^0/, '98') : '';
+        if (whatsappReminderTemplate && whatsappNumber) {
+            const whatsappMessage = templateService.replacePlaceholders(whatsappReminderTemplate.content, candidate, placeholders);
+            window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`, '_blank');
+            addToast('یادآور واتسپ آماده ارسال شد.', 'success');
+            addCustomHistoryEntry(candidate.id, 'یادآور مصاحبه (واتسپ) ارسال شد');
+        } else {
+             if (!whatsappReminderTemplate) addToast('قالب واتسپ یادآوری یافت نشد.', 'error');
+             if (!whatsappNumber) addToast('شماره واتسپ نامعتبر است.', 'error');
         }
-      );
-      window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`, '_blank');
-      successfulSends.push('واتسپ');
-    } else {
-      if (!whatsappReminderTemplate) failedReasons.push('قالب واتسپ یافت نشد');
-      if (!whatsappNumber) failedReasons.push('شماره واتسپ نامعتبر است');
-    }
-
-    // --- Report Results to User ---
-    if (successfulSends.length > 0) {
-      addToast(`یادآورهای ${successfulSends.join(' و ')} آماده ارسال شدند.`, 'success');
-      addCustomHistoryEntry(candidate.id, `یادآور مصاحبه ارسال شد (${successfulSends.join(', ')})`);
-    }
-
-    if (failedReasons.length > 0) {
-      addToast(`ارسال ناموفق: ${failedReasons.join('، ')}`, 'error');
     }
   };
 
@@ -229,11 +209,25 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
                            <input type="time" value={interviewTime} onChange={e => setInterviewTime(e.target.value)} className="w-full border rounded-lg shadow-sm p-3 text-gray-800 bg-white focus:ring-2 focus:ring-[var(--color-primary-500)] focus:border-[var(--color-primary-500)] border-gray-300"/>
                       </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                      <button onClick={handleUpdateInterview} className="text-white bg-green-500 hover:bg-green-600 rounded-lg py-2 text-sm">ذخیره تاریخ</button>
-                      <button onClick={handleSendReminder} disabled={!interviewDate || (!emailReminderTemplate && !whatsappReminderTemplate)} className="text-white bg-amber-500 hover:bg-amber-600 rounded-lg py-2 text-sm disabled:bg-gray-400 disabled:cursor-not-allowed">ارسال یادآور</button>
-                      <button onClick={handleAddToGoogleCalendar} disabled={!interviewDate || !interviewTime} className="text-white bg-sky-500 hover:bg-sky-600 rounded-lg py-2 text-sm disabled:bg-gray-400 disabled:cursor-not-allowed">افزودن به تقویم گوگل</button>
-                      <button onClick={handleRemoveInterview} className="text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg py-2 text-sm">حذف تاریخ</button>
+                  <div className="space-y-2 pt-2">
+                        <div className="grid grid-cols-2 gap-2">
+                            <button onClick={handleUpdateInterview} className="text-white bg-green-500 hover:bg-green-600 rounded-lg py-2 text-sm">ذخیره تاریخ</button>
+                            <button onClick={handleRemoveInterview} className="text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg py-2 text-sm">حذف تاریخ</button>
+                        </div>
+                        <div className="border-t border-gray-300 my-2"></div>
+                        <p className="text-sm font-medium text-center text-gray-600">ارسال یادآور</p>
+                        <div className="grid grid-cols-2 gap-2">
+                            <button onClick={() => handleSendReminder('email')} disabled={!interviewDate || !emailReminderTemplate} className="text-white bg-amber-500 hover:bg-amber-600 rounded-lg py-2 text-sm flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                                <EmailIcon className="w-5 h-5"/>
+                                <span>ایمیل</span>
+                            </button>
+                             <button onClick={() => handleSendReminder('whatsapp')} disabled={!interviewDate || !whatsappReminderTemplate || !candidate.phone} className="text-white bg-teal-500 hover:bg-teal-600 rounded-lg py-2 text-sm flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                                <WhatsappIcon className="w-5 h-5"/>
+                                <span>واتسپ</span>
+                            </button>
+                        </div>
+                        <div className="border-t border-gray-300 my-2"></div>
+                        <button onClick={handleAddToGoogleCalendar} disabled={!interviewDate || !interviewTime} className="w-full text-white bg-sky-500 hover:bg-sky-600 rounded-lg py-2 text-sm disabled:bg-gray-400 disabled:cursor-not-allowed">افزودن به تقویم گوگل</button>
                   </div>
               </div>
 
