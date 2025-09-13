@@ -3,6 +3,7 @@ const esbuild = require('esbuild');
 const fs = require('fs-extra');
 const path = require('path');
 const packageJson = require('./package.json');
+const { execSync } = require('child_process');
 
 const distDir = 'dist';
 
@@ -15,8 +16,13 @@ async function build() {
     // Read API_KEY from the build environment
     const apiKey = process.env.API_KEY || '';
     const appVersion = packageJson.version;
+    
+    // 2. Build Tailwind CSS
+    console.log('Building Tailwind CSS...');
+    execSync('npx tailwindcss -i ./styles.css -o ./dist/styles.css --minify', { stdio: 'inherit' });
+    console.log('Tailwind CSS built successfully.');
 
-    // 2. Build the TypeScript/React code
+    // 3. Build the TypeScript/React code
     await esbuild.build({
       entryPoints: ['index.tsx'],
       bundle: true,
@@ -32,9 +38,13 @@ async function build() {
     });
     console.log('JavaScript bundled successfully.');
 
-    // 3. Read, modify, and write index.html
+    // 4. Read, modify, and write index.html
     let htmlContent = await fs.readFile('index.html', 'utf-8');
     
+    // Remove Tailwind CDN script and add local stylesheet
+    htmlContent = htmlContent.replace(/<script src="https:\/\/cdn\.tailwindcss\.com"><\/script>\s*/, '');
+    htmlContent = htmlContent.replace('</head>', '    <link rel="stylesheet" href="./styles.css">\n</head>');
+
     // Remove importmap
     htmlContent = htmlContent.replace(/<script type="importmap">[\s\S]*?<\/script>/, '');
     
