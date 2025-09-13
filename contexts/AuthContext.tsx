@@ -13,6 +13,7 @@ interface AuthContextType {
   deleteUser: (username: string) => void;
   changePassword: (username: string, oldPass: string, newPass: string, isAdminOverride?: boolean) => void;
   currentUser: User | null;
+  restoreUsers: (users: Record<string, UserWithPassword>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -94,7 +95,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
   }
 
-  const value = { user, users, login, logout, addUser, updateUser, deleteUser, changePassword, currentUser: user };
+  const restoreUsers = (newUsers: Record<string, UserWithPassword>) => {
+    if (newUsers && typeof newUsers === 'object') {
+        setUsers(newUsers);
+        // Don't auto-logout, the admin performing the action should stay logged in.
+        // If their user was deleted, they will be logged out on next action/refresh.
+        addToast('حساب‌های کاربری بازیابی شدند.', 'success');
+    }
+  };
+
+  const value = { user, users, login, logout, addUser, updateUser, deleteUser, changePassword, currentUser: user, restoreUsers };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

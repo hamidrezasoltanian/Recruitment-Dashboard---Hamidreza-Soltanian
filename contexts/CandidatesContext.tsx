@@ -6,7 +6,7 @@ import { useAuth } from './AuthContext';
 
 interface CandidatesContextType {
   candidates: Candidate[];
-  setCandidates: (candidates: Candidate[]) => void;
+  setCandidates: (candidates: Candidate[], suppressToast?: boolean) => Promise<void>;
   addCandidate: (candidate: Candidate, resumeFile?: File) => Promise<void>;
   updateCandidate: (candidate: Candidate, resumeFile?: File) => Promise<void>;
   deleteCandidate: (id: string) => Promise<void>;
@@ -92,7 +92,7 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
     return { ...candidate, history: [historyEntry, ...candidate.history] };
   }, [user]);
 
-  const setCandidates = async (newCandidates: Candidate[]) => {
+  const setCandidates = async (newCandidates: Candidate[], suppressToast = false) => {
     try {
         await dbService.clearAllCandidates();
         await dbService.clearAllResumes(); // Assuming resumes are tied to candidates
@@ -100,9 +100,11 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
             await dbService.saveCandidate(candidate);
         }
         setCandidatesState(newCandidates);
-        addToast('داده‌ها با موفقیت جایگزین شدند.', 'success');
+        if (!suppressToast) {
+            addToast('لیست متقاضیان با موفقیت بازیابی شد.', 'success');
+        }
     } catch (error) {
-        addToast('خطا در ذخیره سازی داده‌های جدید.', 'error');
+        addToast('خطا در ذخیره سازی داده‌های متقاضیان.', 'error');
     }
   }
 

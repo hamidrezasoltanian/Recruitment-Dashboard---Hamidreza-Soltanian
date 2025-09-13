@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { useToast } from './ToastContext';
 
 type Theme = 'indigo' | 'blue' | 'teal' | 'rose';
 type Background = { type: 'default' } | { type: 'custom', url: string };
@@ -9,6 +10,7 @@ interface ThemeContextType {
   background: Background;
   setCustomBackground: (dataUrl: string) => void;
   setDefaultBackground: () => void;
+  restoreTheme: (themeSettings: { theme: Theme; background: Background }) => void;
 }
 
 const THEME_KEY = 'recruitment_theme_v1';
@@ -25,6 +27,7 @@ export const useTheme = () => {
 };
 
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { addToast } = useToast();
   const [theme, setThemeState] = useState<Theme>(() => {
     try {
       const storedTheme = localStorage.getItem(THEME_KEY) as Theme | null;
@@ -70,7 +73,19 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setBackgroundState({ type: 'default' });
   };
 
-  const value = { theme, setTheme, background, setCustomBackground, setDefaultBackground };
+  const restoreTheme = (themeSettings: { theme: Theme; background: Background }) => {
+      if (themeSettings) {
+        if (themeSettings.theme) {
+          setThemeState(themeSettings.theme);
+        }
+        if (themeSettings.background) {
+          setBackgroundState(themeSettings.background);
+        }
+        addToast('تنظیمات ظاهری بازیابی شد.', 'success');
+      }
+  };
+
+  const value = { theme, setTheme, background, setCustomBackground, setDefaultBackground, restoreTheme };
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 };

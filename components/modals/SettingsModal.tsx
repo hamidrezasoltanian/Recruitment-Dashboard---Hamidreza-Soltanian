@@ -10,7 +10,7 @@ import { useCandidates } from '../../contexts/CandidatesContext';
 import { useTheme } from '../../contexts/ThemeContext';
 
 const UserManagementPanel: React.FC = () => {
-  const { users, addUser, updateUser, deleteUser, changePassword, currentUser } = useAuth();
+  const { users, addUser, updateUser, deleteUser, currentUser } = useAuth();
   const [editingUser, setEditingUser] = useState<UserWithPassword | null>(null);
   const [isAdding, setIsAdding] = useState(false);
 
@@ -53,19 +53,23 @@ const UserManagementPanel: React.FC = () => {
         addToast('نام کاربری و نام کامل الزامی است.', 'error');
         return;
     }
-    const userData = { username: username.toLowerCase(), name, password, isAdmin };
 
     if (isAdding) {
         if (!password) {
             addToast('رمز عبور برای کاربر جدید الزامی است.', 'error');
             return;
         }
+        const userData = { username: username.toLowerCase(), name, password, isAdmin };
         addUser(userData);
     } else if (editingUser) {
-        updateUser(editingUser.username, { name, isAdmin });
-        if(password) {
-            changePassword(editingUser.username, password, password, true);
+        const changes: Partial<UserWithPassword> = {
+            name,
+            isAdmin,
+        };
+        if (password) {
+            changes.password = password;
         }
+        updateUser(editingUser.username, changes);
     }
     setEditingUser(null);
     setIsAdding(false);

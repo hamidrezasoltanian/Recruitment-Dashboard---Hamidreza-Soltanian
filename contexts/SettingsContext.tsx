@@ -21,6 +21,7 @@ interface SettingsContextType {
   addTest: (test: Omit<TestLibraryItem, 'id'>) => void;
   updateTest: (test: TestLibraryItem) => void;
   deleteTest: (id: string) => void;
+  restoreSettings: (settings: { sources: string[]; stages: KanbanStage[]; companyProfile: CompanyProfile; testLibrary: TestLibraryItem[] }) => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -207,7 +208,19 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     addToast("آزمون حذف شد.", 'success');
   };
 
-  const value = { sources, addSource, deleteSource, stages, setStageOrder, addStage, updateStage, deleteStage, companyProfile, updateCompanyDetails, addJobPosition, updateJobPosition, deleteJobPosition, testLibrary, addTest, updateTest, deleteTest };
+  const restoreSettings = (settings: { sources: string[]; stages: KanbanStage[]; companyProfile: CompanyProfile; testLibrary: TestLibraryItem[] }) => {
+    if (settings) {
+      if (settings.sources) setSources(settings.sources);
+      if (settings.stages) setStages(settings.stages);
+      if (settings.companyProfile) setCompanyProfile(settings.companyProfile);
+      if (settings.testLibrary) setTestLibrary(settings.testLibrary);
+      addToast('تنظیمات برنامه بازیابی شد.', 'success');
+    } else {
+      addToast('داده‌های تنظیمات در فایل پشتیبان یافت نشد.', 'error');
+    }
+  };
+
+  const value = { sources, addSource, deleteSource, stages, setStageOrder, addStage, updateStage, deleteStage, companyProfile, updateCompanyDetails, addJobPosition, updateJobPosition, deleteJobPosition, testLibrary, addTest, updateTest, deleteTest, restoreSettings };
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 };

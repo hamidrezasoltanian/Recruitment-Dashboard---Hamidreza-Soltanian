@@ -8,6 +8,7 @@ interface TemplateContextType {
   addTemplate: (template: Omit<Template, 'id'>) => void;
   updateTemplate: (template: Template) => void;
   deleteTemplate: (id: string) => void;
+  restoreTemplates: (templates: Template[]) => void;
 }
 
 const TemplateContext = createContext<TemplateContextType | undefined>(undefined);
@@ -67,8 +68,15 @@ export const TemplateProvider: React.FC<{ children: ReactNode }> = ({ children }
         addToast(`قالب "${templateToDelete.name}" حذف شد.`, 'success');
     }
   };
+
+  const restoreTemplates = (newTemplates: Template[]) => {
+    if (Array.isArray(newTemplates)) {
+        setTemplates(newTemplates);
+        addToast('قالب‌های پیام بازیابی شدند.', 'success');
+    }
+  };
   
-  const value = { templates, addTemplate, updateTemplate, deleteTemplate };
+  const value = { templates, addTemplate, updateTemplate, deleteTemplate, restoreTemplates };
 
   return <TemplateContext.Provider value={value}>{children}</TemplateContext.Provider>;
 };

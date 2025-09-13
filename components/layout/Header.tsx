@@ -4,6 +4,10 @@ import { useCandidates } from '../../contexts/CandidatesContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Candidate } from '../../types';
 import { migrationService } from '../../services/migrationService';
+import { useSettings } from '../../contexts/SettingsContext';
+import { useTemplates } from '../../contexts/TemplateContext';
+import { useTheme } from '../../contexts/ThemeContext';
+
 
 declare const persianDate: any;
 
@@ -14,21 +18,34 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick, onOpenBulkCommModal }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, users, restoreUsers } = useAuth();
   const { candidates, setCandidates } = useCandidates();
   const { addToast } = useToast();
+  const { sources, stages, companyProfile, testLibrary, restoreSettings } = useSettings();
+  const { templates, restoreTemplates } = useTemplates();
+  const { theme, background, restoreTheme } = useTheme();
   const restoreInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleBackup = () => {
-    if (candidates.length === 0) {
-      addToast('هیچ داده‌ای برای پشتیبان‌گیری وجود ندارد.', 'error');
-      return;
-    }
     const appVersion = process.env.APP_VERSION || '1.1.0';
     const backupData = {
         version: appVersion,
         createdAt: new Date().toISOString(),
-        candidates: candidates
+        data: {
+            candidates: candidates,
+            settings: {
+                sources,
+                stages,
+                companyProfile,
+                testLibrary
+            },
+            templates: templates,
+            users: users,
+            theme: {
+                theme,
+                background
+            }
+        }
     };
 
     const dataStr = JSON.stringify(backupData, null, 2);
@@ -37,12 +54,12 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick, o
     const link = document.createElement('a');
     link.href = url;
     const date = new Date().toISOString().slice(0, 10);
-    link.download = `recruitment_backup_v${appVersion}_${date}.json`;
+    link.download = `recruitment_backup_full_v${appVersion}_${date}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    addToast('پشتیبان‌گیری با موفقیت انجام شد.', 'success');
+    addToast('پشتیبان‌گیری کامل از تمام داده‌ها انجام شد.', 'success');
   };
 
   const handleRestoreClick = () => {
@@ -54,36 +71,47 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick, o
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const text = e.target?.result;
         if (typeof text !== 'string') throw new Error('File content is not valid');
         
-        const data = JSON.parse(text);
-        let candidatesToRestore: Candidate[];
-        let backupVersion = '1.0.0'; // Default for old format
+        const backup = JSON.parse(text);
 
-        if (Array.isArray(data)) {
-            // Old backup format: just an array of candidates
-            candidatesToRestore = data;
-        } else if (data && data.candidates && data.version) {
-            // New backup format with metadata
-            candidatesToRestore = data.candidates;
-            backupVersion = data.version;
-        } else {
-            throw new Error('فرمت فایل پشتیبان ناشناخته است.');
+        // Check for the new, comprehensive format
+        if (backup.data && backup.data.candidates) {
+            const { data, version } = backup;
+            
+            // Restore all settings
+            if(data.settings) restoreSettings(data.settings);
+            if(data.templates) restoreTemplates(data.templates);
+            if(data.users) restoreUsers(data.users);
+            if(data.theme) restoreTheme(data.theme);
+
+            // Restore candidates (with migration)
+            const migratedCandidates = migrationService.migrate(data.candidates, version || '1.0.0');
+            // Use await to ensure candidate restoration finishes before the final toast
+            await setCandidates(migratedCandidates, true); // Suppress individual toast
+            
+            addToast('بازیابی کامل داده‌ها با موفقیت انجام شد!', 'success');
+            // Optional: force a reload to ensure all components refresh with new context data
+            setTimeout(() => window.location.reload(), 1500);
+
+        } else { // Handle old format for backward compatibility
+            let candidatesToRestore: Candidate[];
+            let backupVersion = '1.0.0';
+
+            if (Array.isArray(backup)) {
+                candidatesToRestore = backup;
+            } else if (backup.candidates && backup.version) {
+                candidatesToRestore = backup.candidates;
+                backupVersion = backup.version;
+            } else {
+                throw new Error('فرمت فایل پشتیبان ناشناخته است.');
+            }
+            const migratedCandidates = migrationService.migrate(candidatesToRestore, backupVersion);
+            await setCandidates(migratedCandidates);
         }
-
-        // Migrate data structure to the current version if needed
-        const migratedCandidates = migrationService.migrate(candidatesToRestore, backupVersion);
-
-        // Basic validation after potential migration
-        if (!Array.isArray(migratedCandidates) || !migratedCandidates.every(c => c.id && c.name && c.stage)) {
-            throw new Error('فایل پشتیبان پس از مهاجرت، معتبر نیست.');
-        }
-
-        setCandidates(migratedCandidates);
-        // Toast is shown within the setCandidates function from the context
         
       } catch (error: any) {
         addToast(error.message || 'خطا در بازیابی فایل. لطفاً از معتبر بودن فایل اطمینان حاصل کنید.', 'error');
