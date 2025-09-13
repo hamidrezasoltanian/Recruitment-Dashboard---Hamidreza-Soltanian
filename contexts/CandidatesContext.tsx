@@ -17,6 +17,8 @@ interface CandidatesContextType {
   updateTestResult: (candidateId: string, testId: string, resultData: Partial<TestResult>) => Promise<void>;
 }
 
+declare const persianDate: any;
+
 const CandidatesContext = createContext<CandidatesContextType | undefined>(undefined);
 
 export const useCandidates = () => {
@@ -37,7 +39,7 @@ const defaultCandidate: Candidate = {
     source: 'معرفی‌شده',
     rating: 5,
     createdAt: new Date().toISOString(),
-    interviewDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString('fa-IR-u-nu-latn').replace(/\//g, '/'),
+    interviewDate: new persianDate(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)).format('YYYY/MM/DD'),
     interviewTime: '14:30',
     interviewTimeChanged: true,
     history: [{
