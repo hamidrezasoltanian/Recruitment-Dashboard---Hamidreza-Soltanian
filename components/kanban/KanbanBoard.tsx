@@ -110,7 +110,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ candidates, onViewDetails, on
         <div className="flex gap-4 min-w-max">
           {/* FIX: Removed the problematic .map() which caused a TypeScript error. 
               The drag-and-drop data is now correctly supplied via the useSortable hook in SortableKanbanColumn. */}
-          <SortableContext items={kanbanStages} strategy={horizontalListSortingStrategy}>
+          <SortableContext items={kanbanStages.map(s => s.id)} strategy={horizontalListSortingStrategy}>
             {kanbanStages.map((stage) => (
               <SortableKanbanColumn key={stage.id} stage={stage}>
                 <KanbanColumn
