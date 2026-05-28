@@ -7,7 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { dbService } from '../../services/dbService';
 import { useToast } from '../../contexts/ToastContext';
 import { useSettings } from '../../contexts/SettingsContext';
-import KamaDatePicker from '../ui/KamaDatePicker';
+import PersianDatePicker from '../ui/PersianDatePicker';
 import ProcessTimeline from '../ui/ProcessTimeline';
 import { useTemplates } from '../../contexts/TemplateContext';
 import { templateService } from '../../services/templateService';
@@ -323,7 +323,7 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                            <label className="block text-sm font-medium text-gray-700 mb-1">تاریخ مصاحبه</label>
-                           <KamaDatePicker value={interviewDate} onChange={setInterviewDate} />
+                           <PersianDatePicker value={interviewDate} onChange={setInterviewDate} />
                       </div>
                       <div>
                            <label className="block text-sm font-medium text-gray-700 mb-1">ساعت مصاحبه</label>

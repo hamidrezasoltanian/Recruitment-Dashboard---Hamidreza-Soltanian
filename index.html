@@ -5,13 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>داشبورد استخدام</title>
     
-    <!-- External assets -->
-    <link rel="stylesheet" type="text/css" href="https://www.fontstatic.com/css/Vazir.css"/>
-    <script src="https://cdn.jsdelivr.net/npm/persian-date@1.1.0/dist/persian-date.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/kamadatepicker@1.5.4/dist/kamadatepicker.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/kamadatepicker@1.5.4/dist/kamadatepicker.min.css">
+    <!-- Persian date library (local copy from node_modules) -->
+    <script src="./vendor/persian-date.min.js"></script>
     
     <style>
+        /* Vazir font — local copies in vendor/fonts/ */
+        @font-face { font-family: 'Vazir'; src: url('./vendor/fonts/Vazir-Variable.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
+        @font-face { font-family: 'Vazir'; src: url('./vendor/fonts/Vazir-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+        @font-face { font-family: 'Vazir'; src: url('./vendor/fonts/Vazir-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+
         :root {
             --color-primary-50: #eef2ff;
             --color-primary-100: #e0e7ff;
@@ -23,7 +25,7 @@
             --color-primary-900: #312e81;
         }
         body {
-            font-family: 'Vazir', sans-serif;
+            font-family: 'Vazir', system-ui, sans-serif;
             margin: 0;
             background-color: #f1f5f9;
             color: #334155;
@@ -32,10 +34,10 @@
             background-position: center;
             background-attachment: fixed;
         }
-        .kanban-cards::-webkit-scrollbar { width: 8px; }
-        .kanban-cards::-webkit-scrollbar-track { background: #e5e7eb; border-radius: 10px; }
-        .kanban-cards::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 10px; }
-        .kanban-cards::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        .kanban-cards::-webkit-scrollbar { width: 6px; }
+        .kanban-cards::-webkit-scrollbar-track { background: transparent; }
+        .kanban-cards::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+        .kanban-cards::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
         .date-input-container { position: relative; }
         .date-input-icon { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); pointer-events: none; color: #6b7280; }
         .theme-indigo { --color-primary-50: #eef2ff; --color-primary-100: #e0e7ff; --color-primary-200: #c7d2fe; --color-primary-500: #6366f1; --color-primary-600: #4f46e5; --color-primary-700: #4338ca; --color-primary-800: #3730a3; --color-primary-900: #312e81; }

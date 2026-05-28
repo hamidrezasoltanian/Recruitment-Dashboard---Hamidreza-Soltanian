@@ -4,7 +4,7 @@ import { DEFAULT_SOURCES } from '../../constants';
 import Modal from '../ui/Modal';
 import StarRating from '../ui/StarRating';
 import { useSettings } from '../../contexts/SettingsContext';
-import KamaDatePicker from '../ui/KamaDatePicker';
+import PersianDatePicker from '../ui/PersianDatePicker';
 
 interface AddEditCandidateModalProps {
   isOpen: boolean;
@@ -129,7 +129,7 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
            <div className="md:col-span-2 grid grid-cols-2 gap-4">
               <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">تاریخ مصاحبه</label>
-                  <KamaDatePicker value={interviewDate} onChange={handleDateChange} />
+                  <PersianDatePicker value={interviewDate} onChange={handleDateChange} />
               </div>
               <div>
                   <label htmlFor="interviewTime" className="block text-sm font-medium text-gray-700 mb-1">ساعت مصاحبه</label>
