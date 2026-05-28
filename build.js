@@ -37,6 +37,21 @@ async function build() {
     execSync('npx tailwindcss -i ./styles.css -o ./dist/styles.css --minify', { stdio: 'inherit' });
     console.log('Tailwind CSS built successfully.');
 
+    // Copy vendor libraries from node_modules (removes CDN dependency)
+    await fs.copy(
+      'node_modules/persian-date/dist/persian-date.min.js',
+      path.join(distDir, 'persian-date.min.js')
+    );
+    await fs.copy(
+      'node_modules/kamadatepicker/dist/kamadatepicker.min.js',
+      path.join(distDir, 'kamadatepicker.min.js')
+    );
+    await fs.copy(
+      'node_modules/kamadatepicker/dist/kamadatepicker.min.css',
+      path.join(distDir, 'kamadatepicker.min.css')
+    );
+    console.log('Vendor libraries copied.');
+
     // 3. Build the TypeScript/React code
     await esbuild.build({
       entryPoints: ['index.tsx'],
@@ -61,6 +76,20 @@ async function build() {
     // Remove Tailwind CDN script and add local stylesheet
     htmlContent = htmlContent.replace(/<script src="https:\/\/cdn\.tailwindcss\.com"><\/script>\s*/, '');
     htmlContent = htmlContent.replace('</head>', '    <link rel="stylesheet" href="./styles.css">\n</head>');
+
+    // Replace CDN vendor scripts with local copies
+    htmlContent = htmlContent.replace(
+      '<script src="https://cdn.jsdelivr.net/npm/persian-date@1.1.0/dist/persian-date.min.js"></script>',
+      '<script src="./persian-date.min.js"></script>'
+    );
+    htmlContent = htmlContent.replace(
+      '<script src="https://cdn.jsdelivr.net/npm/kamadatepicker@1.5.4/dist/kamadatepicker.min.js"></script>',
+      '<script src="./kamadatepicker.min.js"></script>'
+    );
+    htmlContent = htmlContent.replace(
+      '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/kamadatepicker@1.5.4/dist/kamadatepicker.min.css">',
+      '<link rel="stylesheet" href="./kamadatepicker.min.css">'
+    );
 
     // Remove importmap
     htmlContent = htmlContent.replace(/<script type="importmap">[\s\S]*?<\/script>/, '');
