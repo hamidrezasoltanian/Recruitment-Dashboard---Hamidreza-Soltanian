@@ -12,6 +12,8 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@google/genai": "^0.15.0",
     "@supabase/supabase-js": "^2.106.2",
+    "@types/jquery": "^4.0.0",
+    "jquery": "^4.0.0",
     "kamadatepicker": "^1.5.3",
     "persian-date": "^1.1.0",
     "react": "^19.1.1",

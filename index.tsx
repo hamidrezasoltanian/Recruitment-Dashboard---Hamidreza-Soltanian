@@ -7,6 +7,11 @@ import { ToastProvider } from './contexts/ToastContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { TemplateProvider } from './contexts/TemplateContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import $ from 'jquery';
+
+// Expose jQuery as global so kamadatepicker can find it
+(window as any).$ = $;
+(window as any).jQuery = $;
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
