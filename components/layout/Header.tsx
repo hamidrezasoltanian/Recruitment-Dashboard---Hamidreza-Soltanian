@@ -8,6 +8,18 @@ import { useSettings } from '../../contexts/SettingsContext';
 import { useTemplates } from '../../contexts/TemplateContext';
 import { useTheme } from '../../contexts/ThemeContext';
 
+const MoonIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+  </svg>
+);
+
+const SunIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+  </svg>
+);
+
 
 declare const persianDate: any;
 
@@ -23,7 +35,7 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick, o
   const { addToast } = useToast();
   const { sources, stages, companyProfile, testLibrary, restoreSettings } = useSettings();
   const { templates, restoreTemplates } = useTemplates();
-  const { theme, background, restoreTheme } = useTheme();
+  const { theme, background, darkMode, toggleDarkMode, restoreTheme } = useTheme();
   const restoreInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleBackup = () => {
@@ -183,6 +195,13 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick, o
       </div>
       
       <div className="flex items-center gap-2 flex-wrap">
+        <button
+          onClick={toggleDarkMode}
+          title={darkMode ? 'حالت روشن' : 'حالت تاریک'}
+          className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
+        >
+          {darkMode ? <SunIcon /> : <MoonIcon />}
+        </button>
         <button onClick={handleBulkReminder} className="text-sm bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">یادآور گروهی</button>
         <button onClick={handleBackup} className="text-sm bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">پشتیبان‌گیری</button>
         <input type="file" id="restore-input" ref={restoreInputRef} className="hidden" accept=".json" onChange={handleRestore} />

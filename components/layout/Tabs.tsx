@@ -9,6 +9,7 @@ interface TabsProps {
 const Tabs: React.FC<TabsProps> = ({ activeView, setActiveView }) => {
   const tabs: { id: View; label: string }[] = [
     { id: 'dashboard', label: 'داشبورد' },
+    { id: 'reports', label: 'گزارش‌ها' },
     { id: 'tests', label: 'آزمون‌ها' },
     { id: 'calendar', label: 'تقویم' },
     { id: 'archive', label: 'آرشیو' },

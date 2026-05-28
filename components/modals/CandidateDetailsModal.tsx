@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Candidate, Comment, StageChangeInfo } from '../../types';
+import { Candidate, Comment, StageChangeInfo, ScorecardEntry, ScorecardScore } from '../../types';
 import Modal from '../ui/Modal';
 import StarRating from '../ui/StarRating';
 import { useCandidates } from '../../contexts/CandidatesContext';
@@ -27,8 +27,8 @@ interface CandidateDetailsModalProps {
 }
 
 const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, onClose, candidate, onEdit, onStageChangeRequest, onNavigateToTests, onOpenCommunicationModal, onViewResume }) => {
-  const { addComment, updateCandidate, addCustomHistoryEntry } = useCandidates();
-  const { companyProfile, stages } = useSettings();
+  const { addComment, updateCandidate, addCustomHistoryEntry, updateScorecard } = useCandidates();
+  const { companyProfile, stages, scorecardTemplates } = useSettings();
   const { templates } = useTemplates();
   const { user } = useAuth();
   const { addToast } = useToast();
@@ -38,6 +38,9 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
   const [customHistoryEvent, setCustomHistoryEvent] = useState('');
   const [interviewDate, setInterviewDate] = useState('');
   const [interviewTime, setInterviewTime] = useState('');
+  const [scorecardScores, setScorecardScores] = useState<ScorecardScore[]>([]);
+  const [scorecardNotes, setScorecardNotes] = useState('');
+  const [activeDetailTab, setActiveDetailTab] = useState<'info' | 'scorecard'>('info');
 
   const emailReminderTemplate = useMemo(() => {
     return templates.find(t => t.id === 'tpl_email_invite_reminder');
@@ -48,14 +51,55 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
   
   useEffect(() => {
     if (isOpen && candidate) {
-        setNewComment('');
-        setCustomHistoryEvent('');
-        setInterviewDate(candidate.interviewDate || '');
-        setInterviewTime(candidate.interviewTime || '');
+      setNewComment('');
+      setCustomHistoryEvent('');
+      setInterviewDate(candidate.interviewDate || '');
+      setInterviewTime(candidate.interviewTime || '');
+      setActiveDetailTab('info');
+      // Load existing scorecard for current stage
+      const existing = candidate.scorecards?.find(s => s.stageId === candidate.stage);
+      setScorecardScores(existing?.scores || []);
+      setScorecardNotes(existing?.notes || '');
     }
   }, [isOpen, candidate]);
 
   if (!candidate) return null;
+
+  const currentStageCriteria = scorecardTemplates[candidate.stage] || [];
+
+  const handleScorecardScoreChange = (criteriaId: string, score: number) => {
+    setScorecardScores(prev => {
+      const existing = prev.find(s => s.criteriaId === criteriaId);
+      if (existing) return prev.map(s => s.criteriaId === criteriaId ? { ...s, score } : s);
+      return [...prev, { criteriaId, score }];
+    });
+  };
+
+  const handleSaveScorecard = () => {
+    if (!user) return;
+    const entry: ScorecardEntry = {
+      stageId: candidate.stage,
+      scores: scorecardScores,
+      notes: scorecardNotes,
+      evaluatedAt: new Date().toISOString(),
+      evaluatedBy: user.name,
+    };
+    updateScorecard(candidate.id, entry);
+    addToast('کارت امتیازدهی ذخیره شد.', 'success');
+  };
+
+  const getScorecardTotal = () => {
+    if (currentStageCriteria.length === 0 || scorecardScores.length === 0) return null;
+    let totalWeight = 0, weightedScore = 0;
+    currentStageCriteria.forEach(c => {
+      const s = scorecardScores.find(sc => sc.criteriaId === c.id);
+      if (s) {
+        weightedScore += (s.score / 5) * c.weight;
+        totalWeight += c.weight;
+      }
+    });
+    return totalWeight > 0 ? Math.round((weightedScore / totalWeight) * 100) : null;
+  };
 
   const handleAddComment = () => {
     if (newComment.trim() && user) {
@@ -185,7 +229,84 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
   return (
     <>
       <Modal isOpen={isOpen} onClose={onClose} title={`جزئیات متقاضی: ${candidate.name}`}>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Tab Navigation inside modal */}
+        {currentStageCriteria.length > 0 && (
+          <div className="flex border-b border-gray-200 mb-4">
+            <button
+              onClick={() => setActiveDetailTab('info')}
+              className={`py-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeDetailTab === 'info' ? 'border-[var(--color-primary-500)] text-[var(--color-primary-600)]' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            >اطلاعات و مدیریت</button>
+            <button
+              onClick={() => setActiveDetailTab('scorecard')}
+              className={`py-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeDetailTab === 'scorecard' ? 'border-[var(--color-primary-500)] text-[var(--color-primary-600)]' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            >
+              کارت امتیازدهی
+              {getScorecardTotal() !== null && (
+                <span className="mr-2 px-2 py-0.5 bg-[var(--color-primary-100)] text-[var(--color-primary-700)] text-xs rounded-full font-bold">
+                  {getScorecardTotal()}٪
+                </span>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* Scorecard Tab */}
+        {activeDetailTab === 'scorecard' && currentStageCriteria.length > 0 && (
+          <div className="space-y-5">
+            <p className="text-sm text-gray-500">ارزیابی متقاضی در مرحله «{stages.find(s => s.id === candidate.stage)?.title}»</p>
+            {currentStageCriteria.map(criteria => {
+              const currentScore = scorecardScores.find(s => s.criteriaId === criteria.id)?.score || 0;
+              return (
+                <div key={criteria.id}>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-medium text-gray-700">{criteria.name}</span>
+                    <span className="text-xs text-gray-400">وزن: {criteria.weight}٪</span>
+                  </div>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map(n => (
+                      <button
+                        key={n}
+                        onClick={() => handleScorecardScoreChange(criteria.id, n)}
+                        className={`scorecard-score-btn ${currentScore === n ? 'active' : ''}`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                    {currentScore > 0 && (
+                      <span className="text-xs text-gray-500 self-center mr-2">
+                        {['', 'ضعیف', 'متوسط', 'خوب', 'عالی', 'فوق‌العاده'][currentScore]}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">یادداشت ارزیاب</label>
+              <textarea
+                value={scorecardNotes}
+                onChange={e => setScorecardNotes(e.target.value)}
+                rows={3}
+                placeholder="نکات مهم ارزیابی..."
+                className="w-full border border-gray-300 rounded-lg p-3 text-sm"
+              />
+            </div>
+            {getScorecardTotal() !== null && (
+              <div className="p-4 bg-[var(--color-primary-50)] rounded-lg text-center">
+                <p className="text-sm text-gray-600 mb-1">امتیاز کل (وزن‌دار)</p>
+                <p className="text-4xl font-extrabold text-[var(--color-primary-600)]">{getScorecardTotal()}٪</p>
+              </div>
+            )}
+            <button
+              onClick={handleSaveScorecard}
+              className="w-full bg-[var(--color-primary-600)] text-white py-2 rounded-lg hover:bg-[var(--color-primary-700)] font-medium"
+            >
+              ذخیره ارزیابی
+            </button>
+          </div>
+        )}
+
+        <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 ${activeDetailTab === 'scorecard' && currentStageCriteria.length > 0 ? 'hidden' : ''}`}>
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
               {/* Basic Info */}

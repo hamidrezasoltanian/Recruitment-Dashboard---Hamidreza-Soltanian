@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useToast } from './ToastContext';
 
 type Theme = 'indigo' | 'blue' | 'teal' | 'rose';
@@ -10,11 +10,14 @@ interface ThemeContextType {
   background: Background;
   setCustomBackground: (dataUrl: string) => void;
   setDefaultBackground: () => void;
-  restoreTheme: (themeSettings: { theme: Theme; background: Background }) => void;
+  darkMode: boolean;
+  toggleDarkMode: () => void;
+  restoreTheme: (themeSettings: { theme: Theme; background: Background; darkMode?: boolean }) => void;
 }
 
 const THEME_KEY = 'recruitment_theme_v1';
 const BACKGROUND_KEY = 'recruitment_background_v1';
+const DARK_MODE_KEY = 'recruitment_dark_mode_v1';
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
@@ -46,11 +49,22 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   });
 
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem(DARK_MODE_KEY);
+      if (stored !== null) return JSON.parse(stored);
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch {
+      return false;
+    }
+  });
+
   useEffect(() => {
-    // The base classes are in index.html, we just set the theme name class
-    document.body.className = `theme-${theme}`;
+    const classes = [`theme-${theme}`];
+    if (darkMode) classes.push('dark-mode');
+    document.body.className = classes.join(' ');
     localStorage.setItem(THEME_KEY, theme);
-  }, [theme]);
+  }, [theme, darkMode]);
 
   useEffect(() => {
     if (background.type === 'custom') {
@@ -61,31 +75,28 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     localStorage.setItem(BACKGROUND_KEY, JSON.stringify(background));
   }, [background]);
 
-  const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
-  };
-  
-  const setCustomBackground = (dataUrl: string) => {
-    setBackgroundState({ type: 'custom', url: dataUrl });
-  };
-  
-  const setDefaultBackground = () => {
-    setBackgroundState({ type: 'default' });
+  useEffect(() => {
+    localStorage.setItem(DARK_MODE_KEY, JSON.stringify(darkMode));
+  }, [darkMode]);
+
+  const setTheme = (newTheme: Theme) => setThemeState(newTheme);
+
+  const setCustomBackground = (dataUrl: string) => setBackgroundState({ type: 'custom', url: dataUrl });
+
+  const setDefaultBackground = () => setBackgroundState({ type: 'default' });
+
+  const toggleDarkMode = () => setDarkMode(prev => !prev);
+
+  const restoreTheme = (themeSettings: { theme: Theme; background: Background; darkMode?: boolean }) => {
+    if (themeSettings) {
+      if (themeSettings.theme) setThemeState(themeSettings.theme);
+      if (themeSettings.background) setBackgroundState(themeSettings.background);
+      if (typeof themeSettings.darkMode === 'boolean') setDarkMode(themeSettings.darkMode);
+      addToast('تنظیمات ظاهری بازیابی شد.', 'success');
+    }
   };
 
-  const restoreTheme = (themeSettings: { theme: Theme; background: Background }) => {
-      if (themeSettings) {
-        if (themeSettings.theme) {
-          setThemeState(themeSettings.theme);
-        }
-        if (themeSettings.background) {
-          setBackgroundState(themeSettings.background);
-        }
-        addToast('تنظیمات ظاهری بازیابی شد.', 'success');
-      }
-  };
-
-  const value = { theme, setTheme, background, setCustomBackground, setDefaultBackground, restoreTheme };
+  const value = { theme, setTheme, background, setCustomBackground, setDefaultBackground, darkMode, toggleDarkMode, restoreTheme };
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 };

@@ -1,11 +1,32 @@
 
 
 export type StageId = string;
+export type KanbanViewMode = 'kanban' | 'list' | 'table';
 
 export interface KanbanStage {
   id: StageId;
   title: string;
-  isCore?: boolean; // Core stages cannot be deleted
+  isCore?: boolean;
+  sla?: number; // max days a candidate should stay in this stage
+}
+
+export interface ScorecardCriteria {
+  id: string;
+  name: string;
+  weight: number; // 0-100 percentage
+}
+
+export interface ScorecardScore {
+  criteriaId: string;
+  score: number; // 1-5
+}
+
+export interface ScorecardEntry {
+  stageId: StageId;
+  scores: ScorecardScore[];
+  notes?: string;
+  evaluatedAt: string;
+  evaluatedBy: string;
 }
 
 export interface HistoryEntry {
@@ -29,36 +50,37 @@ export interface TestLibraryItem {
 }
 
 export interface TestResult {
-  testId: string; // From TestLibraryItem.id
+  testId: string;
   status: 'not_sent' | 'pending' | 'passed' | 'failed' | 'review';
   score?: number;
   notes?: string;
   sentDate?: string;
   deadlineHours?: number;
-  file?: {           // Uploaded result file (optional)
+  file?: {
     name: string;
     type: string;
   };
 }
-
 
 export interface Candidate {
   id: string;
   name: string;
   email: string;
   phone: string;
-  position: string; // New field for the job position
+  position: string;
   stage: StageId;
   source: string;
   rating: number; // 0-5
   createdAt: string;
+  stageEnteredAt?: string; // ISO timestamp when candidate entered current stage
   interviewDate?: string; // Format: YYYY/MM/DD
   interviewTime?: string; // Format: HH:MM
-  interviewTimeChanged?: boolean; // New field
+  interviewTimeChanged?: boolean;
   history: HistoryEntry[];
   comments: Comment[];
   hasResume?: boolean;
-  testResults?: TestResult[]; // Comprehensive test results
+  testResults?: TestResult[];
+  scorecards?: ScorecardEntry[];
 }
 
 export interface StageChangeInfo {
@@ -76,14 +98,14 @@ export interface UserWithPassword extends User {
     password?: string;
 }
 
-export type View = 'dashboard' | 'calendar' | 'archive' | 'tests';
+export type View = 'dashboard' | 'calendar' | 'archive' | 'tests' | 'reports';
 
 export interface Template {
   id: string;
   name: string;
   content: string;
   type: 'email' | 'whatsapp';
-  stageId?: StageId; // For stage change notifications
+  stageId?: StageId;
 }
 
 export interface JobPosition {

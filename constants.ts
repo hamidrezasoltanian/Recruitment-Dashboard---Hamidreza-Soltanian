@@ -19,6 +19,8 @@ export const STAGES_KEY = 'recruitment_stages_v1';
 export const TEMPLATES_KEY = 'recruitment_templates_v1';
 export const COMPANY_PROFILE_KEY = 'recruitment_company_profile_v1';
 export const TEST_LIBRARY_KEY = 'recruitment_test_library_v1';
+export const SLA_SETTINGS_KEY = 'recruitment_sla_v1';
+export const SCORECARD_TEMPLATES_KEY = 'recruitment_scorecard_templates_v1';
 
 export const DEFAULT_COMPANY_PROFILE: CompanyProfile = {
   name: "شرکت شما",

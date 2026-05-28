@@ -1,3 +1,137 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Dark Mode Overrides */
+.dark-mode {
+  background-color: #0f172a !important;
+  color: #cbd5e1;
+}
+
+.dark-mode header,
+.dark-mode nav.bg-white\/50 {
+  background-color: #1e293b !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+.dark-mode .bg-white { background-color: #1e293b !important; }
+.dark-mode .bg-gray-50 { background-color: #1e293b !important; }
+.dark-mode .bg-gray-100 { background-color: #0f172a !important; }
+.dark-mode .bg-gray-200 { background-color: #334155 !important; }
+.dark-mode .bg-white\/50 { background-color: rgba(30,41,59,0.8) !important; }
+.dark-mode .bg-gray-200\/80 { background-color: rgba(51,65,85,0.8) !important; }
+
+.dark-mode .text-gray-800 { color: #f1f5f9 !important; }
+.dark-mode .text-gray-700 { color: #e2e8f0 !important; }
+.dark-mode .text-gray-600 { color: #cbd5e1 !important; }
+.dark-mode .text-gray-500 { color: #94a3b8 !important; }
+.dark-mode .text-gray-400 { color: #64748b !important; }
+
+.dark-mode .border-gray-200 { border-color: #334155 !important; }
+.dark-mode .border-gray-300 { border-color: #475569 !important; }
+
+.dark-mode input,
+.dark-mode textarea,
+.dark-mode select {
+  background-color: #334155 !important;
+  color: #e2e8f0 !important;
+  border-color: #475569 !important;
+}
+
+.dark-mode input::placeholder,
+.dark-mode textarea::placeholder {
+  color: #64748b;
+}
+
+.dark-mode .shadow-md { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.6) !important; }
+.dark-mode .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0,0,0,0.5) !important; }
+.dark-mode .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0,0,0,0.6) !important; }
+
+.dark-mode .bg-blue-50 { background-color: rgba(30,58,138,0.2) !important; }
+.dark-mode .bg-green-100 { background-color: rgba(6,78,59,0.25) !important; }
+.dark-mode .bg-amber-100 { background-color: rgba(120,53,15,0.25) !important; }
+.dark-mode .bg-sky-50 { background-color: rgba(8,47,73,0.25) !important; }
+.dark-mode .bg-red-50 { background-color: rgba(127,29,29,0.2) !important; }
+
+/* Kanban columns in dark mode */
+.dark-mode .kanban-cards::-webkit-scrollbar-track { background: #334155; }
+.dark-mode .kanban-cards::-webkit-scrollbar-thumb { background: #475569; }
+.dark-mode .kanban-cards::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+/* SLA Badge Styles */
+.sla-warning {
+  animation: pulse-sla 2s ease-in-out infinite;
+}
+@keyframes pulse-sla {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Report chart bars */
+.report-bar {
+  transition: width 0.6s ease-in-out;
+}
+
+/* Kanban List View */
+.list-view-row {
+  border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.15s;
+}
+.list-view-row:hover { background-color: #f9fafb; }
+.dark-mode .list-view-row { border-bottom-color: #334155; }
+.dark-mode .list-view-row:hover { background-color: #1e293b; }
+
+/* Kanban Table View */
+.table-view th {
+  background-color: #f3f4f6;
+  font-weight: 700;
+  text-align: right;
+  padding: 0.75rem 1rem;
+  border-bottom: 2px solid #e5e7eb;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.table-view th:hover { background-color: #e5e7eb; }
+.dark-mode .table-view th { background-color: #1e293b; border-bottom-color: #334155; color: #e2e8f0; }
+.dark-mode .table-view th:hover { background-color: #334155; }
+.table-view td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  vertical-align: middle;
+}
+.dark-mode .table-view td { border-bottom-color: #334155; color: #cbd5e1; }
+.table-view tr:hover td { background-color: #f9fafb; }
+.dark-mode .table-view tr:hover td { background-color: #1e293b; }
+
+/* Scorecard */
+.scorecard-score-btn {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 2px solid #d1d5db;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.scorecard-score-btn.active {
+  background-color: var(--color-primary-600);
+  border-color: var(--color-primary-600);
+  color: white;
+}
+.scorecard-score-btn:hover:not(.active) {
+  border-color: var(--color-primary-400);
+  background-color: var(--color-primary-50);
+}
+
+/* Existing styles */
+.kanban-cards::-webkit-scrollbar { width: 8px; }
+.kanban-cards::-webkit-scrollbar-track { background: #e5e7eb; border-radius: 10px; }
+.kanban-cards::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 10px; }
+.kanban-cards::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+.date-input-container { position: relative; }
+.date-input-icon { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); pointer-events: none; color: #6b7280; }

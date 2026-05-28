@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../ui/Modal';
 import { useAuth } from '../../contexts/AuthContext';
-import { CompanyProfile, JobPosition, KanbanStage, Template, TestLibraryItem, UserWithPassword } from '../../types';
+import { JobPosition, KanbanStage, Template, TestLibraryItem, UserWithPassword } from '../../types';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useTemplates } from '../../contexts/TemplateContext';
@@ -175,7 +175,7 @@ const SourceManagementPanel: React.FC = () => {
 };
 
 const StageManagementPanel: React.FC = () => {
-    const { stages, addStage, updateStage, deleteStage } = useSettings();
+    const { stages, addStage, updateStage, deleteStage, slaSettings, updateStageSLA } = useSettings();
     const { candidates } = useCandidates();
     const { addToast } = useToast();
     const [newStageTitle, setNewStageTitle] = useState('');
@@ -202,11 +202,11 @@ const StageManagementPanel: React.FC = () => {
     };
 
     return (
-      <div className="max-w-md mx-auto">
+      <div className="max-w-2xl mx-auto">
         <h3 className="font-bold mb-4">لیست مراحل کانبان</h3>
         <div className="space-y-2 mb-4">
           {stages.filter(s => s.id !== 'archived').map(stage => (
-            <div key={stage.id} className="flex justify-between items-center bg-gray-100 p-2 rounded-md">
+            <div key={stage.id} className="flex items-center gap-3 bg-gray-100 p-2 rounded-md">
               {editingStage?.id === stage.id ? (
                 <input
                   type="text"
@@ -215,9 +215,27 @@ const StageManagementPanel: React.FC = () => {
                   className="flex-grow border-gray-300 rounded-md py-1 px-2 text-sm"
                 />
               ) : (
-                <span>{stage.title}</span>
+                <span className="flex-grow">{stage.title}</span>
               )}
-              <div className="flex gap-3">
+              {/* SLA Input */}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <label className="text-xs text-gray-500">SLA:</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="60"
+                  value={slaSettings[stage.id] || ''}
+                  onChange={e => {
+                    const val = parseInt(e.target.value);
+                    if (val > 0) updateStageSLA(stage.id, val);
+                  }}
+                  placeholder="روز"
+                  title="حداکثر روز در این مرحله"
+                  className="w-14 border border-gray-300 rounded px-1 py-0.5 text-xs text-center"
+                />
+                <span className="text-xs text-gray-400">ر</span>
+              </div>
+              <div className="flex gap-3 flex-shrink-0">
                 {editingStage?.id === stage.id ? (
                   <button onClick={handleSaveEdit} className="text-green-600 hover:text-green-800 text-xs">ذخیره</button>
                 ) : (
@@ -230,6 +248,7 @@ const StageManagementPanel: React.FC = () => {
             </div>
           ))}
         </div>
+        <p className="text-xs text-gray-500 mb-4">SLA: حداکثر روزی که یک متقاضی باید در هر مرحله بماند. اگر بیشتر شود، کارت هشدار نمایش می‌دهد.</p>
         <div className="flex gap-2">
           <input
             type="text"
@@ -771,13 +790,117 @@ const AppearancePanel: React.FC = () => {
 };
 
 
+const ScorecardPanel: React.FC = () => {
+  const { stages, scorecardTemplates, addScorecardCriteria, updateScorecardCriteria, deleteScorecardCriteria } = useSettings();
+  const [selectedStageId, setSelectedStageId] = useState<string>('');
+  const [newCriteriaName, setNewCriteriaName] = useState('');
+  const [newCriteriaWeight, setNewCriteriaWeight] = useState(20);
+
+  const activeStages = stages.filter(s => !['archived', 'hired', 'rejected'].includes(s.id));
+  const selectedCriteria = selectedStageId ? (scorecardTemplates[selectedStageId] || []) : [];
+
+  const handleAdd = () => {
+    if (!selectedStageId) return;
+    addScorecardCriteria(selectedStageId, newCriteriaName, newCriteriaWeight);
+    setNewCriteriaName('');
+    setNewCriteriaWeight(20);
+  };
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <p className="text-sm text-gray-600 mb-4">برای هر مرحله معیارهای ارزیابی تعریف کنید. ارزیاب هنگام بررسی کاندیدا، این معیارها را امتیازدهی می‌کند.</p>
+        <label className="block text-sm font-medium text-gray-700 mb-1">انتخاب مرحله</label>
+        <select
+          value={selectedStageId}
+          onChange={e => setSelectedStageId(e.target.value)}
+          className="w-full border border-gray-300 bg-white rounded-md shadow-sm py-2 px-3 sm:text-sm"
+        >
+          <option value="">انتخاب کنید...</option>
+          {activeStages.map(s => (
+            <option key={s.id} value={s.id}>{s.title}</option>
+          ))}
+        </select>
+      </div>
+
+      {selectedStageId && (
+        <>
+          <div className="space-y-2">
+            {selectedCriteria.length === 0 && (
+              <p className="text-sm text-gray-400 text-center py-3">معیاری تعریف نشده. اولین را اضافه کنید.</p>
+            )}
+            {selectedCriteria.map(c => (
+              <div key={c.id} className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                <span className="flex-1 font-medium text-gray-800">{c.name}</span>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={c.weight}
+                    onChange={e => updateScorecardCriteria(selectedStageId, { ...c, weight: parseInt(e.target.value) || c.weight })}
+                    className="w-14 border border-gray-300 rounded px-2 py-1 text-xs text-center"
+                  />
+                  <span className="text-xs text-gray-400">٪</span>
+                </div>
+                <button onClick={() => deleteScorecardCriteria(selectedStageId, c.id)} className="text-red-400 hover:text-red-600 text-xs">حذف</button>
+              </div>
+            ))}
+          </div>
+          {selectedCriteria.length > 0 && (
+            <div className="text-xs text-gray-500 text-left">
+              مجموع وزن‌ها: <span className={`font-bold ${selectedCriteria.reduce((s, c) => s + c.weight, 0) === 100 ? 'text-green-600' : 'text-amber-600'}`}>
+                {selectedCriteria.reduce((s, c) => s + c.weight, 0)}٪
+              </span>
+              <span className="text-gray-400"> (توصیه: جمع = ۱۰۰٪)</span>
+            </div>
+          )}
+          <div className="border-t pt-4">
+            <h4 className="text-sm font-bold text-gray-700 mb-3">افزودن معیار جدید</h4>
+            <div className="flex gap-3 items-end">
+              <div className="flex-1">
+                <label className="block text-xs text-gray-600 mb-1">نام معیار</label>
+                <input
+                  type="text"
+                  value={newCriteriaName}
+                  onChange={e => setNewCriteriaName(e.target.value)}
+                  placeholder="مثال: مهارت فنی"
+                  className="w-full border border-gray-300 rounded-md py-2 px-3 text-sm"
+                />
+              </div>
+              <div className="w-24">
+                <label className="block text-xs text-gray-600 mb-1">وزن (٪)</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={newCriteriaWeight}
+                  onChange={e => setNewCriteriaWeight(parseInt(e.target.value) || 20)}
+                  className="w-full border border-gray-300 rounded-md py-2 px-3 text-sm"
+                />
+              </div>
+              <button
+                onClick={handleAdd}
+                disabled={!newCriteriaName.trim()}
+                className="bg-[var(--color-primary-600)] text-white py-2 px-4 rounded-lg hover:bg-[var(--color-primary-700)] disabled:bg-gray-300 text-sm whitespace-nowrap"
+              >
+                افزودن
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-    type Tab = 'appearance' | 'profile' | 'stages' | 'users' | 'sources' | 'templates' | 'apiKey' | 'tests';
+    type Tab = 'appearance' | 'profile' | 'stages' | 'scorecard' | 'users' | 'sources' | 'templates' | 'apiKey' | 'tests';
     const [activeTab, setActiveTab] = useState<Tab>('appearance');
 
     const tabClasses = (tabName: Tab) => 
@@ -794,7 +917,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                     <nav className="flex flex-wrap space-x-2 space-x-reverse">
                         <button onClick={() => setActiveTab('appearance')} className={tabClasses('appearance')}>ظاهر برنامه</button>
                         <button onClick={() => setActiveTab('profile')} className={tabClasses('profile')}>پروفایل شرکت</button>
-                        <button onClick={() => setActiveTab('stages')} className={tabClasses('stages')}>مراحل کانبان</button>
+                        <button onClick={() => setActiveTab('stages')} className={tabClasses('stages')}>مراحل و SLA</button>
+                        <button onClick={() => setActiveTab('scorecard')} className={tabClasses('scorecard')}>کارت امتیازدهی</button>
                         <button onClick={() => setActiveTab('tests')} className={tabClasses('tests')}>کتابخانه آزمون</button>
                         <button onClick={() => setActiveTab('templates')} className={tabClasses('templates')}>مدیریت قالب‌ها</button>
                         <button onClick={() => setActiveTab('users')} className={tabClasses('users')}>مدیریت کاربران</button>
@@ -806,6 +930,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                     {activeTab === 'appearance' && <AppearancePanel />}
                     {activeTab === 'profile' && <CompanyProfilePanel />}
                     {activeTab === 'stages' && <StageManagementPanel />}
+                    {activeTab === 'scorecard' && <ScorecardPanel />}
                     {activeTab === 'users' && <UserManagementPanel />}
                     {activeTab === 'sources' && <SourceManagementPanel />}
                     {activeTab === 'templates' && <TemplateManagementPanel />}
