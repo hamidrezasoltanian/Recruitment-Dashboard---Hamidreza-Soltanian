@@ -5,6 +5,19 @@ const path = require('path');
 const packageJson = require('./package.json');
 const { execSync } = require('child_process');
 
+// Load .env if present (local development)
+if (fs.existsSync('.env')) {
+  const envContent = fs.readFileSync('.env', 'utf-8');
+  envContent.split('\n').forEach(line => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) return;
+    const [key, ...rest] = trimmed.split('=');
+    if (key && rest.length && !process.env[key]) {
+      process.env[key] = rest.join('=').trim();
+    }
+  });
+}
+
 const distDir = 'dist';
 
 async function build() {
@@ -13,9 +26,11 @@ async function build() {
     await fs.emptyDir(distDir);
     console.log('Cleaned dist directory.');
 
-    // Read API_KEY from the build environment
-    const apiKey = process.env.API_KEY || '';
-    const appVersion = packageJson.version;
+    // Read env vars from environment (or .env file loaded above)
+    const apiKey        = process.env.API_KEY || '';
+    const supabaseUrl   = process.env.SUPABASE_URL || '';
+    const supabaseKey   = process.env.SUPABASE_ANON_KEY || '';
+    const appVersion    = packageJson.version;
     
     // 2. Build Tailwind CSS
     console.log('Building Tailwind CSS...');
@@ -30,10 +45,12 @@ async function build() {
       minify: true,
       sourcemap: true,
       loader: { '.tsx': 'tsx' },
-      define: { 
-        'process.env.NODE_ENV': "'production'",
-        'process.env.API_KEY': JSON.stringify(apiKey),
-        'process.env.APP_VERSION': JSON.stringify(appVersion),
+      define: {
+        'process.env.NODE_ENV':         "'production'",
+        'process.env.API_KEY':          JSON.stringify(apiKey),
+        'process.env.SUPABASE_URL':     JSON.stringify(supabaseUrl),
+        'process.env.SUPABASE_ANON_KEY': JSON.stringify(supabaseKey),
+        'process.env.APP_VERSION':      JSON.stringify(appVersion),
       },
     });
     console.log('JavaScript bundled successfully.');

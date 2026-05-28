@@ -47,6 +47,14 @@
     <!-- Tailwind CSS (CDN for development) -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- Dev-mode Supabase config: set these before the importmap when running without a build step -->
+    <!-- Remove or override at build time via esbuild define -->
+    <script>
+      // For CDN-based dev mode only. In production, values are injected by build.js.
+      // window.__SUPABASE_URL__      = 'https://your-project.supabase.co';
+      // window.__SUPABASE_ANON_KEY__ = 'your-anon-key';
+    </script>
+
     <script type="importmap">
     {
       "imports": {
@@ -57,7 +65,8 @@
         "@google/genai": "https://aistudiocdn.com/@google/genai@^1.19.0",
         "react-dom": "https://aistudiocdn.com/react-dom@^19.1.1",
         "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
-        "@dnd-kit/sortable": "https://aistudiocdn.com/@dnd-kit/sortable@^10.0.0"
+        "@dnd-kit/sortable": "https://aistudiocdn.com/@dnd-kit/sortable@^10.0.0",
+        "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2"
       }
     }
     </script>

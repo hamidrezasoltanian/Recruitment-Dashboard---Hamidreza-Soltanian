@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { Candidate, StageId, Comment, HistoryEntry, TestResult, ScorecardEntry } from '../types';
 import { dbService } from '../services/dbService';
+import { supabaseService, isSupabaseEnabled } from '../services/supabaseService';
 import { useToast } from './ToastContext';
 import { useAuth } from './AuthContext';
 
@@ -26,113 +27,147 @@ const CandidatesContext = createContext<CandidatesContextType | undefined>(undef
 
 export const useCandidates = () => {
   const context = useContext(CandidatesContext);
-  if (!context) {
-    throw new Error('useCandidates must be used within a CandidatesProvider');
-  }
+  if (!context) throw new Error('useCandidates must be used within a CandidatesProvider');
   return context;
 };
 
 const defaultCandidate: Candidate = {
-    id: 'cand_default_h_soltanian',
-    name: 'حمیدرضا سلطانیان',
-    email: 'hamidreza.soltanian@gmail.com',
-    phone: '09125100121',
-    position: 'توسعه‌دهنده ارشد React',
-    stage: 'interview-1',
-    source: 'معرفی‌شده',
-    rating: 5,
-    createdAt: new Date().toISOString(),
-    stageEnteredAt: new Date().toISOString(),
-    interviewDate: new persianDate(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)).format('YYYY/MM/DD'),
-    interviewTime: '14:30',
-    interviewTimeChanged: true,
-    history: [{
-        user: 'سیستم',
-        action: 'متقاضی پیش‌فرض ایجاد شد',
-        timestamp: new Date().toISOString()
-    }],
-    comments: [{ id: '1', user: 'Admin', text: 'کاندیدای بسیار قوی، حتما مصاحبه شود.', timestamp: new Date().toISOString() }],
-    hasResume: true,
-    testResults: [
-        { testId: 'test-1', status: 'passed', score: 95, notes: 'تحلیل روانشناسی مثبت بود', file: { name: 'archetype_result.pdf', type: 'application/pdf' } },
-        { testId: 'test-2', status: 'pending', sentDate: new Date().toISOString() }
-    ]
+  id: 'cand_default_h_soltanian',
+  name: 'حمیدرضا سلطانیان',
+  email: 'hamidreza.soltanian@gmail.com',
+  phone: '09125100121',
+  position: 'توسعه‌دهنده ارشد React',
+  stage: 'interview-1',
+  source: 'معرفی‌شده',
+  rating: 5,
+  createdAt: new Date().toISOString(),
+  stageEnteredAt: new Date().toISOString(),
+  interviewDate: new persianDate(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)).format('YYYY/MM/DD'),
+  interviewTime: '14:30',
+  interviewTimeChanged: true,
+  history: [{ user: 'سیستم', action: 'متقاضی پیش‌فرض ایجاد شد', timestamp: new Date().toISOString() }],
+  comments: [{ id: '1', user: 'Admin', text: 'کاندیدای بسیار قوی، حتما مصاحبه شود.', timestamp: new Date().toISOString() }],
+  hasResume: true,
+  testResults: [
+    { testId: 'test-1', status: 'passed', score: 95, notes: 'تحلیل روانشناسی مثبت بود', file: { name: 'archetype_result.pdf', type: 'application/pdf' } },
+    { testId: 'test-2', status: 'pending', sentDate: new Date().toISOString() },
+  ],
 };
 
+// ── storage helpers: files always go through IndexedDB (Phase 2: move to Supabase Storage) ──
+
+const saveFile = async (key: string, file: File, type: 'resume' | 'test') => {
+  if (type === 'resume') return dbService.saveResume(key, file);
+  return dbService.saveTestFile(key, file);
+};
 
 export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [candidates, setCandidatesState] = useState<Candidate[]>([]);
   const [lastDeleted, setLastDeleted] = useState<Candidate | null>(null);
   const { addToast } = useToast();
-  const { user } = useAuth();
+  const { user, companyId } = useAuth();
+
+  // ── Initial load ───────────────────────────────────────────────────
 
   useEffect(() => {
+    if (!user) return; // wait for auth
+
     const loadData = async () => {
       try {
-        const data = await dbService.getAllCandidates();
+        let data: Candidate[];
+        if (isSupabaseEnabled && companyId) {
+          data = await supabaseService.getAllCandidates();
+        } else {
+          data = await dbService.getAllCandidates();
+        }
+
         if (data.length === 0) {
-          await dbService.saveCandidate(defaultCandidate);
+          // Seed default candidate
+          if (isSupabaseEnabled && companyId) {
+            await supabaseService.saveCandidate(defaultCandidate);
+          } else {
+            await dbService.saveCandidate(defaultCandidate);
+          }
           setCandidatesState([defaultCandidate]);
           addToast('متقاضی پیش‌فرض برای تست اضافه شد.', 'success');
         } else {
           setCandidatesState(data);
         }
       } catch (error) {
-        console.error("Failed to load candidates from DB", error);
-        addToast('خطا در بارگذاری داده‌ها از پایگاه داده.', 'error');
+        console.error('Failed to load candidates', error);
+        addToast('خطا در بارگذاری داده‌های متقاضیان.', 'error');
       }
     };
+
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user, companyId]);
+
+  // ── History helper ─────────────────────────────────────────────────
 
   const addHistoryEntry = useCallback((candidate: Candidate, action: string, details?: string): Candidate => {
     if (!user) return candidate;
-    const historyEntry: HistoryEntry = {
-      user: user.name,
-      action,
-      details,
-      timestamp: new Date().toISOString()
-    };
-    return { ...candidate, history: [historyEntry, ...candidate.history] };
+    const entry: HistoryEntry = { user: user.name, action, details, timestamp: new Date().toISOString() };
+    return { ...candidate, history: [entry, ...candidate.history] };
   }, [user]);
+
+  // ── Storage helpers ────────────────────────────────────────────────
+
+  const persist = async (candidate: Candidate) => {
+    if (isSupabaseEnabled && companyId) {
+      await supabaseService.saveCandidate(candidate);
+    } else {
+      await dbService.saveCandidate(candidate);
+    }
+  };
+
+  const remove = async (id: string) => {
+    if (isSupabaseEnabled) {
+      await supabaseService.deleteCandidate(id);
+    } else {
+      await dbService.deleteCandidate(id);
+    }
+  };
+
+  // ── Public API ─────────────────────────────────────────────────────
 
   const setCandidates = async (newCandidates: Candidate[], suppressToast = false) => {
     try {
+      if (isSupabaseEnabled && companyId) {
+        await supabaseService.clearAllCandidates();
+        for (const c of newCandidates) await supabaseService.saveCandidate(c);
+      } else {
         await dbService.clearAllCandidates();
-        for (const candidate of newCandidates) {
-            await dbService.saveCandidate(candidate);
-        }
-        setCandidatesState(newCandidates);
-        if (!suppressToast) {
-            addToast('لیست متقاضیان با موفقیت بازیابی شد.', 'success');
-        }
-    } catch (error) {
-        addToast('خطا در ذخیره سازی داده‌های متقاضیان.', 'error');
+        for (const c of newCandidates) await dbService.saveCandidate(c);
+      }
+      setCandidatesState(newCandidates);
+      if (!suppressToast) addToast('لیست متقاضیان با موفقیت بازیابی شد.', 'success');
+    } catch {
+      addToast('خطا در ذخیره سازی داده‌های متقاضیان.', 'error');
     }
   };
 
   const addCandidate = async (candidate: Candidate, resumeFile?: File) => {
-    const candidateWithHistory = addHistoryEntry(candidate, 'متقاضی ایجاد شد');
-    const newCandidate = { ...candidateWithHistory, testResults: [], stageEnteredAt: new Date().toISOString() };
+    const withHistory = addHistoryEntry(candidate, 'متقاضی ایجاد شد');
+    const newCandidate: Candidate = { ...withHistory, testResults: [], stageEnteredAt: new Date().toISOString() };
     try {
-      await dbService.saveCandidate(newCandidate);
-      if (resumeFile) await dbService.saveResume(candidate.id, resumeFile);
+      await persist(newCandidate);
+      if (resumeFile) await saveFile(candidate.id, resumeFile, 'resume');
       setCandidatesState(prev => [...prev, newCandidate]);
       addToast('متقاضی با موفقیت اضافه شد.', 'success');
-    } catch (error) {
+    } catch {
       addToast('خطا در افزودن متقاضی.', 'error');
     }
   };
 
   const updateCandidate = async (candidate: Candidate, resumeFile?: File) => {
-    const candidateWithHistory = addHistoryEntry(candidate, 'اطلاعات ویرایش شد');
+    const withHistory = addHistoryEntry(candidate, 'اطلاعات ویرایش شد');
     try {
-      await dbService.saveCandidate(candidateWithHistory);
-      if (resumeFile) await dbService.saveResume(candidate.id, resumeFile);
-      setCandidatesState(prev => prev.map(c => c.id === candidate.id ? candidateWithHistory : c));
+      await persist(withHistory);
+      if (resumeFile) await saveFile(candidate.id, resumeFile, 'resume');
+      setCandidatesState(prev => prev.map(c => c.id === candidate.id ? withHistory : c));
       addToast('اطلاعات با موفقیت به‌روزرسانی شد.', 'success');
-    } catch (error) {
+    } catch {
       addToast('خطا در به‌روزرسانی اطلاعات.', 'error');
     }
   };
@@ -140,19 +175,17 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
   const deleteCandidate = async (id: string) => {
     try {
       const candidate = candidates.find(c => c.id === id);
-      await dbService.deleteCandidate(id);
+      await remove(id);
       await dbService.deleteResume(id);
       if (candidate?.testResults) {
-        for (const result of candidate.testResults) {
-          if (result.file) {
-            await dbService.deleteTestFile(`${candidate.id}_${result.testId}`);
-          }
+        for (const r of candidate.testResults) {
+          if (r.file) await dbService.deleteTestFile(`${id}_${r.testId}`);
         }
       }
       if (candidate) setLastDeleted(candidate);
       setCandidatesState(prev => prev.filter(c => c.id !== id));
       addToast('متقاضی حذف شد. می‌توانید بازگردانید.', 'success');
-    } catch (error) {
+    } catch {
       addToast('خطا در حذف متقاضی.', 'error');
     }
   };
@@ -160,7 +193,7 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
   const undoDelete = async () => {
     if (!lastDeleted) return;
     try {
-      await dbService.saveCandidate(lastDeleted);
+      await persist(lastDeleted);
       setCandidatesState(prev => [...prev, lastDeleted]);
       setLastDeleted(null);
       addToast(`متقاضی "${lastDeleted.name}" بازگردانده شد.`, 'success');
@@ -169,110 +202,87 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   };
 
-  // Fixed: now awaits DB save and uses stage title in history
   const updateCandidateStage = async (id: string, newStageId: StageId, newStageTitle?: string) => {
     const candidate = candidates.find(c => c.id === id);
-    if (candidate) {
-      const updatedCandidate = {
-        ...candidate,
-        stage: newStageId,
-        stageEnteredAt: new Date().toISOString(),
-      };
-      const historyLabel = newStageTitle || newStageId;
-      const candidateWithHistory = addHistoryEntry(updatedCandidate, `انتقال به مرحله «${historyLabel}»`);
-      try {
-        await dbService.saveCandidate(candidateWithHistory);
-        setCandidatesState(prev => prev.map(c => c.id === id ? candidateWithHistory : c));
-        addToast(`متقاضی به مرحله «${historyLabel}» منتقل شد.`, 'success');
-      } catch {
-        addToast('خطا در تغییر مرحله.', 'error');
-      }
+    if (!candidate) return;
+    const label = newStageTitle || newStageId;
+    const updated = addHistoryEntry(
+      { ...candidate, stage: newStageId, stageEnteredAt: new Date().toISOString() },
+      `انتقال به مرحله «${label}»`
+    );
+    try {
+      await persist(updated);
+      setCandidatesState(prev => prev.map(c => c.id === id ? updated : c));
+      addToast(`متقاضی به مرحله «${label}» منتقل شد.`, 'success');
+    } catch {
+      addToast('خطا در تغییر مرحله.', 'error');
     }
   };
 
-  // Fixed: now awaits DB save
   const unarchiveCandidate = async (id: string) => {
     const candidate = candidates.find(c => c.id === id);
-    if (candidate) {
-      const updated = { ...candidate, stage: 'inbox' as StageId, stageEnteredAt: new Date().toISOString() };
-      const candidateWithHistory = addHistoryEntry(updated, 'از آرشیو خارج شد و به صندوق ورودی منتقل شد');
-      try {
-        await dbService.saveCandidate(candidateWithHistory);
-        setCandidatesState(prev => prev.map(c => c.id === id ? candidateWithHistory : c));
-        addToast('متقاضی از آرشیو خارج شد.', 'success');
-      } catch {
-        addToast('خطا در خروج از آرشیو.', 'error');
-      }
+    if (!candidate) return;
+    const updated = addHistoryEntry(
+      { ...candidate, stage: 'inbox' as StageId, stageEnteredAt: new Date().toISOString() },
+      'از آرشیو خارج شد و به صندوق ورودی منتقل شد'
+    );
+    try {
+      await persist(updated);
+      setCandidatesState(prev => prev.map(c => c.id === id ? updated : c));
+      addToast('متقاضی از آرشیو خارج شد.', 'success');
+    } catch {
+      addToast('خطا در خروج از آرشیو.', 'error');
     }
   };
 
-  // Fixed: now awaits DB save
   const addComment = async (id: string, comment: Comment) => {
     const candidate = candidates.find(c => c.id === id);
-    if (candidate) {
-      const updated = { ...candidate, comments: [...candidate.comments, comment] };
-      try {
-        await dbService.saveCandidate(updated);
-        setCandidatesState(prev => prev.map(c => c.id === id ? updated : c));
-        addToast('یادداشت اضافه شد.', 'success');
-      } catch {
-        addToast('خطا در ذخیره یادداشت.', 'error');
-      }
+    if (!candidate) return;
+    const updated = { ...candidate, comments: [...candidate.comments, comment] };
+    try {
+      await persist(updated);
+      setCandidatesState(prev => prev.map(c => c.id === id ? updated : c));
+      addToast('یادداشت اضافه شد.', 'success');
+    } catch {
+      addToast('خطا در ذخیره یادداشت.', 'error');
     }
   };
 
   const addCustomHistoryEntry = (id: string, actionText: string) => {
     const candidate = candidates.find(c => c.id === id);
-    if (candidate && user && actionText.trim()) {
-      const candidateWithHistory = addHistoryEntry(candidate, actionText.trim());
-      dbService.saveCandidate(candidateWithHistory);
-      setCandidatesState(prev => prev.map(c => c.id === id ? candidateWithHistory : c));
-      addToast('رویداد جدید در تاریخچه ثبت شد.', 'success');
-    }
+    if (!candidate || !user || !actionText.trim()) return;
+    const updated = addHistoryEntry(candidate, actionText.trim());
+    persist(updated);
+    setCandidatesState(prev => prev.map(c => c.id === id ? updated : c));
+    addToast('رویداد جدید در تاریخچه ثبت شد.', 'success');
   };
 
   const updateTestResult = async (candidateId: string, testId: string, resultData: Partial<TestResult>) => {
     const candidate = candidates.find(c => c.id === candidateId);
     if (!candidate) return;
-
-    const existingResults = candidate.testResults || [];
     let resultExists = false;
-
-    const updatedResults = existingResults.map(r => {
-      if (r.testId === testId) {
-        resultExists = true;
-        return { ...r, ...resultData };
-      }
+    const updatedResults = (candidate.testResults || []).map(r => {
+      if (r.testId === testId) { resultExists = true; return { ...r, ...resultData }; }
       return r;
     });
-
-    if (!resultExists) {
-      updatedResults.push({ testId, status: 'not_sent', ...resultData });
-    }
-
-    const action = `نتیجه آزمون به‌روزرسانی شد`;
-    const updatedCandidate = addHistoryEntry({ ...candidate, testResults: updatedResults }, action);
-    await updateCandidate(updatedCandidate);
+    if (!resultExists) updatedResults.push({ testId, status: 'not_sent', ...resultData });
+    const updated = addHistoryEntry({ ...candidate, testResults: updatedResults }, 'نتیجه آزمون به‌روزرسانی شد');
+    await updateCandidate(updated);
   };
 
   const updateScorecard = async (candidateId: string, entry: ScorecardEntry) => {
     const candidate = candidates.find(c => c.id === candidateId);
     if (!candidate) return;
-
     const existing = candidate.scorecards || [];
-    const existingIndex = existing.findIndex(s => s.stageId === entry.stageId);
-    const updatedScorecards = existingIndex >= 0
-      ? existing.map((s, i) => i === existingIndex ? entry : s)
+    const idx = existing.findIndex(s => s.stageId === entry.stageId);
+    const updatedScorecards = idx >= 0
+      ? existing.map((s, i) => i === idx ? entry : s)
       : [...existing, entry];
-
-    const updatedCandidate = addHistoryEntry(
-      { ...candidate, scorecards: updatedScorecards },
-      `کارت امتیازدهی مرحله ثبت شد`
-    );
-    await updateCandidate(updatedCandidate);
+    const updated = addHistoryEntry({ ...candidate, scorecards: updatedScorecards }, 'کارت امتیازدهی مرحله ثبت شد');
+    await updateCandidate(updated);
   };
 
-  const value = {
+  const value: CandidatesContextType = {
     candidates, setCandidates,
     addCandidate, updateCandidate, deleteCandidate,
     updateCandidateStage, unarchiveCandidate,

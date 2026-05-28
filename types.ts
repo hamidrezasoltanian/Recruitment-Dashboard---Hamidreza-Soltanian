@@ -89,9 +89,10 @@ export interface StageChangeInfo {
 }
 
 export interface User {
-  username: string;
+  username: string; // email in Supabase mode, username in local mode
   name: string;
   isAdmin: boolean;
+  email?: string;   // explicit email field (same as username in Supabase mode)
 }
 
 export interface UserWithPassword extends User {

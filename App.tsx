@@ -16,6 +16,7 @@ import SettingsModal from './components/modals/SettingsModal';
 import StageChangeCommunicationModal from './components/modals/StageChangeCommunicationModal';
 import DashboardSummary from './components/dashboard/DashboardSummary';
 import LoginScreen from './components/auth/LoginScreen';
+import RegisterScreen from './components/auth/RegisterScreen';
 import KanbanControls from './components/kanban/KanbanControls';
 import CommunicationModal from './components/modals/CommunicationModal';
 import ResumeViewerModal from './components/modals/ResumeViewerModal';
@@ -23,7 +24,7 @@ import BulkCommunicationModal from './components/modals/BulkCommunicationModal';
 
 
 const App: React.FC = () => {
-  const { user } = useAuth();
+  const { user, authLoading, authScreen } = useAuth();
   const { candidates, addCandidate, updateCandidate, updateCandidateStage, lastDeleted, undoDelete } = useCandidates();
   const [activeView, setActiveView] = useState<View>('dashboard');
   const [kanbanViewMode, setKanbanViewMode] = useState<KanbanViewMode>('kanban');
@@ -201,7 +202,19 @@ const App: React.FC = () => {
     }
   };
 
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="text-center space-y-3">
+          <div className="inline-block w-10 h-10 border-4 border-[var(--color-primary-500)] border-t-transparent rounded-full animate-spin" />
+          <p className="text-gray-500 text-sm">در حال بارگذاری...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!user) {
+    if (authScreen === 'register') return <RegisterScreen />;
     return <LoginScreen />;
   }
 

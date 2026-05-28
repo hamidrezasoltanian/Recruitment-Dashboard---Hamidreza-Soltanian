@@ -1,8 +1,10 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { DEFAULT_SOURCES, SETTINGS_KEY_SOURCES, COMPANY_PROFILE_KEY, DEFAULT_COMPANY_PROFILE, STAGES_KEY, DEFAULT_STAGES, TEST_LIBRARY_KEY, DEFAULT_TEST_LIBRARY, SLA_SETTINGS_KEY, SCORECARD_TEMPLATES_KEY } from '../constants';
 import { CompanyProfile, KanbanStage, ScorecardCriteria, TestLibraryItem } from '../types';
 import { useToast } from './ToastContext';
 import { generateId } from '../utils/idUtils';
+import { supabaseService, isSupabaseEnabled } from '../services/supabaseService';
+import { useAuth } from './AuthContext';
 
 interface SettingsContextType {
   sources: string[];
@@ -22,15 +24,20 @@ interface SettingsContextType {
   addTest: (test: Omit<TestLibraryItem, 'id'>) => void;
   updateTest: (test: TestLibraryItem) => void;
   deleteTest: (id: string) => void;
-  // SLA
   slaSettings: Record<string, number>;
   updateStageSLA: (stageId: string, days: number) => void;
-  // Scorecard templates
   scorecardTemplates: Record<string, ScorecardCriteria[]>;
   addScorecardCriteria: (stageId: string, name: string, weight: number) => void;
   updateScorecardCriteria: (stageId: string, criteria: ScorecardCriteria) => void;
   deleteScorecardCriteria: (stageId: string, criteriaId: string) => void;
-  restoreSettings: (settings: { sources: string[]; stages: KanbanStage[]; companyProfile: CompanyProfile; testLibrary: TestLibraryItem[]; slaSettings?: Record<string, number>; scorecardTemplates?: Record<string, ScorecardCriteria[]> }) => void;
+  restoreSettings: (settings: {
+    sources: string[];
+    stages: KanbanStage[];
+    companyProfile: CompanyProfile;
+    testLibrary: TestLibraryItem[];
+    slaSettings?: Record<string, number>;
+    scorecardTemplates?: Record<string, ScorecardCriteria[]>;
+  }) => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -41,50 +48,41 @@ export const useSettings = () => {
   return context;
 };
 
+const fromLS = <T,>(key: string, fallback: T): T => {
+  try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : fallback; } catch { return fallback; }
+};
+
 export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { addToast } = useToast();
+  const { user, companyId } = useAuth();
 
-  const [sources, setSources] = useState<string[]>(() => {
-    try {
-      const stored = localStorage.getItem(SETTINGS_KEY_SOURCES);
-      return stored ? JSON.parse(stored) : DEFAULT_SOURCES;
-    } catch { return DEFAULT_SOURCES; }
-  });
+  const [sources, setSources] = useState<string[]>(() => fromLS(SETTINGS_KEY_SOURCES, DEFAULT_SOURCES));
+  const [stages, setStages] = useState<KanbanStage[]>(() => fromLS(STAGES_KEY, DEFAULT_STAGES));
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfile>(() => fromLS(COMPANY_PROFILE_KEY, DEFAULT_COMPANY_PROFILE));
+  const [testLibrary, setTestLibrary] = useState<TestLibraryItem[]>(() => fromLS(TEST_LIBRARY_KEY, DEFAULT_TEST_LIBRARY));
+  const [slaSettings, setSlaSettings] = useState<Record<string, number>>(() => fromLS(SLA_SETTINGS_KEY, {}));
+  const [scorecardTemplates, setScorecardTemplates] = useState<Record<string, ScorecardCriteria[]>>(() => fromLS(SCORECARD_TEMPLATES_KEY, {}));
 
-  const [stages, setStages] = useState<KanbanStage[]>(() => {
-    try {
-      const stored = localStorage.getItem(STAGES_KEY);
-      return stored ? JSON.parse(stored) : DEFAULT_STAGES;
-    } catch { return DEFAULT_STAGES; }
-  });
+  // ── Load from Supabase when authenticated ────────────────────────────
 
-  const [companyProfile, setCompanyProfile] = useState<CompanyProfile>(() => {
-    try {
-      const stored = localStorage.getItem(COMPANY_PROFILE_KEY);
-      return stored ? JSON.parse(stored) : DEFAULT_COMPANY_PROFILE;
-    } catch { return DEFAULT_COMPANY_PROFILE; }
-  });
+  useEffect(() => {
+    if (!isSupabaseEnabled || !user || !companyId) return;
+    supabaseService.loadSettings().then(remote => {
+      if (!remote) return;
+      if (remote.sources?.length)        { setSources(remote.sources);           localStorage.setItem(SETTINGS_KEY_SOURCES, JSON.stringify(remote.sources)); }
+      if (remote.stages?.length)         { setStages(remote.stages);             localStorage.setItem(STAGES_KEY, JSON.stringify(remote.stages)); }
+      if (remote.companyProfile?.name)   { setCompanyProfile(remote.companyProfile); localStorage.setItem(COMPANY_PROFILE_KEY, JSON.stringify(remote.companyProfile)); }
+      if (remote.testLibrary?.length)    { setTestLibrary(remote.testLibrary);   localStorage.setItem(TEST_LIBRARY_KEY, JSON.stringify(remote.testLibrary)); }
+      if (remote.slaSettings)            { setSlaSettings(remote.slaSettings);   localStorage.setItem(SLA_SETTINGS_KEY, JSON.stringify(remote.slaSettings)); }
+      if (remote.scorecardTemplates)     { setScorecardTemplates(remote.scorecardTemplates); localStorage.setItem(SCORECARD_TEMPLATES_KEY, JSON.stringify(remote.scorecardTemplates)); }
+    }).catch(console.error);
+  }, [user, companyId]);
 
-  const [testLibrary, setTestLibrary] = useState<TestLibraryItem[]>(() => {
-    try {
-      const stored = localStorage.getItem(TEST_LIBRARY_KEY);
-      return stored ? JSON.parse(stored) : DEFAULT_TEST_LIBRARY;
-    } catch { return DEFAULT_TEST_LIBRARY; }
-  });
+  // ── Persist to localStorage + debounced Supabase save ───────────────
 
-  const [slaSettings, setSlaSettings] = useState<Record<string, number>>(() => {
-    try {
-      const stored = localStorage.getItem(SLA_SETTINGS_KEY);
-      return stored ? JSON.parse(stored) : {};
-    } catch { return {}; }
-  });
-
-  const [scorecardTemplates, setScorecardTemplates] = useState<Record<string, ScorecardCriteria[]>>(() => {
-    try {
-      const stored = localStorage.getItem(SCORECARD_TEMPLATES_KEY);
-      return stored ? JSON.parse(stored) : {};
-    } catch { return {}; }
-  });
+  const syncToSupabase = useCallback((partial: Parameters<typeof supabaseService.saveSettings>[0]) => {
+    if (isSupabaseEnabled && companyId) supabaseService.saveSettings(partial).catch(console.error);
+  }, [companyId]);
 
   useEffect(() => { localStorage.setItem(SETTINGS_KEY_SOURCES, JSON.stringify(sources)); }, [sources]);
   useEffect(() => { localStorage.setItem(STAGES_KEY, JSON.stringify(stages)); }, [stages]);
@@ -93,40 +91,53 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
   useEffect(() => { localStorage.setItem(SLA_SETTINGS_KEY, JSON.stringify(slaSettings)); }, [slaSettings]);
   useEffect(() => { localStorage.setItem(SCORECARD_TEMPLATES_KEY, JSON.stringify(scorecardTemplates)); }, [scorecardTemplates]);
 
+  // ── Sources ──────────────────────────────────────────────────────────
+
   const addSource = (source: string) => {
-    const trimmed = source.trim();
-    if (trimmed && !sources.find(s => s.toLowerCase() === trimmed.toLowerCase())) {
-      setSources(prev => [...prev, trimmed]);
-      addToast(`منبع "${trimmed}" اضافه شد.`, 'success');
+    const t = source.trim();
+    if (t && !sources.find(s => s.toLowerCase() === t.toLowerCase())) {
+      const next = [...sources, t];
+      setSources(next);
+      syncToSupabase({ sources: next });
+      addToast(`منبع "${t}" اضافه شد.`, 'success');
     } else {
       addToast('منبع تکراری یا خالی است.', 'error');
     }
   };
 
-  const deleteSource = (sourceToDelete: string) => {
-    setSources(prev => prev.filter(s => s !== sourceToDelete));
-    addToast(`منبع "${sourceToDelete}" حذف شد.`, 'success');
+  const deleteSource = (s: string) => {
+    const next = sources.filter(x => x !== s);
+    setSources(next);
+    syncToSupabase({ sources: next });
+    addToast(`منبع "${s}" حذف شد.`, 'success');
   };
 
-  const setStageOrder = (orderedStages: KanbanStage[]) => {
-    setStages(orderedStages);
+  // ── Stages ───────────────────────────────────────────────────────────
+
+  const setStageOrder = (ordered: KanbanStage[]) => {
+    setStages(ordered);
+    syncToSupabase({ stages: ordered });
     addToast('ترتیب مراحل ذخیره شد.', 'success');
   };
 
   const addStage = (title: string) => {
-    const trimmed = title.trim();
-    if (trimmed && !stages.find(s => s.title.toLowerCase() === trimmed.toLowerCase())) {
-      setStages(prev => [...prev, { id: `stage_${Date.now()}`, title: trimmed, isCore: false }]);
-      addToast(`مرحله "${trimmed}" اضافه شد.`, 'success');
+    const t = title.trim();
+    if (t && !stages.find(s => s.title.toLowerCase() === t.toLowerCase())) {
+      const next = [...stages, { id: `stage_${Date.now()}`, title: t, isCore: false }];
+      setStages(next);
+      syncToSupabase({ stages: next });
+      addToast(`مرحله "${t}" اضافه شد.`, 'success');
     } else {
       addToast('عنوان مرحله تکراری یا خالی است.', 'error');
     }
   };
 
   const updateStage = (id: string, title: string) => {
-    const trimmed = title.trim();
-    if (!trimmed) { addToast('عنوان مرحله نمی‌تواند خالی باشد.', 'error'); return; }
-    setStages(prev => prev.map(s => s.id === id ? { ...s, title: trimmed } : s));
+    const t = title.trim();
+    if (!t) { addToast('عنوان مرحله نمی‌تواند خالی باشد.', 'error'); return; }
+    const next = stages.map(s => s.id === id ? { ...s, title: t } : s);
+    setStages(next);
+    syncToSupabase({ stages: next });
     addToast('مرحله به‌روزرسانی شد.', 'success');
   };
 
@@ -134,103 +145,137 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     const stage = stages.find(s => s.id === id);
     if (!stage) return;
     if (stage.isCore) { addToast('نمی‌توان مراحل اصلی سیستم را حذف کرد.', 'error'); return; }
-    setStages(prev => prev.filter(s => s.id !== id));
+    const next = stages.filter(s => s.id !== id);
+    setStages(next);
+    syncToSupabase({ stages: next });
     addToast(`مرحله "${stage.title}" حذف شد.`, 'success');
   };
 
+  // ── Company profile ──────────────────────────────────────────────────
+
   const updateCompanyDetails = (details: Partial<Omit<CompanyProfile, 'jobPositions'>>) => {
-    setCompanyProfile(prev => ({ ...prev, ...details }));
+    const next = { ...companyProfile, ...details };
+    setCompanyProfile(next);
+    syncToSupabase({ companyProfile: next });
     addToast('اطلاعات شرکت به‌روزرسانی شد.', 'success');
   };
 
   const addJobPosition = (title: string) => {
-    const trimmed = title.trim();
-    if (trimmed && !companyProfile.jobPositions.find(j => j.title.toLowerCase() === trimmed.toLowerCase())) {
-      setCompanyProfile(prev => ({ ...prev, jobPositions: [...prev.jobPositions, { id: `job_${Date.now()}`, title: trimmed }] }));
-      addToast(`موقعیت شغلی "${trimmed}" اضافه شد.`, 'success');
+    const t = title.trim();
+    if (t && !companyProfile.jobPositions.find(j => j.title.toLowerCase() === t.toLowerCase())) {
+      const next = { ...companyProfile, jobPositions: [...companyProfile.jobPositions, { id: `job_${Date.now()}`, title: t }] };
+      setCompanyProfile(next);
+      syncToSupabase({ companyProfile: next });
+      addToast(`موقعیت شغلی "${t}" اضافه شد.`, 'success');
     } else {
       addToast('موقعیت شغلی تکراری یا خالی است.', 'error');
     }
   };
 
   const updateJobPosition = (id: string, title: string) => {
-    const trimmed = title.trim();
-    if (!trimmed) { addToast('عنوان نمی‌تواند خالی باشد.', 'error'); return; }
-    setCompanyProfile(prev => ({ ...prev, jobPositions: prev.jobPositions.map(j => j.id === id ? { ...j, title: trimmed } : j) }));
+    const t = title.trim();
+    if (!t) { addToast('عنوان نمی‌تواند خالی باشد.', 'error'); return; }
+    const next = { ...companyProfile, jobPositions: companyProfile.jobPositions.map(j => j.id === id ? { ...j, title: t } : j) };
+    setCompanyProfile(next);
+    syncToSupabase({ companyProfile: next });
     addToast('موقعیت شغلی به‌روزرسانی شد.', 'success');
   };
 
   const deleteJobPosition = (id: string) => {
-    setCompanyProfile(prev => ({ ...prev, jobPositions: prev.jobPositions.filter(j => j.id !== id) }));
+    const next = { ...companyProfile, jobPositions: companyProfile.jobPositions.filter(j => j.id !== id) };
+    setCompanyProfile(next);
+    syncToSupabase({ companyProfile: next });
     addToast('موقعیت شغلی حذف شد.', 'success');
   };
 
+  // ── Test library ─────────────────────────────────────────────────────
+
   const addTest = (test: Omit<TestLibraryItem, 'id'>) => {
     if (!test.name.trim() || !test.url.trim()) { addToast('نام و لینک آزمون نمی‌تواند خالی باشد.', 'error'); return; }
-    setTestLibrary(prev => [...prev, { ...test, id: `test_${Date.now()}` }]);
+    const next = [...testLibrary, { ...test, id: `test_${Date.now()}` }];
+    setTestLibrary(next);
+    syncToSupabase({ testLibrary: next });
     addToast(`آزمون "${test.name}" اضافه شد.`, 'success');
   };
 
-  const updateTest = (updatedTest: TestLibraryItem) => {
-    if (!updatedTest.name.trim() || !updatedTest.url.trim()) { addToast('نام و لینک آزمون نمی‌تواند خالی باشد.', 'error'); return; }
-    setTestLibrary(prev => prev.map(t => t.id === updatedTest.id ? updatedTest : t));
-    addToast(`آزمون "${updatedTest.name}" به‌روزرسانی شد.`, 'success');
+  const updateTest = (updated: TestLibraryItem) => {
+    if (!updated.name.trim() || !updated.url.trim()) { addToast('نام و لینک آزمون نمی‌تواند خالی باشد.', 'error'); return; }
+    const next = testLibrary.map(t => t.id === updated.id ? updated : t);
+    setTestLibrary(next);
+    syncToSupabase({ testLibrary: next });
+    addToast(`آزمون "${updated.name}" به‌روزرسانی شد.`, 'success');
   };
 
   const deleteTest = (id: string) => {
-    setTestLibrary(prev => prev.filter(t => t.id !== id));
+    const next = testLibrary.filter(t => t.id !== id);
+    setTestLibrary(next);
+    syncToSupabase({ testLibrary: next });
     addToast('آزمون حذف شد.', 'success');
   };
 
-  // SLA
+  // ── SLA ──────────────────────────────────────────────────────────────
+
   const updateStageSLA = (stageId: string, days: number) => {
-    setSlaSettings(prev => ({ ...prev, [stageId]: days }));
+    const next = { ...slaSettings, [stageId]: days };
+    setSlaSettings(next);
+    syncToSupabase({ slaSettings: next });
     addToast('SLA مرحله ذخیره شد.', 'success');
   };
 
-  // Scorecard
+  // ── Scorecard ────────────────────────────────────────────────────────
+
   const addScorecardCriteria = (stageId: string, name: string, weight: number) => {
-    const trimmed = name.trim();
-    if (!trimmed) { addToast('نام معیار نمی‌تواند خالی باشد.', 'error'); return; }
-    const newCriteria: ScorecardCriteria = { id: generateId('cr'), name: trimmed, weight };
-    setScorecardTemplates(prev => ({
-      ...prev,
-      [stageId]: [...(prev[stageId] || []), newCriteria],
-    }));
-    addToast(`معیار "${trimmed}" اضافه شد.`, 'success');
+    const t = name.trim();
+    if (!t) { addToast('نام معیار نمی‌تواند خالی باشد.', 'error'); return; }
+    const next = { ...scorecardTemplates, [stageId]: [...(scorecardTemplates[stageId] || []), { id: generateId('cr'), name: t, weight }] };
+    setScorecardTemplates(next);
+    syncToSupabase({ scorecardTemplates: next });
+    addToast(`معیار "${t}" اضافه شد.`, 'success');
   };
 
   const updateScorecardCriteria = (stageId: string, criteria: ScorecardCriteria) => {
-    setScorecardTemplates(prev => ({
-      ...prev,
-      [stageId]: (prev[stageId] || []).map(c => c.id === criteria.id ? criteria : c),
-    }));
+    const next = { ...scorecardTemplates, [stageId]: (scorecardTemplates[stageId] || []).map(c => c.id === criteria.id ? criteria : c) };
+    setScorecardTemplates(next);
+    syncToSupabase({ scorecardTemplates: next });
     addToast('معیار به‌روزرسانی شد.', 'success');
   };
 
   const deleteScorecardCriteria = (stageId: string, criteriaId: string) => {
-    setScorecardTemplates(prev => ({
-      ...prev,
-      [stageId]: (prev[stageId] || []).filter(c => c.id !== criteriaId),
-    }));
+    const next = { ...scorecardTemplates, [stageId]: (scorecardTemplates[stageId] || []).filter(c => c.id !== criteriaId) };
+    setScorecardTemplates(next);
+    syncToSupabase({ scorecardTemplates: next });
     addToast('معیار حذف شد.', 'success');
   };
 
-  const restoreSettings = (settings: { sources: string[]; stages: KanbanStage[]; companyProfile: CompanyProfile; testLibrary: TestLibraryItem[]; slaSettings?: Record<string, number>; scorecardTemplates?: Record<string, ScorecardCriteria[]> }) => {
-    if (settings) {
-      if (settings.sources) setSources(settings.sources);
-      if (settings.stages) setStages(settings.stages);
-      if (settings.companyProfile) setCompanyProfile(settings.companyProfile);
-      if (settings.testLibrary) setTestLibrary(settings.testLibrary);
-      if (settings.slaSettings) setSlaSettings(settings.slaSettings);
-      if (settings.scorecardTemplates) setScorecardTemplates(settings.scorecardTemplates);
-      addToast('تنظیمات برنامه بازیابی شد.', 'success');
-    } else {
-      addToast('داده‌های تنظیمات در فایل پشتیبان یافت نشد.', 'error');
-    }
+  // ── Restore ──────────────────────────────────────────────────────────
+
+  const restoreSettings = (settings: {
+    sources: string[];
+    stages: KanbanStage[];
+    companyProfile: CompanyProfile;
+    testLibrary: TestLibraryItem[];
+    slaSettings?: Record<string, number>;
+    scorecardTemplates?: Record<string, ScorecardCriteria[]>;
+  }) => {
+    if (!settings) { addToast('داده‌های تنظیمات در فایل پشتیبان یافت نشد.', 'error'); return; }
+    if (settings.sources)            setSources(settings.sources);
+    if (settings.stages)             setStages(settings.stages);
+    if (settings.companyProfile)     setCompanyProfile(settings.companyProfile);
+    if (settings.testLibrary)        setTestLibrary(settings.testLibrary);
+    if (settings.slaSettings)        setSlaSettings(settings.slaSettings);
+    if (settings.scorecardTemplates) setScorecardTemplates(settings.scorecardTemplates);
+    syncToSupabase({
+      sources: settings.sources,
+      stages: settings.stages,
+      companyProfile: settings.companyProfile,
+      testLibrary: settings.testLibrary,
+      slaSettings: settings.slaSettings,
+      scorecardTemplates: settings.scorecardTemplates,
+    });
+    addToast('تنظیمات برنامه بازیابی شد.', 'success');
   };
 
-  const value = {
+  const value: SettingsContextType = {
     sources, addSource, deleteSource,
     stages, setStageOrder, addStage, updateStage, deleteStage,
     companyProfile, updateCompanyDetails, addJobPosition, updateJobPosition, deleteJobPosition,

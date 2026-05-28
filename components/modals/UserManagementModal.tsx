@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../ui/Modal';
 import { useAuth } from '../../contexts/AuthContext';
-import { CompanyProfile, JobPosition, KanbanStage, Template, TestLibraryItem, UserWithPassword } from '../../types';
+import { JobPosition, KanbanStage, Template, TestLibraryItem, UserWithPassword } from '../../types';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useTemplates } from '../../contexts/TemplateContext';

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useCandidates } from '../../contexts/CandidatesContext';
 import { useSettings } from '../../contexts/SettingsContext';
-import { TestResult, TestLibraryItem, Candidate } from '../../types';
+import { TestResult, TestLibraryItem } from '../../types';
 import { dbService } from '../../services/dbService';
 import { useToast } from '../../contexts/ToastContext';
 import SelectCandidateModal from '../modals/SelectCandidateModal';
