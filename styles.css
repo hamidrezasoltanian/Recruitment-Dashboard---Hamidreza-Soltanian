@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Hide scrollbar while preserving scroll functionality */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Smooth scrolling on mobile */
+@media (max-width: 640px) {
+  .kanban-cards { -webkit-overflow-scrolling: touch; }
+}
+
 /* Dark Mode Overrides */
 .dark-mode {
   background-color: #0f172a !important;

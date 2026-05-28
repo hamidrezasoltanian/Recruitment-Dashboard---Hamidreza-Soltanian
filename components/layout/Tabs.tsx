@@ -15,13 +15,17 @@ const Tabs: React.FC<TabsProps> = ({ activeView, setActiveView }) => {
     { id: 'archive', label: 'آرشیو' },
   ];
 
-  const baseClasses = 'whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-all duration-200';
+  const baseClasses = 'whitespace-nowrap py-2.5 px-3 sm:py-3 sm:px-4 border-b-2 font-medium text-xs sm:text-sm transition-all duration-200 flex-shrink-0';
   const activeClasses = 'border-[var(--color-primary-500)] text-[var(--color-primary-600)]';
   const inactiveClasses = 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300';
 
   return (
-    <div className="px-4 md:px-6 lg:px-8 pt-4 bg-white/50 backdrop-blur-sm">
-      <nav className="-mb-px flex space-x-4 space-x-reverse" aria-label="Tabs">
+    <div className="bg-white/50 backdrop-blur-sm border-b border-gray-200">
+      <nav
+        className="-mb-px flex overflow-x-auto scrollbar-hide px-3 sm:px-6 lg:px-8 pt-1 gap-0"
+        aria-label="Tabs"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
         {tabs.map((tab) => (
           <button
             key={tab.id}

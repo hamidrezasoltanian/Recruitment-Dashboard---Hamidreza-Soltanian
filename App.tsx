@@ -229,7 +229,7 @@ const App: React.FC = () => {
           onOpenBulkCommModal={handleOpenBulkCommModal}
         />
         <Tabs activeView={activeView} setActiveView={handleViewChange} />
-        <main className="p-4 md:p-6 lg:p-8 flex-grow">
+        <main className="p-3 sm:p-4 md:p-6 lg:p-8 flex-grow">
           {activeView === 'dashboard' && <DashboardSummary candidates={candidates} />}
           {renderView()}
         </main>
