@@ -15,7 +15,7 @@ const ViewModeButton: React.FC<{ active: boolean; onClick: () => void; title: st
   <button
     onClick={onClick}
     title={title}
-    className={`p-2 rounded-lg transition-colors ${active ? 'bg-[var(--color-primary-600)] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+    className={`p-2 rounded-lg transition-all ${active ? 'bg-white shadow-sm text-[var(--color-primary-600)]' : 'text-gray-500 hover:text-gray-700'}`}
   >
     {children}
   </button>
@@ -34,19 +34,19 @@ const KanbanControls: React.FC<KanbanControlsProps> = ({ filters, onFilterChange
 
   const hasActiveFilters = filters.search || filters.position || filters.source || sortBy !== 'createdAt';
 
-  const selectClass = 'w-full border border-gray-300 bg-white rounded-md shadow-sm py-2 px-3 text-sm focus:outline-none focus:ring-[var(--color-primary-500)] focus:border-[var(--color-primary-500)]';
+  const selectClass = 'w-full border border-gray-200 bg-gray-50 rounded-xl py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-400)] focus:bg-white transition-all';
 
   return (
-    <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-sm mb-4 sm:mb-6">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-4 sm:mb-6">
       {/* Always-visible bar */}
       <div className="flex items-center gap-2 p-3 sm:p-4">
-        {/* Search — always visible, full flex on desktop */}
+        {/* Search */}
         <input
           type="text"
           placeholder="جستجو (نام، ایمیل، موبایل)..."
           value={filters.search}
           onChange={(e) => onFilterChange({ search: e.target.value })}
-          className="flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[var(--color-primary-500)] focus:border-[var(--color-primary-500)] text-sm"
+          className="flex-1 border border-gray-200 bg-gray-50 rounded-xl py-2 px-3 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-400)] focus:bg-white transition-all text-sm"
         />
 
         {/* Filter toggle (mobile only) */}
@@ -77,7 +77,7 @@ const KanbanControls: React.FC<KanbanControlsProps> = ({ filters, onFilterChange
         </div>
 
         {/* View Mode Toggle */}
-        <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-1 flex-shrink-0">
+        <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 flex-shrink-0">
           <ViewModeButton active={viewMode === 'kanban'} onClick={() => onViewModeChange('kanban')} title="نمای کانبان">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
@@ -98,7 +98,7 @@ const KanbanControls: React.FC<KanbanControlsProps> = ({ filters, onFilterChange
 
       {/* Mobile expandable filters */}
       {filtersOpen && (
-        <div className="sm:hidden border-t border-gray-100 p-3 grid grid-cols-1 gap-2">
+        <div className="sm:hidden border-t border-gray-100 p-3 grid grid-cols-1 gap-2.5">
           <select value={filters.position} onChange={(e) => onFilterChange({ position: e.target.value })} className={selectClass}>
             <option value="">همه موقعیت‌ها</option>
             {jobPositions.map(job => <option key={job.id} value={job.title}>{job.title}</option>)}

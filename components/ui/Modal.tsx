@@ -37,23 +37,23 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title, size = 
       ref={modalRef}
       onKeyDown={handleKeyDown}
       onClose={onClose}
-      className={`p-0 rounded-xl shadow-2xl bg-gray-50 backdrop:bg-black/50 ${sizeClasses[size]} max-h-[92dvh] flex flex-col`}
+      className={`p-0 rounded-2xl shadow-2xl bg-white backdrop:bg-black/60 ${sizeClasses[size]} max-h-[92dvh] flex flex-col`}
       style={{ margin: 'auto' }}
     >
       {/* Sticky header */}
-      <div className="sticky top-0 bg-gray-50 z-10 px-4 py-3 sm:p-4 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
-        <h2 className="text-base sm:text-xl font-bold text-gray-800 truncate ml-2">{title}</h2>
+      <div className="sticky top-0 bg-white z-10 px-5 py-4 border-b border-gray-100 flex justify-between items-center flex-shrink-0 rounded-t-2xl">
+        <h2 className="text-base sm:text-lg font-bold text-gray-800 truncate ml-3">{title}</h2>
         <button
           onClick={onClose}
-          className="flex-shrink-0 text-gray-500 hover:text-gray-800 transition-colors p-1 -m-1 rounded"
+          className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-colors"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
       {/* Scrollable body */}
-      <div className="p-3 sm:p-6 overflow-y-auto flex-1">
+      <div className="p-4 sm:p-6 overflow-y-auto flex-1">
         {children}
       </div>
     </dialog>
