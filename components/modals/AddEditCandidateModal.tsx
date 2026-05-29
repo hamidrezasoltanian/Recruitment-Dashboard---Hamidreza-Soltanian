@@ -5,6 +5,7 @@ import Modal from '../ui/Modal';
 import StarRating from '../ui/StarRating';
 import { useSettings } from '../../contexts/SettingsContext';
 import PersianDatePicker from '../ui/PersianDatePicker';
+import { isLocalServerMode, localApiImport } from '../../services/localApiService';
 
 interface AddEditCandidateModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
   const availableSources = sources.length > 0 ? sources : DEFAULT_SOURCES;
   const kanbanStages = stages.filter(s => s.id !== 'archived');
   const resumeInputRef = useRef<HTMLInputElement>(null);
+  const [parsingResume, setParsingResume] = useState(false);
   
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -76,10 +78,21 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
     onClose();
   };
   
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files && e.target.files[0]) {
-          setResumeFile(e.target.files[0]);
-      }
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setResumeFile(file);
+
+    if (isLocalServerMode() && !candidateToEdit) {
+      setParsingResume(true);
+      try {
+        const result = await localApiImport.parseResume(file);
+        if (result.extracted.name && !name) setName(result.extracted.name);
+        if (result.extracted.email && !email) setEmail(result.extracted.email);
+        if (result.extracted.phone && !phone) setPhone(result.extracted.phone);
+      } catch { /* ignore parse errors */ }
+      setParsingResume(false);
+    }
   };
 
   const handleDateChange = (date: string) => {
@@ -142,6 +155,7 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
             <label className={labelClass}>رزومه</label>
             <input ref={resumeInputRef} type="file" onChange={handleFileChange} accept=".pdf,.doc,.docx" className="mt-1 text-sm text-gray-500 file:ml-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[var(--color-primary-50)] file:text-[var(--color-primary-700)] hover:file:bg-[var(--color-primary-100)]" />
             {candidateToEdit?.hasResume && !resumeFile && <p className="text-xs text-emerald-600 mt-1">رزومه قبلاً آپلود شده است.</p>}
+            {parsingResume && <p className="text-xs text-indigo-500 mt-1 animate-pulse">در حال استخراج اطلاعات از رزومه...</p>}
           </div>
           <div>
             <label className={labelClass}>امتیاز</label>

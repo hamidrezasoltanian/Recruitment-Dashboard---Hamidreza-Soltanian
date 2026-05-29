@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { Candidate, StageId, Comment, HistoryEntry, TestResult, ScorecardEntry } from '../types';
 import { dbService } from '../services/dbService';
 import { supabaseService, isSupabaseEnabled } from '../services/supabaseService';
+import { localApiCandidates, localApiFiles, isLocalServerMode } from '../services/localApiService';
 import { useToast } from './ToastContext';
 import { useAuth } from './AuthContext';
 
@@ -75,14 +76,16 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
     const loadData = async () => {
       try {
         let data: Candidate[];
-        if (isSupabaseEnabled && companyId) {
+        if (isLocalServerMode()) {
+          data = await localApiCandidates.getAll();
+        } else if (isSupabaseEnabled && companyId) {
           data = await supabaseService.getAllCandidates();
         } else {
           data = await dbService.getAllCandidates();
         }
 
-        if (data.length === 0) {
-          // Seed default candidate
+        if (data.length === 0 && !isLocalServerMode()) {
+          // Seed default candidate (only in local/supabase modes)
           if (isSupabaseEnabled && companyId) {
             await supabaseService.saveCandidate(defaultCandidate);
           } else {
@@ -114,7 +117,9 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
   // ── Storage helpers ────────────────────────────────────────────────
 
   const persist = async (candidate: Candidate) => {
-    if (isSupabaseEnabled && companyId) {
+    if (isLocalServerMode()) {
+      await localApiCandidates.save(candidate);
+    } else if (isSupabaseEnabled && companyId) {
       await supabaseService.saveCandidate(candidate);
     } else {
       await dbService.saveCandidate(candidate);
@@ -122,7 +127,9 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
   };
 
   const remove = async (id: string) => {
-    if (isSupabaseEnabled) {
+    if (isLocalServerMode()) {
+      await localApiCandidates.delete(id);
+    } else if (isSupabaseEnabled) {
       await supabaseService.deleteCandidate(id);
     } else {
       await dbService.deleteCandidate(id);
@@ -133,7 +140,10 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const setCandidates = async (newCandidates: Candidate[], suppressToast = false) => {
     try {
-      if (isSupabaseEnabled && companyId) {
+      if (isLocalServerMode()) {
+        await localApiCandidates.deleteAll();
+        await localApiCandidates.bulkSave(newCandidates);
+      } else if (isSupabaseEnabled && companyId) {
         await supabaseService.clearAllCandidates();
         for (const c of newCandidates) await supabaseService.saveCandidate(c);
       } else {
@@ -164,7 +174,10 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
     const newCandidate: Candidate = { ...withHistory, testResults: [], stageEnteredAt: new Date().toISOString() };
     try {
       await persist(newCandidate);
-      if (resumeFile) await saveFile(candidate.id, resumeFile, 'resume');
+      if (resumeFile) {
+        if (isLocalServerMode()) await localApiFiles.uploadResume(candidate.id, resumeFile);
+        else await saveFile(candidate.id, resumeFile, 'resume');
+      }
       setCandidatesState(prev => [...prev, newCandidate]);
       addToast('متقاضی با موفقیت اضافه شد.', 'success');
     } catch {
@@ -176,7 +189,10 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
     const withHistory = addHistoryEntry(candidate, 'اطلاعات ویرایش شد');
     try {
       await persist(withHistory);
-      if (resumeFile) await saveFile(candidate.id, resumeFile, 'resume');
+      if (resumeFile) {
+        if (isLocalServerMode()) await localApiFiles.uploadResume(candidate.id, resumeFile);
+        else await saveFile(candidate.id, resumeFile, 'resume');
+      }
       setCandidatesState(prev => prev.map(c => c.id === candidate.id ? withHistory : c));
       addToast('اطلاعات با موفقیت به‌روزرسانی شد.', 'success');
     } catch {
@@ -188,10 +204,14 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
     try {
       const candidate = candidates.find(c => c.id === id);
       await remove(id);
-      await dbService.deleteResume(id);
-      if (candidate?.testResults) {
-        for (const r of candidate.testResults) {
-          if (r.file) await dbService.deleteTestFile(`${id}_${r.testId}`);
+      if (isLocalServerMode()) {
+        await localApiFiles.deleteResume(id);
+      } else {
+        await dbService.deleteResume(id);
+        if (candidate?.testResults) {
+          for (const r of candidate.testResults) {
+            if (r.file) await dbService.deleteTestFile(`${id}_${r.testId}`);
+          }
         }
       }
       if (candidate) setLastDeleted(candidate);

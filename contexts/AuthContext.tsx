@@ -3,9 +3,10 @@ import { User, UserWithPassword } from '../types';
 import { authService } from '../services/authService';
 import { supabase, isSupabaseEnabled } from '../services/supabaseClient';
 import { supabaseService } from '../services/supabaseService';
+import { detectLocalServer, localApiAuth, isLocalServerMode } from '../services/localApiService';
 import { useToast } from './ToastContext';
 
-export type AuthMode = 'local' | 'supabase';
+export type AuthMode = 'local' | 'supabase' | 'server';
 export type AuthScreen = 'login' | 'register';
 
 interface AuthContextType {
@@ -51,9 +52,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   );
   // Supabase-mode team members (keyed by supabase user id)
   const [supabaseUsers, setSupabaseUsers] = useState<Record<string, UserWithPassword>>({});
+  const [serverMode, setServerMode] = useState(false);
   const { addToast } = useToast();
 
-  const authMode: AuthMode = isSupabaseEnabled ? 'supabase' : 'local';
+  const authMode: AuthMode = serverMode ? 'server' : isSupabaseEnabled ? 'supabase' : 'local';
 
   // ── Load profile from Supabase ──────────────────────────────────────
 
@@ -91,28 +93,52 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // ── Session init ────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!isSupabaseEnabled || !supabase) {
-      // Local mode: restore session from sessionStorage
-      const local = authService.getCurrentUser();
-      if (local) setUser(local);
-      setAuthLoading(false);
-      return;
-    }
-
-    // Supabase mode: subscribe to auth state
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        await loadProfile(session.user.id);
-      } else {
-        setUser(null);
-        setCompanyId(null);
-        supabaseService.setCompanyId(null);
-        setSupabaseUsers({});
+    const init = async () => {
+      // Check for local server first
+      const hasServer = await detectLocalServer();
+      if (hasServer) {
+        setServerMode(true);
+        try {
+          const u = await localApiAuth.me();
+          if (u) {
+            setUser({ username: u.email, name: u.name, isAdmin: u.isAdmin });
+            setCompanyId(u.companyId);
+            // Load team members
+            const members = await localApiAuth.listUsers();
+            const memberMap: Record<string, UserWithPassword> = {};
+            members.forEach(m => { memberMap[m.id] = { username: m.email, name: m.name, isAdmin: m.isAdmin }; });
+            setSupabaseUsers(memberMap);
+          }
+        } catch { /* not logged in */ }
+        setAuthLoading(false);
+        return;
       }
-      setAuthLoading(false);
-    });
 
-    return () => subscription.unsubscribe();
+      if (!isSupabaseEnabled || !supabase) {
+        // Local mode: restore session from sessionStorage
+        const local = authService.getCurrentUser();
+        if (local) setUser(local);
+        setAuthLoading(false);
+        return;
+      }
+
+      // Supabase mode: subscribe to auth state
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+        if (session?.user) {
+          await loadProfile(session.user.id);
+        } else {
+          setUser(null);
+          setCompanyId(null);
+          supabaseService.setCompanyId(null);
+          setSupabaseUsers({});
+        }
+        setAuthLoading(false);
+      });
+
+      return () => subscription.unsubscribe();
+    };
+
+    init();
   }, [loadProfile]);
 
   // ── Local-mode: sync users to localStorage ──────────────────────────
@@ -126,6 +152,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // ── Login ───────────────────────────────────────────────────────────
 
   const login = async (emailOrUsername: string, pass: string) => {
+    if (isLocalServerMode()) {
+      try {
+        const u = await localApiAuth.login(emailOrUsername, pass);
+        setUser({ username: u.email, name: u.name, isAdmin: u.isAdmin });
+        setCompanyId(u.companyId);
+        addToast(`خوش آمدید، ${u.name}!`, 'success');
+      } catch (e: any) {
+        addToast(e.message, 'error');
+        throw e;
+      }
+      return;
+    }
+
     if (!isSupabaseEnabled || !supabase) {
       // Local fallback
       try {
@@ -153,7 +192,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // ── Logout ──────────────────────────────────────────────────────────
 
   const logout = () => {
-    if (isSupabaseEnabled && supabase) {
+    if (isLocalServerMode()) {
+      localApiAuth.logout();
+      setUser(null);
+      setCompanyId(null);
+    } else if (isSupabaseEnabled && supabase) {
       supabase.auth.signOut();
     } else {
       authService.logout();
@@ -165,6 +208,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // ── Supabase: Register new company (first admin) ────────────────────
 
   const registerCompany = async (companyName: string, userName: string, email: string, password: string) => {
+    if (isLocalServerMode()) {
+      const u = await localApiAuth.register(companyName, userName, email, password);
+      setUser({ username: u.email, name: u.name, isAdmin: u.isAdmin });
+      setCompanyId(u.companyId);
+      addToast('شرکت شما ثبت شد. خوش آمدید!', 'success');
+      return;
+    }
+
     if (!supabase) throw new Error('Supabase not configured');
 
     // 1. Create company
@@ -224,7 +275,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // ── User management ─────────────────────────────────────────────────
 
-  const addUser = (userData: UserWithPassword) => {
+  const addUser = async (userData: UserWithPassword) => {
+    if (isLocalServerMode()) {
+      try {
+        await localApiAuth.addUser({
+          email: userData.username,
+          name: userData.name,
+          password: (userData as any).password || '',
+          isAdmin: userData.isAdmin,
+        });
+        const members = await localApiAuth.listUsers();
+        const memberMap: Record<string, UserWithPassword> = {};
+        members.forEach(m => { memberMap[m.id] = { username: m.email, name: m.name, isAdmin: m.isAdmin }; });
+        setSupabaseUsers(memberMap);
+        addToast('کاربر جدید با موفقیت اضافه شد.', 'success');
+      } catch (e: any) {
+        addToast(e.message, 'error');
+      }
+      return;
+    }
     if (isSupabaseEnabled) {
       addToast('برای دعوت کاربر جدید، شناسه شرکت را با ایشان به اشتراک بگذارید.', 'info' as any);
       return;
@@ -255,6 +324,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const deleteUser = async (id: string) => {
+    if (isLocalServerMode()) {
+      try {
+        await localApiAuth.deleteUser(id);
+        setSupabaseUsers(prev => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+        addToast('کاربر حذف شد.', 'success');
+      } catch (e: any) {
+        addToast(e.message, 'error');
+      }
+      return;
+    }
     if (isSupabaseEnabled && supabase) {
       if (id === user?.username) {
         addToast('نمی‌توانید حساب خود را حذف کنید.', 'error');
@@ -308,7 +391,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const activeUsers = isSupabaseEnabled ? supabaseUsers : users;
+  const activeUsers = (serverMode || isSupabaseEnabled) ? supabaseUsers : users;
 
   const value: AuthContextType = {
     user, authLoading, authMode, authScreen, setAuthScreen,

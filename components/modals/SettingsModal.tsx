@@ -8,6 +8,7 @@ import { useTemplates } from '../../contexts/TemplateContext';
 import { aiService } from '../../services/aiService';
 import { useCandidates } from '../../contexts/CandidatesContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { isLocalServerMode, localApiImport } from '../../services/localApiService';
 
 const UserManagementPanel: React.FC = () => {
   const { users, addUser, updateUser, deleteUser, currentUser } = useAuth();
@@ -946,13 +947,114 @@ const ScorecardPanel: React.FC = () => {
   );
 };
 
+const EmailImportPanel: React.FC = () => {
+  const { addToast } = useToast();
+  const [config, setConfig] = useState({ host: '', port: '993', user: '', password: '', enabled: false, defaultPosition: '', defaultSource: 'ایمیل' });
+  const [loading, setLoading] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!isLocalServerMode() || loaded) return;
+    localApiImport.getEmailConfig().then(cfg => {
+      if (cfg) setConfig(prev => ({ ...prev, ...cfg, password: '' }));
+      setLoaded(true);
+    }).catch(() => setLoaded(true));
+  }, [loaded]);
+
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      await localApiImport.saveEmailConfig(config);
+      addToast('تنظیمات ایمیل ذخیره شد.', 'success');
+    } catch (e: any) {
+      addToast(e.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    try {
+      const res = await localApiImport.testEmailConnection(config);
+      if (res.success) addToast(res.message || 'اتصال موفق!', 'success');
+      else addToast(res.error || 'خطا در اتصال', 'error');
+    } catch (e: any) {
+      addToast(e.message, 'error');
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  if (!isLocalServerMode()) {
+    return (
+      <div className="text-center py-10 text-gray-500">
+        <p className="text-4xl mb-3">📡</p>
+        <p className="font-medium">این قابلیت فقط در حالت سرور محلی در دسترس است.</p>
+        <p className="text-sm mt-1">برنامه را با <code className="bg-gray-100 px-1 rounded">node server/index.js</code> اجرا کنید.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5 max-w-lg" dir="rtl">
+      <div>
+        <h3 className="text-lg font-bold text-gray-800 mb-1">دریافت رزومه از ایمیل (IMAP)</h3>
+        <p className="text-sm text-gray-500">با فعال کردن این قابلیت، هر ۵ دقیقه ایمیل‌های جدید با پیوست رزومه بررسی شده و متقاضی جدید اضافه می‌شود.</p>
+      </div>
+      <div className="flex items-center gap-3">
+        <label className="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" checked={config.enabled} onChange={e => setConfig(p => ({ ...p, enabled: e.target.checked }))} className="sr-only peer" />
+          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+        </label>
+        <span className="text-sm font-medium text-gray-700">{config.enabled ? 'فعال' : 'غیرفعال'}</span>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2">
+          <label className="block text-xs font-medium text-gray-600 mb-1">سرور IMAP</label>
+          <input value={config.host} onChange={e => setConfig(p => ({ ...p, host: e.target.value }))} placeholder="imap.gmail.com" dir="ltr" className="w-full border border-gray-200 bg-gray-50 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">پورت</label>
+          <input value={config.port} onChange={e => setConfig(p => ({ ...p, port: e.target.value }))} placeholder="993" dir="ltr" className="w-full border border-gray-200 bg-gray-50 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">منبع پیش‌فرض</label>
+          <input value={config.defaultSource} onChange={e => setConfig(p => ({ ...p, defaultSource: e.target.value }))} placeholder="ایمیل" className="w-full border border-gray-200 bg-gray-50 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+        </div>
+        <div className="col-span-2">
+          <label className="block text-xs font-medium text-gray-600 mb-1">ایمیل</label>
+          <input value={config.user} onChange={e => setConfig(p => ({ ...p, user: e.target.value }))} placeholder="your@email.com" dir="ltr" className="w-full border border-gray-200 bg-gray-50 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+        </div>
+        <div className="col-span-2">
+          <label className="block text-xs font-medium text-gray-600 mb-1">رمز عبور / App Password</label>
+          <input type="password" value={config.password} onChange={e => setConfig(p => ({ ...p, password: e.target.value }))} placeholder="رمز عبور یا App Password" dir="ltr" className="w-full border border-gray-200 bg-gray-50 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+        </div>
+        <div className="col-span-2">
+          <label className="block text-xs font-medium text-gray-600 mb-1">موقعیت شغلی پیش‌فرض (اختیاری)</label>
+          <input value={config.defaultPosition} onChange={e => setConfig(p => ({ ...p, defaultPosition: e.target.value }))} placeholder="موقعیت پیش‌فرض" className="w-full border border-gray-200 bg-gray-50 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+        </div>
+      </div>
+      <div className="flex gap-3">
+        <button onClick={handleSave} disabled={loading} className="px-5 py-2 text-sm font-bold text-white rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50">
+          {loading ? 'در حال ذخیره...' : 'ذخیره'}
+        </button>
+        <button onClick={handleTest} disabled={testing || !config.host || !config.user} className="px-5 py-2 text-sm font-medium text-indigo-600 rounded-xl border border-indigo-200 hover:bg-indigo-50 disabled:opacity-50">
+          {testing ? 'در حال تست...' : 'تست اتصال'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-    type Tab = 'appearance' | 'profile' | 'stages' | 'scorecard' | 'users' | 'sources' | 'templates' | 'apiKey' | 'tests' | 'sms';
+    type Tab = 'appearance' | 'profile' | 'stages' | 'scorecard' | 'users' | 'sources' | 'templates' | 'apiKey' | 'tests' | 'sms' | 'emailImport';
     const [activeTab, setActiveTab] = useState<Tab>('appearance');
 
     const tabClasses = (tabName: Tab) => 
@@ -977,6 +1079,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                         <button onClick={() => setActiveTab('sources')} className={tabClasses('sources')}>مدیریت منابع</button>
                         <button onClick={() => setActiveTab('apiKey')} className={tabClasses('apiKey')}>کلید API</button>
                         <button onClick={() => setActiveTab('sms')} className={tabClasses('sms')}>پیامک (SMS)</button>
+                        <button onClick={() => setActiveTab('emailImport')} className={tabClasses('emailImport')}>ایمیل خودکار</button>
                     </nav>
                 </div>
                 <div className="pt-6 bg-white p-6 rounded-b-lg">
@@ -990,6 +1093,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                     {activeTab === 'apiKey' && <ApiKeyPanel />}
                     {activeTab === 'tests' && <TestLibraryPanel />}
                     {activeTab === 'sms' && <SmsPanel />}
+                    {activeTab === 'emailImport' && <EmailImportPanel />}
                 </div>
             </div>
         </Modal>

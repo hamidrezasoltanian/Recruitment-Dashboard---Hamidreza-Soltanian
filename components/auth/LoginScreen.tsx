@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { isSupabaseEnabled } from '../../services/supabaseClient';
+import { isLocalServerMode } from '../../services/localApiService';
 
 const LoginScreen: React.FC = () => {
   const [credential, setCredential] = useState('');
@@ -94,7 +95,7 @@ const LoginScreen: React.FC = () => {
             </button>
           </form>
 
-          {isSupabaseEnabled ? (
+          {(isSupabaseEnabled || isLocalServerMode()) ? (
             <p className="text-sm text-center text-gray-500">
               حساب کاربری ندارید؟{' '}
               <button onClick={() => setAuthScreen('register')} className="text-[var(--color-primary-600)] font-semibold hover:underline">

@@ -35,9 +35,10 @@ interface HeaderProps {
   onSettingsClick: () => void;
   onAddCandidateClick: () => void;
   onOpenBulkCommModal: (candidates: Candidate[]) => void;
+  onCSVImportClick?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick, onOpenBulkCommModal }) => {
+const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick, onOpenBulkCommModal, onCSVImportClick }) => {
   const { user, logout, users, restoreUsers } = useAuth();
   const { candidates, setCandidates } = useCandidates();
   const { addToast } = useToast();
@@ -173,6 +174,9 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick, o
 
           {/* Desktop-only buttons */}
           <button onClick={handleBulkReminder} className="hidden sm:flex items-center gap-1 text-xs bg-amber-400/90 hover:bg-amber-400 text-amber-900 font-bold py-2 px-3 rounded-lg transition-all whitespace-nowrap">یادآور</button>
+          {onCSVImportClick && user?.isAdmin && (
+            <button onClick={onCSVImportClick} className="hidden sm:flex items-center gap-1 text-xs bg-emerald-500/80 hover:bg-emerald-500 text-white font-semibold py-2 px-3 rounded-lg transition-all whitespace-nowrap">وارد CSV</button>
+          )}
           <button onClick={handleBackup} className="hidden sm:flex items-center gap-1 text-xs bg-white/15 hover:bg-white/25 text-white font-semibold py-2 px-3 rounded-lg transition-all border border-white/20">پشتیبان</button>
           <button onClick={handleRestoreClick} className="hidden sm:flex items-center gap-1 text-xs bg-white/15 hover:bg-white/25 text-white font-semibold py-2 px-3 rounded-lg transition-all border border-white/20">بازیابی</button>
           {user?.isAdmin && (

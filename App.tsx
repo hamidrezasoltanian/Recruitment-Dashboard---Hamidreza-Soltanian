@@ -25,6 +25,7 @@ import ResumeViewerModal from './components/modals/ResumeViewerModal';
 import BulkCommunicationModal from './components/modals/BulkCommunicationModal';
 import ComparisonModal from './components/modals/ComparisonModal';
 import PublicApplicationView from './components/views/PublicApplicationView';
+import CSVImportModal from './components/modals/CSVImportModal';
 
 
 const App: React.FC = () => {
@@ -56,6 +57,7 @@ const App: React.FC = () => {
   const [resumeViewerState, setResumeViewerState] = useState<{ isOpen: boolean, file: File | null }>({ isOpen: false, file: null });
 
   const [bulkCommConfig, setBulkCommConfig] = useState<{ isOpen: boolean; candidates: Candidate[] }>({ isOpen: false, candidates: [] });
+  const [isCSVImportOpen, setCSVImportOpen] = useState(false);
 
   const [initialExpandedInTests, setInitialExpandedInTests] = useState<string | null>(null);
 
@@ -247,6 +249,7 @@ const App: React.FC = () => {
           onSettingsClick={() => setSettingsModalOpen(true)}
           onAddCandidateClick={() => handleOpenAddModal()}
           onOpenBulkCommModal={handleOpenBulkCommModal}
+          onCSVImportClick={() => setCSVImportOpen(true)}
         />
         <Tabs activeView={activeView} setActiveView={handleViewChange} />
         <main className="p-3 sm:p-4 md:p-6 lg:p-8 flex-grow">
@@ -334,6 +337,7 @@ const App: React.FC = () => {
         candidates={comparisonList}
         onViewDetails={handleOpenDetailsModal}
       />
+      {isCSVImportOpen && <CSVImportModal onClose={() => setCSVImportOpen(false)} />}
     </>
   );
 };

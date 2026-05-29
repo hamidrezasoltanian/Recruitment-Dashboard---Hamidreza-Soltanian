@@ -4,6 +4,7 @@ import { CompanyProfile, KanbanStage, ScorecardCriteria, TestLibraryItem } from 
 import { useToast } from './ToastContext';
 import { generateId } from '../utils/idUtils';
 import { supabaseService, isSupabaseEnabled } from '../services/supabaseService';
+import { localApiSettings, isLocalServerMode } from '../services/localApiService';
 import { useAuth } from './AuthContext';
 
 interface SettingsContextType {
@@ -66,10 +67,23 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [scorecardTemplates, setScorecardTemplates] = useState<Record<string, ScorecardCriteria[]>>(() => fromLS(SCORECARD_TEMPLATES_KEY, {}));
   const [kavenegarApiKey, setKavenegarApiKeyState] = useState<string>(() => localStorage.getItem(KAVENEGAR_API_KEY) || '');
 
-  // ── Load from Supabase when authenticated ────────────────────────────
+  // ── Load from server / Supabase when authenticated ──────────────────
 
   useEffect(() => {
-    if (!isSupabaseEnabled || !user || !companyId) return;
+    if (!user) return;
+    if (isLocalServerMode()) {
+      localApiSettings.load().then(remote => {
+        if (!remote) return;
+        if (remote.sources?.length)        { setSources(remote.sources);           localStorage.setItem(SETTINGS_KEY_SOURCES, JSON.stringify(remote.sources)); }
+        if (remote.stages?.length)         { setStages(remote.stages);             localStorage.setItem(STAGES_KEY, JSON.stringify(remote.stages)); }
+        if (remote.companyProfile?.name)   { setCompanyProfile(remote.companyProfile); localStorage.setItem(COMPANY_PROFILE_KEY, JSON.stringify(remote.companyProfile)); }
+        if (remote.testLibrary?.length)    { setTestLibrary(remote.testLibrary);   localStorage.setItem(TEST_LIBRARY_KEY, JSON.stringify(remote.testLibrary)); }
+        if (remote.slaSettings)            { setSlaSettings(remote.slaSettings);   localStorage.setItem(SLA_SETTINGS_KEY, JSON.stringify(remote.slaSettings)); }
+        if (remote.scorecardTemplates)     { setScorecardTemplates(remote.scorecardTemplates); localStorage.setItem(SCORECARD_TEMPLATES_KEY, JSON.stringify(remote.scorecardTemplates)); }
+      }).catch(console.error);
+      return;
+    }
+    if (!isSupabaseEnabled || !companyId) return;
     supabaseService.loadSettings().then(remote => {
       if (!remote) return;
       if (remote.sources?.length)        { setSources(remote.sources);           localStorage.setItem(SETTINGS_KEY_SOURCES, JSON.stringify(remote.sources)); }
@@ -81,10 +95,14 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     }).catch(console.error);
   }, [user, companyId]);
 
-  // ── Persist to localStorage + debounced Supabase save ───────────────
+  // ── Persist to localStorage + server / Supabase ──────────────────────
 
   const syncToSupabase = useCallback((partial: Parameters<typeof supabaseService.saveSettings>[0]) => {
-    if (isSupabaseEnabled && companyId) supabaseService.saveSettings(partial).catch(console.error);
+    if (isLocalServerMode()) {
+      localApiSettings.save(partial as object).catch(console.error);
+    } else if (isSupabaseEnabled && companyId) {
+      supabaseService.saveSettings(partial).catch(console.error);
+    }
   }, [companyId]);
 
   useEffect(() => { localStorage.setItem(SETTINGS_KEY_SOURCES, JSON.stringify(sources)); }, [sources]);
