@@ -1,7 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { useCandidates } from './contexts/CandidatesContext';
 import { Candidate, StageId, View, StageChangeInfo, KanbanViewMode } from './types';
+import { useComparison } from './contexts/ComparisonContext';
+import { notificationService } from './services/notificationService';
 
 import Header from './components/layout/Header';
 import Tabs from './components/layout/Tabs';
@@ -21,11 +23,16 @@ import KanbanControls from './components/kanban/KanbanControls';
 import CommunicationModal from './components/modals/CommunicationModal';
 import ResumeViewerModal from './components/modals/ResumeViewerModal';
 import BulkCommunicationModal from './components/modals/BulkCommunicationModal';
+import ComparisonModal from './components/modals/ComparisonModal';
+import PublicApplicationView from './components/views/PublicApplicationView';
 
 
 const App: React.FC = () => {
   const { user, authLoading, authScreen } = useAuth();
   const { candidates, addCandidate, updateCandidate, updateCandidateStage, lastDeleted, undoDelete } = useCandidates();
+  const { comparisonList, clearComparison } = useComparison();
+  const [isPublicForm] = useState(() => window.location.hash === '#apply');
+  const [isComparisonOpen, setComparisonOpen] = useState(false);
   const [activeView, setActiveView] = useState<View>('dashboard');
   const [kanbanViewMode, setKanbanViewMode] = useState<KanbanViewMode>('kanban');
 
@@ -202,6 +209,19 @@ const App: React.FC = () => {
     }
   };
 
+  // Initialize browser notifications after candidates load
+  useEffect(() => {
+    if (user && candidates.length > 0) {
+      notificationService.requestPermission().then(granted => {
+        if (granted) notificationService.scheduleAll(candidates);
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, candidates.length]);
+
+  // Public application form — no auth required (checked after all hooks)
+  if (isPublicForm) return <PublicApplicationView />;
+
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -237,6 +257,17 @@ const App: React.FC = () => {
 
       {/* Version */}
       <div className="fixed bottom-2 left-2 text-xs text-gray-400 font-mono z-50">v{appVersion}</div>
+
+      {/* Comparison bar */}
+      {comparisonList.length >= 2 && !isComparisonOpen && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-4">
+          <span className="text-sm font-medium">{comparisonList.length} متقاضی انتخاب شده</span>
+          <button onClick={() => setComparisonOpen(true)} className="text-[var(--color-primary-400)] font-bold text-sm hover:text-[var(--color-primary-300)] whitespace-nowrap">
+            مقایسه کنید
+          </button>
+          <button onClick={clearComparison} className="text-gray-400 hover:text-gray-200 text-xs">✕</button>
+        </div>
+      )}
 
       {/* Undo Delete Toast */}
       {lastDeleted && (
@@ -296,6 +327,12 @@ const App: React.FC = () => {
         isOpen={bulkCommConfig.isOpen}
         onClose={() => setBulkCommConfig({ isOpen: false, candidates: [] })}
         candidates={bulkCommConfig.candidates}
+      />
+      <ComparisonModal
+        isOpen={isComparisonOpen}
+        onClose={() => { setComparisonOpen(false); clearComparison(); }}
+        candidates={comparisonList}
+        onViewDetails={handleOpenDetailsModal}
       />
     </>
   );

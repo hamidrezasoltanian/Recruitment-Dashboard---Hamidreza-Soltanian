@@ -148,6 +148,18 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
   };
 
   const addCandidate = async (candidate: Candidate, resumeFile?: File) => {
+    // Duplicate detection by email or phone
+    const emailDup = candidates.find(c => c.email && c.email.toLowerCase() === candidate.email?.toLowerCase());
+    const phoneDup = candidates.find(c => c.phone && c.phone.replace(/\D/g, '') === candidate.phone?.replace(/\D/g, '') && candidate.phone?.replace(/\D/g, '') !== '');
+    if (emailDup) {
+      addToast(`متقاضی با این ایمیل قبلاً ثبت شده: «${emailDup.name}»`, 'error');
+      return;
+    }
+    if (phoneDup) {
+      addToast(`متقاضی با این شماره تلفن قبلاً ثبت شده: «${phoneDup.name}»`, 'error');
+      return;
+    }
+
     const withHistory = addHistoryEntry(candidate, 'متقاضی ایجاد شد');
     const newCandidate: Candidate = { ...withHistory, testResults: [], stageEnteredAt: new Date().toISOString() };
     try {
@@ -274,7 +286,8 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
     const candidate = candidates.find(c => c.id === candidateId);
     if (!candidate) return;
     const existing = candidate.scorecards || [];
-    const idx = existing.findIndex(s => s.stageId === entry.stageId);
+    // Match by stageId + evaluatedBy to support multiple interviewers per stage
+    const idx = existing.findIndex(s => s.stageId === entry.stageId && s.evaluatedBy === entry.evaluatedBy);
     const updatedScorecards = idx >= 0
       ? existing.map((s, i) => i === idx ? entry : s)
       : [...existing, entry];

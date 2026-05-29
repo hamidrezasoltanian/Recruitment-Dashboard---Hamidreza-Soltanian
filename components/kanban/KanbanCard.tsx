@@ -5,6 +5,8 @@ import StarRating from '../ui/StarRating';
 import { getJobColor } from '../../utils/colorUtils';
 import { WhatsappIcon } from '../ui/Icons';
 import { useSettings } from '../../contexts/SettingsContext';
+import { calcCompleteness } from '../../utils/completenessUtils';
+import { useComparison } from '../../contexts/ComparisonContext';
 
 declare const persianDate: any;
 
@@ -22,6 +24,9 @@ const getDaysInStage = (candidate: Candidate): number => {
 
 const KanbanCard: React.FC<KanbanCardProps> = ({ candidate, onViewDetails, onEdit }) => {
   const { slaSettings } = useSettings();
+  const { toggleComparison, isInComparison } = useComparison();
+  const inComparison = isInComparison(candidate.id);
+  const { score: completeness } = calcCompleteness(candidate);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: candidate.id,
     data: { candidate },
@@ -51,9 +56,10 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ candidate, onViewDetails, onEdi
   const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const actionElement = (e.target as HTMLElement).closest('[data-action]');
     const action = actionElement?.getAttribute('data-action');
-    if (action === 'email' || action === 'whatsapp' || action === 'edit') {
+    if (action === 'email' || action === 'whatsapp' || action === 'edit' || action === 'compare') {
       e.stopPropagation();
       if (action === 'edit') onEdit(candidate);
+      if (action === 'compare') toggleComparison(candidate);
       return;
     }
     onViewDetails(candidate);
@@ -121,6 +127,15 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ candidate, onViewDetails, onEdi
             </span>
           )}
           <button
+            data-action="compare"
+            title={inComparison ? 'حذف از مقایسه' : 'افزودن به مقایسه'}
+            className={`transition-colors opacity-0 group-hover:opacity-100 ${inComparison ? 'text-[var(--color-primary-500)]' : 'text-gray-300 hover:text-[var(--color-primary-400)]'}`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" />
+            </svg>
+          </button>
+          <button
             data-action="edit"
             className="text-gray-300 hover:text-[var(--color-primary-500)] transition-colors opacity-0 group-hover:opacity-100"
             aria-label={`ویرایش ${candidate.name}`}
@@ -158,6 +173,16 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ candidate, onViewDetails, onEdi
           )}
         </div>
       )}
+
+      {/* Completeness bar */}
+      <div className="mt-2.5" title={`تکمیل بودن پروفایل: ${completeness}٪`}>
+        <div className="h-1 rounded-full bg-gray-100 overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all ${completeness >= 80 ? 'bg-emerald-400' : completeness >= 50 ? 'bg-amber-400' : 'bg-red-400'}`}
+            style={{ width: `${completeness}%` }}
+          />
+        </div>
+      </div>
     </div>
   );
 };

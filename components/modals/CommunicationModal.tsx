@@ -6,6 +6,7 @@ import { templateService } from '../../services/templateService';
 import { useToast } from '../../contexts/ToastContext';
 import { useSettings } from '../../contexts/SettingsContext';
 import { EmailIcon, WhatsappIcon } from '../ui/Icons';
+import { smsService } from '../../services/smsService';
 
 interface CommunicationModalProps {
   isOpen: boolean;
@@ -19,8 +20,9 @@ const CommunicationModal: React.FC<CommunicationModalProps> = ({
   candidate,
 }) => {
   const { templates } = useTemplates();
-  const { companyProfile, stages } = useSettings();
+  const { companyProfile, stages, kavenegarApiKey } = useSettings();
   const { addToast } = useToast();
+  const [isSmsLoading, setIsSmsLoading] = useState(false);
   
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [message, setMessage] = useState('');
@@ -87,7 +89,22 @@ const CommunicationModal: React.FC<CommunicationModalProps> = ({
     
     onClose();
   };
-  
+
+  const handleSendSms = async () => {
+    if (!message.trim()) { addToast('پیام نمی‌تواند خالی باشد.', 'error'); return; }
+    if (!candidate.phone) { addToast('شماره تلفن برای این متقاضی ثبت نشده.', 'error'); return; }
+    setIsSmsLoading(true);
+    try {
+      await smsService.send(kavenegarApiKey, candidate.phone, message);
+      addToast(`پیامک برای ${candidate.name} ارسال شد.`, 'success');
+      onClose();
+    } catch (err: any) {
+      addToast(err.message || 'خطا در ارسال پیامک.', 'error');
+    } finally {
+      setIsSmsLoading(false);
+    }
+  };
+
   const title = `ارسال پیام به ${candidate.name}`;
 
   return (
@@ -138,15 +155,24 @@ const CommunicationModal: React.FC<CommunicationModalProps> = ({
             />
         </div>
 
-        <div className="flex justify-end gap-4 pt-4">
-          <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 py-2 px-6 rounded-lg hover:bg-gray-300 transition-colors">انصراف</button>
-          <button type="button" onClick={() => handleSend('whatsapp')} disabled={!candidate.phone} className="bg-teal-600 text-white py-2 px-6 rounded-lg hover:bg-teal-700 flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed">
+        <div className="flex flex-wrap justify-end gap-3 pt-4">
+          <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 py-2 px-5 rounded-xl hover:bg-gray-300 transition-colors text-sm font-semibold">انصراف</button>
+          {kavenegarApiKey && (
+            <button type="button" onClick={handleSendSms} disabled={!candidate.phone || isSmsLoading} className="bg-violet-600 text-white py-2 px-5 rounded-xl hover:bg-violet-700 flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm font-semibold">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
+                <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z" />
+              </svg>
+              <span>{isSmsLoading ? 'در حال ارسال...' : 'ارسال پیامک'}</span>
+            </button>
+          )}
+          <button type="button" onClick={() => handleSend('whatsapp')} disabled={!candidate.phone} className="bg-teal-600 text-white py-2 px-5 rounded-xl hover:bg-teal-700 flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm font-semibold">
             <WhatsappIcon className="w-5 h-5"/>
-            <span>ارسال با واتسپ</span>
+            <span>واتسپ</span>
           </button>
-          <button type="button" onClick={() => handleSend('email')} className="bg-sky-600 text-white py-2 px-6 rounded-lg hover:bg-sky-700 flex items-center gap-2">
+          <button type="button" onClick={() => handleSend('email')} className="bg-sky-600 text-white py-2 px-5 rounded-xl hover:bg-sky-700 flex items-center gap-2 text-sm font-semibold">
             <EmailIcon className="w-5 h-5"/>
-            <span>ارسال با ایمیل</span>
+            <span>ایمیل</span>
           </button>
         </div>
       </div>

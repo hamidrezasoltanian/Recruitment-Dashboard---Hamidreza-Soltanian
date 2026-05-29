@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { DEFAULT_SOURCES, SETTINGS_KEY_SOURCES, COMPANY_PROFILE_KEY, DEFAULT_COMPANY_PROFILE, STAGES_KEY, DEFAULT_STAGES, TEST_LIBRARY_KEY, DEFAULT_TEST_LIBRARY, SLA_SETTINGS_KEY, SCORECARD_TEMPLATES_KEY } from '../constants';
+import { DEFAULT_SOURCES, SETTINGS_KEY_SOURCES, COMPANY_PROFILE_KEY, DEFAULT_COMPANY_PROFILE, STAGES_KEY, DEFAULT_STAGES, TEST_LIBRARY_KEY, DEFAULT_TEST_LIBRARY, SLA_SETTINGS_KEY, SCORECARD_TEMPLATES_KEY, KAVENEGAR_API_KEY } from '../constants';
 import { CompanyProfile, KanbanStage, ScorecardCriteria, TestLibraryItem } from '../types';
 import { useToast } from './ToastContext';
 import { generateId } from '../utils/idUtils';
@@ -30,6 +30,8 @@ interface SettingsContextType {
   addScorecardCriteria: (stageId: string, name: string, weight: number) => void;
   updateScorecardCriteria: (stageId: string, criteria: ScorecardCriteria) => void;
   deleteScorecardCriteria: (stageId: string, criteriaId: string) => void;
+  kavenegarApiKey: string;
+  setKavenegarApiKey: (key: string) => void;
   restoreSettings: (settings: {
     sources: string[];
     stages: KanbanStage[];
@@ -62,6 +64,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [testLibrary, setTestLibrary] = useState<TestLibraryItem[]>(() => fromLS(TEST_LIBRARY_KEY, DEFAULT_TEST_LIBRARY));
   const [slaSettings, setSlaSettings] = useState<Record<string, number>>(() => fromLS(SLA_SETTINGS_KEY, {}));
   const [scorecardTemplates, setScorecardTemplates] = useState<Record<string, ScorecardCriteria[]>>(() => fromLS(SCORECARD_TEMPLATES_KEY, {}));
+  const [kavenegarApiKey, setKavenegarApiKeyState] = useState<string>(() => localStorage.getItem(KAVENEGAR_API_KEY) || '');
 
   // ── Load from Supabase when authenticated ────────────────────────────
 
@@ -90,6 +93,11 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
   useEffect(() => { localStorage.setItem(TEST_LIBRARY_KEY, JSON.stringify(testLibrary)); }, [testLibrary]);
   useEffect(() => { localStorage.setItem(SLA_SETTINGS_KEY, JSON.stringify(slaSettings)); }, [slaSettings]);
   useEffect(() => { localStorage.setItem(SCORECARD_TEMPLATES_KEY, JSON.stringify(scorecardTemplates)); }, [scorecardTemplates]);
+
+  const setKavenegarApiKey = (key: string) => {
+    setKavenegarApiKeyState(key);
+    localStorage.setItem(KAVENEGAR_API_KEY, key);
+  };
 
   // ── Sources ──────────────────────────────────────────────────────────
 
@@ -282,6 +290,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     testLibrary, addTest, updateTest, deleteTest,
     slaSettings, updateStageSLA,
     scorecardTemplates, addScorecardCriteria, updateScorecardCriteria, deleteScorecardCriteria,
+    kavenegarApiKey, setKavenegarApiKey,
     restoreSettings,
   };
 

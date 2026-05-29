@@ -7,6 +7,7 @@ import { ToastProvider } from './contexts/ToastContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { TemplateProvider } from './contexts/TemplateContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { ComparisonProvider } from './contexts/ComparisonContext';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -22,7 +23,9 @@ root.render(
           <SettingsProvider>
             <TemplateProvider>
               <CandidatesProvider>
-                <App />
+                <ComparisonProvider>
+                  <App />
+                </ComparisonProvider>
               </CandidatesProvider>
             </TemplateProvider>
           </SettingsProvider>

@@ -21,6 +21,7 @@ export const COMPANY_PROFILE_KEY = 'recruitment_company_profile_v1';
 export const TEST_LIBRARY_KEY = 'recruitment_test_library_v1';
 export const SLA_SETTINGS_KEY = 'recruitment_sla_v1';
 export const SCORECARD_TEMPLATES_KEY = 'recruitment_scorecard_templates_v1';
+export const KAVENEGAR_API_KEY = 'recruitment_kavenegar_key_v1';
 
 export const DEFAULT_COMPANY_PROFILE: CompanyProfile = {
   name: "شرکت شما",

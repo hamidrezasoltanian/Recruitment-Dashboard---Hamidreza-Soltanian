@@ -733,6 +733,58 @@ const TestLibraryPanel: React.FC = () => {
 };
 
 
+const SmsPanel: React.FC = () => {
+  const { kavenegarApiKey, setKavenegarApiKey } = useSettings();
+  const { addToast } = useToast();
+  const [key, setKey] = useState(kavenegarApiKey);
+
+  React.useEffect(() => { setKey(kavenegarApiKey); }, [kavenegarApiKey]);
+
+  const handleSave = () => {
+    setKavenegarApiKey(key.trim());
+    addToast('کلید API کاوه‌نگار ذخیره شد.', 'success');
+  };
+
+  return (
+    <div className="space-y-5 max-w-lg">
+      <div>
+        <h3 className="text-lg font-bold text-gray-800 mb-1">سرویس پیامک کاوه‌نگار</h3>
+        <p className="text-sm text-gray-500">با وارد کردن کلید API کاوه‌نگار، می‌توانید مستقیماً از داخل نرم‌افزار پیامک ارسال کنید.</p>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">کلید API</label>
+        <input
+          type="text"
+          value={key}
+          onChange={e => setKey(e.target.value)}
+          placeholder="کلید API کاوه‌نگار را وارد کنید"
+          className="w-full border border-gray-200 bg-gray-50 rounded-xl py-2.5 px-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-400)] focus:bg-white transition-all"
+          dir="ltr"
+        />
+      </div>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={handleSave}
+          className="px-5 py-2 text-sm font-bold text-white rounded-xl"
+          style={{ background: 'linear-gradient(135deg, var(--color-primary-600), var(--color-primary-800))' }}
+        >
+          ذخیره
+        </button>
+        {kavenegarApiKey && (
+          <span className="text-xs text-emerald-600 font-semibold bg-emerald-50 px-3 py-1 rounded-full">فعال</span>
+        )}
+        {!kavenegarApiKey && (
+          <span className="text-xs text-gray-400">پیامک غیرفعال</span>
+        )}
+      </div>
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+        <p className="font-bold mb-1">نکته امنیتی</p>
+        <p>کلید API در مرورگر شما ذخیره می‌شود. از اشتراک‌گذاری آن خودداری کنید.</p>
+      </div>
+    </div>
+  );
+};
+
 const AppearancePanel: React.FC = () => {
     const { theme, setTheme, setCustomBackground, setDefaultBackground } = useTheme();
     const { addToast } = useToast();
@@ -900,7 +952,7 @@ interface SettingsModalProps {
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-    type Tab = 'appearance' | 'profile' | 'stages' | 'scorecard' | 'users' | 'sources' | 'templates' | 'apiKey' | 'tests';
+    type Tab = 'appearance' | 'profile' | 'stages' | 'scorecard' | 'users' | 'sources' | 'templates' | 'apiKey' | 'tests' | 'sms';
     const [activeTab, setActiveTab] = useState<Tab>('appearance');
 
     const tabClasses = (tabName: Tab) => 
@@ -924,6 +976,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                         <button onClick={() => setActiveTab('users')} className={tabClasses('users')}>مدیریت کاربران</button>
                         <button onClick={() => setActiveTab('sources')} className={tabClasses('sources')}>مدیریت منابع</button>
                         <button onClick={() => setActiveTab('apiKey')} className={tabClasses('apiKey')}>کلید API</button>
+                        <button onClick={() => setActiveTab('sms')} className={tabClasses('sms')}>پیامک (SMS)</button>
                     </nav>
                 </div>
                 <div className="pt-6 bg-white p-6 rounded-b-lg">
@@ -936,6 +989,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                     {activeTab === 'templates' && <TemplateManagementPanel />}
                     {activeTab === 'apiKey' && <ApiKeyPanel />}
                     {activeTab === 'tests' && <TestLibraryPanel />}
+                    {activeTab === 'sms' && <SmsPanel />}
                 </div>
             </div>
         </Modal>

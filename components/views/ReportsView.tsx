@@ -122,6 +122,33 @@ const ReportsView: React.FC<ReportsViewProps> = ({ candidates }) => {
       .sort((a, b) => b.total - a.total)
       .slice(0, 5);
 
+    // Funnel: candidates who entered each stage (from history)
+    const funnelData = stages
+      .filter(s => !['archived'].includes(s.id))
+      .map(stage => {
+        const count = candidates.filter(c =>
+          c.stage === stage.id ||
+          c.history.some(h => h.action.includes(stage.title))
+        ).length;
+        return { id: stage.id, name: stage.title, count };
+      })
+      .filter(d => d.count > 0);
+    const maxFunnel = Math.max(...funnelData.map(d => d.count), 1);
+
+    // Average days per stage (candidates currently in each active stage)
+    const avgTimePerStage = stages
+      .filter(s => !['hired', 'rejected', 'archived'].includes(s.id))
+      .map(stage => {
+        const inStage = candidates.filter(c => c.stage === stage.id && c.stageEnteredAt);
+        if (inStage.length === 0) return { id: stage.id, name: stage.title, avgDays: null };
+        const totalDays = inStage.reduce((sum, c) => {
+          const ms = Date.now() - new Date(c.stageEnteredAt!).getTime();
+          return sum + ms / (1000 * 60 * 60 * 24);
+        }, 0);
+        return { id: stage.id, name: stage.title, avgDays: Math.round(totalDays / inStage.length) };
+      })
+      .filter(d => d.avgDays !== null);
+
     return {
       totalActive: active.length,
       totalHired: hired.length,
@@ -135,6 +162,9 @@ const ReportsView: React.FC<ReportsViewProps> = ({ candidates }) => {
       monthlyData,
       maxMonthly,
       positionData,
+      funnelData,
+      maxFunnel,
+      avgTimePerStage,
     };
   }, [candidates, stages]);
 
@@ -279,6 +309,76 @@ const ReportsView: React.FC<ReportsViewProps> = ({ candidates }) => {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Funnel Analysis */}
+      <div className="bg-white rounded-xl p-6 shadow-sm">
+        <h3 className="text-lg font-bold text-gray-800 mb-5">قیف استخدام (کجا ریزش می‌افتد؟)</h3>
+        {stats.funnelData.length === 0 ? (
+          <p className="text-gray-400 text-sm">داده‌ای موجود نیست.</p>
+        ) : (
+          <div className="space-y-3">
+            {stats.funnelData.map((stage, i) => {
+              const prev = i > 0 ? stats.funnelData[i - 1].count : stage.count;
+              const dropRate = prev > 0 ? Math.round(((prev - stage.count) / prev) * 100) : 0;
+              return (
+                <div key={stage.id}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium text-gray-700">{stage.name}</span>
+                    <div className="flex items-center gap-3">
+                      {i > 0 && dropRate > 0 && (
+                        <span className="text-xs text-red-500 font-bold">-{dropRate}٪ ریزش</span>
+                      )}
+                      <span className="text-sm font-bold text-gray-800">{stage.count} نفر</span>
+                    </div>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-5 overflow-hidden">
+                    <div
+                      className={`h-5 rounded-full report-bar ${getStageColor(stage.id)}`}
+                      style={{ width: `${(stage.count / stats.maxFunnel) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Average Time Per Stage */}
+      <div className="bg-white rounded-xl p-6 shadow-sm">
+        <h3 className="text-lg font-bold text-gray-800 mb-5">میانگین روز در هر مرحله</h3>
+        {stats.avgTimePerStage.length === 0 ? (
+          <p className="text-gray-400 text-sm">داده‌ای موجود نیست.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="text-right py-2 font-bold text-gray-600">مرحله</th>
+                  <th className="text-center py-2 font-bold text-gray-600">میانگین روز</th>
+                  <th className="py-2" />
+                </tr>
+              </thead>
+              <tbody>
+                {stats.avgTimePerStage.map(s => (
+                  <tr key={s.id} className="border-b border-gray-50">
+                    <td className="py-2 font-medium text-gray-800">{s.name}</td>
+                    <td className="py-2 text-center font-bold text-[var(--color-primary-600)]">{s.avgDays} روز</td>
+                    <td className="py-2">
+                      <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                        <div
+                          className="h-full bg-[var(--color-primary-400)] rounded-full"
+                          style={{ width: `${Math.min((s.avgDays! / 30) * 100, 100)}%` }}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

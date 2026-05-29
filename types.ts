@@ -99,7 +99,7 @@ export interface UserWithPassword extends User {
     password?: string;
 }
 
-export type View = 'dashboard' | 'calendar' | 'archive' | 'tests' | 'reports';
+export type View = 'dashboard' | 'calendar' | 'archive' | 'tests' | 'reports' | 'apply';
 
 export interface Template {
   id: string;
