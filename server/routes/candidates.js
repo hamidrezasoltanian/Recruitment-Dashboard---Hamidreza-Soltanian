@@ -103,6 +103,10 @@ router.post('/:id/resume', authMiddleware, upload.single('file'), (req, res) => 
 
 // GET /api/candidates/:id/resume — download resume
 router.get('/:id/resume', authMiddleware, (req, res) => {
+  // Debug: check if file exists without the company JOIN
+  const rawFile = db.prepare(`SELECT id, candidate_id FROM files WHERE candidate_id = ? AND type = 'resume'`).get(req.params.id);
+  console.log(`[Resume Download] id=${req.params.id} company=${req.user.companyId} raw=${JSON.stringify(rawFile)}`);
+
   const file = db.prepare(`
     SELECT f.* FROM files f
     JOIN candidates c ON c.id = f.candidate_id
