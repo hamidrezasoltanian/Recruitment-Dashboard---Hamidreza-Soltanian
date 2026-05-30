@@ -3,6 +3,8 @@ import { useCandidates } from '../../contexts/CandidatesContext';
 import { useSettings } from '../../contexts/SettingsContext';
 import { TestResult, TestLibraryItem } from '../../types';
 import { dbService } from '../../services/dbService';
+import { localApiFiles } from '../../services/localApiService';
+import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import SelectCandidateModal from '../modals/SelectCandidateModal';
 import TestSelectionModal from '../modals/TestSelectionModal';
@@ -16,6 +18,7 @@ interface TestResultGroupProps {
 const TestResultGroup: React.FC<TestResultGroupProps> = ({ test, result, candidateId }) => {
     const { updateTestResult } = useCandidates();
     const { addToast } = useToast();
+    const { authMode } = useAuth();
 
     const [score, setScore] = useState(result?.score || '');
     const [notes, setNotes] = useState(result?.notes || '');
@@ -28,7 +31,9 @@ const TestResultGroup: React.FC<TestResultGroupProps> = ({ test, result, candida
         const loadPreview = async () => {
             if (result?.file) {
                 try {
-                    const fileBlob = await dbService.getTestFile(testFileId);
+                    const fileBlob = authMode === 'server'
+                        ? await localApiFiles.getTestFile(candidateId, test.id)
+                        : await dbService.getTestFile(testFileId);
                     if (fileBlob) {
                         setFilePreview(URL.createObjectURL(fileBlob));
                     }

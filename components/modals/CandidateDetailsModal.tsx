@@ -5,6 +5,7 @@ import StarRating from '../ui/StarRating';
 import { useCandidates } from '../../contexts/CandidatesContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { dbService } from '../../services/dbService';
+import { localApiFiles } from '../../services/localApiService';
 import { useToast } from '../../contexts/ToastContext';
 import { useSettings } from '../../contexts/SettingsContext';
 import PersianDatePicker from '../ui/PersianDatePicker';
@@ -30,7 +31,7 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
   const { addComment, updateCandidate, addCustomHistoryEntry, updateScorecard } = useCandidates();
   const { companyProfile, stages, scorecardTemplates } = useSettings();
   const { templates } = useTemplates();
-  const { user } = useAuth();
+  const { user, authMode } = useAuth();
   const { addToast } = useToast();
   
   const [newComment, setNewComment] = useState('');
@@ -141,7 +142,9 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
     if (!candidate.hasResume) return;
     setIsLoadingResume(true);
     try {
-        const file = await dbService.getResume(candidate.id);
+        const file = authMode === 'server'
+            ? await localApiFiles.getResume(candidate.id)
+            : await dbService.getResume(candidate.id);
         if (file) {
             onViewResume(file);
         } else {
