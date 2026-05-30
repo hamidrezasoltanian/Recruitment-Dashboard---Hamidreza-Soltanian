@@ -31,7 +31,7 @@ app.get('/api/health', (_req, res) => res.json({ ok: true, mode: 'local-sqlite',
 // ── Static frontend ─────────────────────────────────────────────────────────
 const distPath = path.join(__dirname, '../dist');
 app.use(express.static(distPath));
-app.get('/{*path}', (_req, res) => {
+app.get('*', (_req, res) => {
   res.sendFile(path.join(distPath, 'index.html'));
 });
 
