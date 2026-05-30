@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { Candidate, StageId, Comment, HistoryEntry, TestResult, ScorecardEntry } from '../types';
 import { dbService } from '../services/dbService';
 import { supabaseService, isSupabaseEnabled } from '../services/supabaseService';
-import { localApiCandidates, localApiFiles, isLocalServerMode } from '../services/localApiService';
+import { localApiCandidates, localApiFiles } from '../services/localApiService';
 import { useToast } from './ToastContext';
 import { useAuth } from './AuthContext';
 
@@ -66,7 +66,8 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
   const [candidates, setCandidatesState] = useState<Candidate[]>([]);
   const [lastDeleted, setLastDeleted] = useState<Candidate | null>(null);
   const { addToast } = useToast();
-  const { user, companyId } = useAuth();
+  const { user, companyId, authMode } = useAuth();
+  const isServer = authMode === 'server';
 
   // ── Initial load ───────────────────────────────────────────────────
 
@@ -76,7 +77,7 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
     const loadData = async () => {
       try {
         let data: Candidate[];
-        if (isLocalServerMode()) {
+        if (isServer) {
           data = await localApiCandidates.getAll();
         } else if (isSupabaseEnabled && companyId) {
           data = await supabaseService.getAllCandidates();
@@ -84,7 +85,7 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
           data = await dbService.getAllCandidates();
         }
 
-        if (data.length === 0 && !isLocalServerMode()) {
+        if (data.length === 0 && !isServer) {
           // Seed default candidate (only in local/supabase modes)
           if (isSupabaseEnabled && companyId) {
             await supabaseService.saveCandidate(defaultCandidate);
@@ -117,7 +118,7 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
   // ── Storage helpers ────────────────────────────────────────────────
 
   const persist = async (candidate: Candidate) => {
-    if (isLocalServerMode()) {
+    if (isServer) {
       await localApiCandidates.save(candidate);
     } else if (isSupabaseEnabled && companyId) {
       await supabaseService.saveCandidate(candidate);
@@ -127,7 +128,7 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
   };
 
   const remove = async (id: string) => {
-    if (isLocalServerMode()) {
+    if (isServer) {
       await localApiCandidates.delete(id);
     } else if (isSupabaseEnabled) {
       await supabaseService.deleteCandidate(id);
@@ -140,7 +141,7 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const setCandidates = async (newCandidates: Candidate[], suppressToast = false) => {
     try {
-      if (isLocalServerMode()) {
+      if (isServer) {
         await localApiCandidates.deleteAll();
         await localApiCandidates.bulkSave(newCandidates);
       } else if (isSupabaseEnabled && companyId) {
@@ -183,7 +184,7 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
     let finalCandidate = newCandidate;
     if (resumeFile) {
       try {
-        if (isLocalServerMode()) await localApiFiles.uploadResume(newCandidate.id, resumeFile);
+        if (isServer) await localApiFiles.uploadResume(newCandidate.id, resumeFile);
         else await saveFile(newCandidate.id, resumeFile, 'resume');
         // Mark hasResume only after confirmed upload
         finalCandidate = { ...newCandidate, hasResume: true };
@@ -212,7 +213,7 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
     let finalCandidate = withHistory;
     if (resumeFile) {
       try {
-        if (isLocalServerMode()) await localApiFiles.uploadResume(candidate.id, resumeFile);
+        if (isServer) await localApiFiles.uploadResume(candidate.id, resumeFile);
         else await saveFile(candidate.id, resumeFile, 'resume');
         finalCandidate = { ...withHistory, hasResume: true };
         await persist(finalCandidate);
@@ -230,7 +231,7 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
     try {
       const candidate = candidates.find(c => c.id === id);
       await remove(id);
-      if (isLocalServerMode()) {
+      if (isServer) {
         await localApiFiles.deleteResume(id);
       } else {
         await dbService.deleteResume(id);
