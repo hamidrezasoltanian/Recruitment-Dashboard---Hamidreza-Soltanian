@@ -171,33 +171,59 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
     }
 
     const withHistory = addHistoryEntry(candidate, 'متقاضی ایجاد شد');
-    const newCandidate: Candidate = { ...withHistory, testResults: [], stageEnteredAt: new Date().toISOString() };
+    // Save initially without hasResume; confirm after successful upload
+    const newCandidate: Candidate = { ...withHistory, testResults: [], stageEnteredAt: new Date().toISOString(), hasResume: false };
     try {
       await persist(newCandidate);
-      if (resumeFile) {
-        if (isLocalServerMode()) await localApiFiles.uploadResume(candidate.id, resumeFile);
-        else await saveFile(candidate.id, resumeFile, 'resume');
-      }
-      setCandidatesState(prev => [...prev, newCandidate]);
-      addToast('متقاضی با موفقیت اضافه شد.', 'success');
     } catch {
       addToast('خطا در افزودن متقاضی.', 'error');
+      return;
     }
+
+    let finalCandidate = newCandidate;
+    if (resumeFile) {
+      try {
+        if (isLocalServerMode()) await localApiFiles.uploadResume(newCandidate.id, resumeFile);
+        else await saveFile(newCandidate.id, resumeFile, 'resume');
+        // Mark hasResume only after confirmed upload
+        finalCandidate = { ...newCandidate, hasResume: true };
+        await persist(finalCandidate);
+      } catch (fileErr) {
+        console.error('[addCandidate] Resume upload failed:', fileErr);
+        addToast('متقاضی اضافه شد اما رزومه ذخیره نشد. لطفاً دوباره تلاش کنید.', 'error');
+      }
+    }
+
+    setCandidatesState(prev => [...prev, finalCandidate]);
+    addToast('متقاضی با موفقیت اضافه شد.', 'success');
   };
 
   const updateCandidate = async (candidate: Candidate, resumeFile?: File) => {
-    const withHistory = addHistoryEntry(candidate, 'اطلاعات ویرایش شد');
+    // If a new file is provided, don't mark hasResume until upload is confirmed
+    const hasResumeBase = resumeFile ? false : candidate.hasResume;
+    const withHistory = addHistoryEntry({ ...candidate, hasResume: hasResumeBase }, 'اطلاعات ویرایش شد');
     try {
       await persist(withHistory);
-      if (resumeFile) {
-        if (isLocalServerMode()) await localApiFiles.uploadResume(candidate.id, resumeFile);
-        else await saveFile(candidate.id, resumeFile, 'resume');
-      }
-      setCandidatesState(prev => prev.map(c => c.id === candidate.id ? withHistory : c));
-      addToast('اطلاعات با موفقیت به‌روزرسانی شد.', 'success');
     } catch {
       addToast('خطا در به‌روزرسانی اطلاعات.', 'error');
+      return;
     }
+
+    let finalCandidate = withHistory;
+    if (resumeFile) {
+      try {
+        if (isLocalServerMode()) await localApiFiles.uploadResume(candidate.id, resumeFile);
+        else await saveFile(candidate.id, resumeFile, 'resume');
+        finalCandidate = { ...withHistory, hasResume: true };
+        await persist(finalCandidate);
+      } catch (fileErr) {
+        console.error('[updateCandidate] Resume upload failed:', fileErr);
+        addToast('اطلاعات به‌روز شد اما رزومه ذخیره نشد. لطفاً دوباره تلاش کنید.', 'error');
+      }
+    }
+
+    setCandidatesState(prev => prev.map(c => c.id === candidate.id ? finalCandidate : c));
+    addToast('اطلاعات با موفقیت به‌روزرسانی شد.', 'success');
   };
 
   const deleteCandidate = async (id: string) => {

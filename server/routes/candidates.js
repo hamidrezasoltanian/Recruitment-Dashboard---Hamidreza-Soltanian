@@ -66,22 +66,39 @@ router.delete('/', authMiddleware, (req, res) => {
 
 // POST /api/candidates/:id/resume — upload resume
 router.post('/:id/resume', authMiddleware, upload.single('file'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  try {
+    if (!req.file) {
+      console.error('[Resume Upload] req.file is undefined — multer did not parse the file');
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
 
-  // Verify candidate belongs to this company
-  const cand = db.prepare('SELECT id FROM candidates WHERE id = ? AND company_id = ?').get(req.params.id, req.user.companyId);
-  if (!cand) return res.status(404).json({ error: 'Candidate not found' });
+    if (!req.file.buffer || req.file.buffer.length === 0) {
+      console.error('[Resume Upload] req.file.buffer is empty for file:', req.file.originalname);
+      return res.status(400).json({ error: 'File content is empty' });
+    }
 
-  db.prepare(`
-    INSERT INTO files (id, candidate_id, type, filename, mime_type, data)
-    VALUES (?, ?, 'resume', ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET
-      data = excluded.data,
-      filename = excluded.filename,
-      mime_type = excluded.mime_type
-  `).run(`${req.params.id}_resume`, req.params.id, req.file.originalname, req.file.mimetype, req.file.buffer);
+    const cand = db.prepare('SELECT id FROM candidates WHERE id = ? AND company_id = ?')
+      .get(req.params.id, req.user.companyId);
+    if (!cand) {
+      console.error('[Resume Upload] Candidate not found:', req.params.id);
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
 
-  res.json({ success: true });
+    db.prepare(`
+      INSERT INTO files (id, candidate_id, type, filename, mime_type, data)
+      VALUES (?, ?, 'resume', ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        data = excluded.data,
+        filename = excluded.filename,
+        mime_type = excluded.mime_type
+    `).run(`${req.params.id}_resume`, req.params.id, req.file.originalname, req.file.mimetype, req.file.buffer);
+
+    console.log(`[Resume Upload] Saved ${req.file.size} bytes for candidate ${req.params.id}`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Resume Upload] Error:', err);
+    res.status(500).json({ error: 'Failed to save resume: ' + err.message });
+  }
 });
 
 // GET /api/candidates/:id/resume — download resume
