@@ -1,7 +1,7 @@
 import { Candidate } from '../types';
 
-// In production (same origin), use relative URLs. In dev, hit port 3001.
-const API_BASE = window.location.port === '3001' ? '' : 'http://localhost:3001';
+// Always use relative URLs — frontend is always served by the same Express server
+const API_BASE = '';
 const TOKEN_KEY = 'local_api_token';
 
 const getToken = () => localStorage.getItem(TOKEN_KEY) || '';

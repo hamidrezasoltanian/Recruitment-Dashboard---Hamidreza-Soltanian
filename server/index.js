@@ -3,18 +3,10 @@ const cors = require('cors');
 const path = require('path');
 
 const app = express();
-const PORT = parseInt(process.env.PORT) || 3001;
+const PORT = parseInt(process.env.PORT) || 9999;
 
-// Allowed origins for CORS in development
-app.use(cors({
-  origin: [
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'http://127.0.0.1:3000',
-    `http://localhost:${PORT}`,
-  ],
-  credentials: true,
-}));
+// Allow all origins — app is a private internal tool served from the same server
+app.use(cors({ origin: true, credentials: true }));
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
