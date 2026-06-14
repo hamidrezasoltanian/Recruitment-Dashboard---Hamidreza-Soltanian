@@ -25,6 +25,7 @@ dotenv.config(); // This will load .env if env.local doesn't have all vars
 console.log('PORT from env:', process.env.PORT);
 
 const app = express();
+app.set('trust proxy', 1);
 const prisma = new PrismaClient();
 
 // Security middleware
