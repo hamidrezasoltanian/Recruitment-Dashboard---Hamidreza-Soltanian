@@ -8,28 +8,21 @@ import { SettingsProvider } from './contexts/SettingsContext'
 import { TemplateProvider } from './contexts/TemplateContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { ToastProvider } from './contexts/ToastContext'
-import SSOAuthGuard from './components/SSOAuthGuard'
-import { handleSSORedirect } from './utils/sso'
-
-// Handle SSO redirect on mount
-handleSSORedirect()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <SSOAuthGuard required={false}>
-      <ToastProvider>
-        <ThemeProvider>
+    <ToastProvider>
+      <ThemeProvider>
+        <AuthProvider>
           <SettingsProvider>
             <TemplateProvider>
-              <AuthProvider>
-                <CandidatesProvider>
-                  <App />
-                </CandidatesProvider>
-              </AuthProvider>
+              <CandidatesProvider>
+                <App />
+              </CandidatesProvider>
             </TemplateProvider>
           </SettingsProvider>
-        </ThemeProvider>
-      </ToastProvider>
-    </SSOAuthGuard>
+        </AuthProvider>
+      </ThemeProvider>
+    </ToastProvider>
   </React.StrictMode>,
 )
