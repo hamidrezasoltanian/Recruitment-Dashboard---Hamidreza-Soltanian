@@ -43,6 +43,7 @@ model Candidate {
   interviewTime     String?
   interviewTimeChanged Boolean @default(false)
   hasResume         Boolean  @default(false)
+  evaluation        String?
   
   // Relations
   userId            String

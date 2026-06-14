@@ -69,6 +69,7 @@ export interface Candidate {
   comments: Comment[];
   hasResume?: boolean;
   testResults?: TestResult[]; // Comprehensive test results
+  evaluation?: string;
 }
 
 export interface StageChangeInfo {
