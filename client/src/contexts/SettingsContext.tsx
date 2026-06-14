@@ -39,6 +39,8 @@ export const useSettings = () => {
 
 export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [sources, setSources] = useState<string[]>(DEFAULT_SOURCES);
+  // Keep source objects internally to have access to IDs for delete
+  const [sourceObjects, setSourceObjects] = useState<{ id: string; name: string }[]>([]);
   const [stages, setStages] = useState<KanbanStage[]>(DEFAULT_STAGES);
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile>(DEFAULT_COMPANY_PROFILE);
   const [testLibrary, setTestLibrary] = useState<TestLibraryItem[]>(DEFAULT_TEST_LIBRARY);
@@ -46,12 +48,14 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   useEffect(() => {
     if (!user) return;
-    // Load settings from API
     apiService.getStages().then(data => {
       if (data && data.length > 0) setStages(data as any);
     }).catch(() => {});
     apiService.getSources().then(data => {
-      if (data && data.length > 0) setSources(data.map((s: any) => s.name || s));
+      if (data && data.length > 0) {
+        setSourceObjects(data.map((s: any) => ({ id: s.id, name: s.name || s })));
+        setSources(data.map((s: any) => s.name || s));
+      }
     }).catch(() => {});
     apiService.getCompanyProfile().then(data => {
       if (data) setCompanyProfile(data as any);
@@ -62,42 +66,49 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
   }, [user]);
 
   const updateSources = async (newSources: string[]) => setSources(newSources);
+
   const addSource = async (name: string) => {
     try {
-      await apiService.addSource(name);
+      const created = await apiService.addSource(name);
+      setSourceObjects(prev => [...prev, { id: created.id, name: created.name }]);
       setSources(prev => [...prev, name]);
     } catch {}
   };
-  const deleteSource = async (name: string) => setSources(prev => prev.filter(s => s !== name));
+
+  const deleteSource = async (name: string) => {
+    const obj = sourceObjects.find(s => s.name === name);
+    if (obj) {
+      try { await apiService.deleteSource(obj.id); } catch {}
+    }
+    setSourceObjects(prev => prev.filter(s => s.name !== name));
+    setSources(prev => prev.filter(s => s !== name));
+  };
+
   const updateStages = (newStages: KanbanStage[]) => setStages(newStages);
 
   const setStageOrder = (newStages: KanbanStage[]) => {
     setStages(newStages);
-    try {
-      apiService.reorderStages(newStages.map((s, i) => ({ id: s.id, order: i })));
-    } catch {}
+    apiService.reorderStages(newStages.map((s, i) => ({ id: s.id, order: i }))).catch(() => {});
   };
 
-  const addStage = (title: string) => {
-    const newStage: KanbanStage = { id: `stage_${Date.now()}`, title };
+  const addStage = async (title: string) => {
     try {
-      apiService.createStage(newStage);
-    } catch {}
-    setStages(prev => [...prev, newStage]);
+      const created = await apiService.createStage({ title, isCore: false, order: stages.length });
+      setStages(prev => [...prev, created as any]);
+    } catch {
+      // fallback: local only
+      setStages(prev => [...prev, { id: `stage_${Date.now()}`, title } as any]);
+    }
   };
 
-  const updateStage = (id: string, title: string) => {
+  const updateStage = async (id: string, title: string) => {
     setStages(prev => prev.map(s => s.id === id ? { ...s, title } : s));
-    try {
-      apiService.updateStage(id, { title });
-    } catch {}
+    apiService.updateStage(id, { title }).catch(() => {});
   };
 
-  const deleteStage = (id: string) => {
+  const deleteStage = async (id: string) => {
     setStages(prev => prev.filter(s => s.id !== id));
-    try {
-      apiService.deleteStage(id);
-    } catch {}
+    apiService.deleteStage(id).catch(() => {});
   };
 
   const updateCompanyProfile = async (profile: Partial<CompanyProfile>) => {
@@ -109,54 +120,59 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
   };
 
-  const updateCompanyDetails = (details: Partial<CompanyProfile>) => {
+  const updateCompanyDetails = async (details: Partial<CompanyProfile>) => {
     setCompanyProfile(prev => ({ ...prev, ...details }));
+    apiService.updateCompanyProfile(details).catch(() => {});
+  };
+
+  const addJobPosition = async (title: string) => {
     try {
-      apiService.updateCompanyProfile(details);
-    } catch {}
+      const created = await apiService.addJobPosition(title);
+      setCompanyProfile(prev => ({
+        ...prev,
+        jobPositions: [...(prev.jobPositions || []), { id: created.id, title: created.title }]
+      }));
+    } catch {
+      const newJob: JobPosition = { id: `job_${Date.now()}`, title };
+      setCompanyProfile(prev => ({ ...prev, jobPositions: [...(prev.jobPositions || []), newJob] }));
+    }
   };
 
-  const addJobPosition = (title: string) => {
-    const newJob: JobPosition = { id: `job_${Date.now()}`, title };
-    setCompanyProfile(prev => ({ ...prev, jobPositions: [...(prev.jobPositions || []), newJob] }));
-  };
-
-  const updateJobPosition = (id: string, title: string) => {
+  const updateJobPosition = async (id: string, title: string) => {
     setCompanyProfile(prev => ({
       ...prev,
       jobPositions: (prev.jobPositions || []).map(j => j.id === id ? { ...j, title } : j),
     }));
+    apiService.updateJobPosition(id, title).catch(() => {});
   };
 
-  const deleteJobPosition = (id: string) => {
+  const deleteJobPosition = async (id: string) => {
     setCompanyProfile(prev => ({
       ...prev,
       jobPositions: (prev.jobPositions || []).filter(j => j.id !== id),
     }));
+    apiService.deleteJobPosition(id).catch(() => {});
   };
 
   const updateTestLibrary = (items: TestLibraryItem[]) => setTestLibrary(items);
 
-  const addTest = (test: Omit<TestLibraryItem, 'id'>) => {
-    const newItem: TestLibraryItem = { id: `test_${Date.now()}`, ...test };
-    setTestLibrary(prev => [...prev, newItem]);
+  const addTest = async (test: Omit<TestLibraryItem, 'id'>) => {
     try {
-      apiService.addTestLibraryItem(test);
-    } catch {}
+      const created = await apiService.addTestLibraryItem(test);
+      setTestLibrary(prev => [...prev, created as any]);
+    } catch {
+      setTestLibrary(prev => [...prev, { id: `test_${Date.now()}`, ...test }]);
+    }
   };
 
-  const updateTest = (test: TestLibraryItem) => {
+  const updateTest = async (test: TestLibraryItem) => {
     setTestLibrary(prev => prev.map(t => t.id === test.id ? test : t));
-    try {
-      apiService.updateTestLibraryItem(test.id, test);
-    } catch {}
+    apiService.updateTestLibraryItem(test.id, test).catch(() => {});
   };
 
-  const deleteTest = (id: string) => {
+  const deleteTest = async (id: string) => {
     setTestLibrary(prev => prev.filter(t => t.id !== id));
-    try {
-      apiService.deleteTestLibraryItem(id);
-    } catch {}
+    apiService.deleteTestLibraryItem(id).catch(() => {});
   };
 
   const restoreSettings = (data: any) => {

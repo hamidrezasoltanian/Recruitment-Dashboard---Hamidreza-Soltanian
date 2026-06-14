@@ -129,6 +129,54 @@ router.put('/company-profile', requireAdmin, [
   }
 });
 
+// POST /api/settings/job-positions - Add job position (Admin only)
+router.post('/job-positions', requireAdmin, [
+  body('title').notEmpty().withMessage('عنوان الزامی است').isLength({ min: 2, max: 100 })
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ success: false, error: 'داده‌های ورودی نامعتبر' });
+
+    let companyProfile = await prisma.companyProfile.findFirst();
+    if (!companyProfile) {
+      companyProfile = await prisma.companyProfile.create({ data: { name: 'شرکت شما', website: 'https://example.com', address: 'آدرس' } });
+    }
+
+    const position = await prisma.jobPosition.create({
+      data: { title: req.body.title, companyProfileId: companyProfile.id }
+    });
+    res.status(201).json({ success: true, data: position });
+  } catch (error) {
+    console.error('Add job position error:', error);
+    res.status(500).json({ success: false, error: 'خطا در افزودن موقعیت شغلی' });
+  }
+});
+
+// PUT /api/settings/job-positions/:id - Update job position (Admin only)
+router.put('/job-positions/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title } = req.body;
+    const position = await prisma.jobPosition.update({ where: { id }, data: { title, updatedAt: new Date() } });
+    res.json({ success: true, data: position });
+  } catch (error) {
+    console.error('Update job position error:', error);
+    res.status(500).json({ success: false, error: 'خطا در ویرایش موقعیت شغلی' });
+  }
+});
+
+// DELETE /api/settings/job-positions/:id - Delete job position (Admin only)
+router.delete('/job-positions/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.jobPosition.delete({ where: { id } });
+    res.json({ success: true, message: 'موقعیت شغلی حذف شد' });
+  } catch (error) {
+    console.error('Delete job position error:', error);
+    res.status(500).json({ success: false, error: 'خطا در حذف موقعیت شغلی' });
+  }
+});
+
 // GET /api/settings/sources - Get all sources
 router.get('/sources', async (req, res) => {
   try {

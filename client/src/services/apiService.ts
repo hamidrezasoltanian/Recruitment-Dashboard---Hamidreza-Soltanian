@@ -276,6 +276,27 @@ class ApiService {
     return response.data!;
   }
 
+  // Job position methods
+  async addJobPosition(title: string): Promise<any> {
+    const response = await this.request<any>('/settings/job-positions', {
+      method: 'POST',
+      body: JSON.stringify({ title }),
+    });
+    return response.data!;
+  }
+
+  async updateJobPosition(id: string, title: string): Promise<any> {
+    const response = await this.request<any>(`/settings/job-positions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ title }),
+    });
+    return response.data!;
+  }
+
+  async deleteJobPosition(id: string): Promise<void> {
+    await this.request(`/settings/job-positions/${id}`, { method: 'DELETE' });
+  }
+
   async getSources(): Promise<Source[]> {
     const response = await this.request<Source[]>('/settings/sources');
     return response.data!;
