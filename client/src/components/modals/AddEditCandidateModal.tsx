@@ -5,6 +5,7 @@ import Modal from '../ui/Modal';
 import StarRating from '../ui/StarRating';
 import { useSettings } from '../../contexts/SettingsContext';
 import KamaDatePicker from '../ui/KamaDatePicker';
+import { parseJobVisionProfile } from '../../utils/profileParser';
 
 interface AddEditCandidateModalProps {
   isOpen: boolean;
@@ -30,6 +31,9 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
   const [interviewDate, setInterviewDate] = useState('');
   const [interviewTime, setInterviewTime] = useState('');
   const [resumeFile, setResumeFile] = useState<File | undefined>();
+  const [showImport, setShowImport] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [importMsg, setImportMsg] = useState('');
 
   const AUTO_SAVE_KEY = 'candidate_form_draft';
   const AUTO_SAVE_INTERVAL = 2000; // 2 seconds
@@ -155,9 +159,70 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
     setInterviewDate(date);
   };
 
+  const handleImport = () => {
+    if (!importText.trim()) return;
+    const parsed = parseJobVisionProfile(importText);
+    let filled = 0;
+    if (parsed.name) { setName(parsed.name); filled++; }
+    if (parsed.email) { setEmail(parsed.email); filled++; }
+    if (parsed.phone) { setPhone(parsed.phone); filled++; }
+    if (parsed.position) { setPosition(parsed.position); filled++; }
+    if (filled > 0) {
+      setImportMsg(`✅ ${filled} فیلد استخراج شد. لطفاً بررسی و تکمیل کنید.`);
+    } else {
+      setImportMsg('⚠️ اطلاعاتی شناسایی نشد. متن رو بیشتر کپی کنید.');
+    }
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={candidateToEdit ? 'ویرایش متقاضی' : 'افزودن متقاضی'}>
       <form onSubmit={handleSubmit} className="space-y-6">
+
+        {/* JobVision Import Panel */}
+        {!candidateToEdit && (
+          <div className="rounded-xl border border-blue-100 bg-blue-50/60 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => { setShowImport(v => !v); setImportMsg(''); }}
+              className="w-full flex items-center justify-between px-4 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-100/60 transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                استخراج اطلاعات از جاب‌ویژن
+              </span>
+              <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 transition-transform ${showImport ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {showImport && (
+              <div className="px-4 pb-4">
+                <p className="text-xs text-blue-600 mb-2">
+                  در صفحه پروفایل جاب‌ویژن، <strong>Ctrl+A</strong> سپس <strong>Ctrl+C</strong> بزنید و اینجا paste کنید:
+                </p>
+                <textarea
+                  value={importText}
+                  onChange={e => setImportText(e.target.value)}
+                  placeholder="متن صفحه را اینجا Paste کنید..."
+                  rows={5}
+                  className="w-full text-xs border border-blue-200 rounded-lg p-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+                />
+                <div className="flex items-center gap-3 mt-2">
+                  <button
+                    type="button"
+                    onClick={handleImport}
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition-colors"
+                  >
+                    استخراج اطلاعات
+                  </button>
+                  {importMsg && <p className="text-xs text-gray-600">{importMsg}</p>}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Form fields */}
           <div>
