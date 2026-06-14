@@ -26,11 +26,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   direction: rtl;
   text-align: right;
-}
-
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  background-color: #f1f5f9;
 }
 
 * {
@@ -39,4 +35,29 @@ code {
 
 #root {
   min-height: 100vh;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Kanban scrollable area */
+.kanban-cards::-webkit-scrollbar {
+  width: 4px;
+}
+.kanban-cards::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 9999px;
 }

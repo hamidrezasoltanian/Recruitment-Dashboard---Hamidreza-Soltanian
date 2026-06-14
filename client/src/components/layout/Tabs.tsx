@@ -6,6 +6,29 @@ interface TabsProps {
   setActiveView: (view: View) => void;
 }
 
+const TAB_ICONS: Record<string, React.ReactNode> = {
+  dashboard: (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+    </svg>
+  ),
+  tests: (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+  ),
+  calendar: (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    </svg>
+  ),
+  archive: (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+    </svg>
+  ),
+};
+
 const Tabs: React.FC<TabsProps> = ({ activeView, setActiveView }) => {
   const tabs: { id: View; label: string }[] = [
     { id: 'dashboard', label: 'داشبورد' },
@@ -14,22 +37,29 @@ const Tabs: React.FC<TabsProps> = ({ activeView, setActiveView }) => {
     { id: 'archive', label: 'آرشیو' },
   ];
 
-  const baseClasses = 'whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-all duration-200';
-  const activeClasses = 'border-[var(--color-primary-500)] text-[var(--color-primary-600)]';
-  const inactiveClasses = 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300';
-
   return (
-    <div className="px-4 md:px-6 lg:px-8 pt-4 bg-white/50 backdrop-blur-sm">
-      <nav className="-mb-px flex space-x-4 space-x-reverse" aria-label="Tabs">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveView(tab.id)}
-            className={`${baseClasses} ${activeView === tab.id ? activeClasses : inactiveClasses}`}
-          >
-            {tab.label}
-          </button>
-        ))}
+    <div className="bg-white border-b border-gray-200 px-4 md:px-6 shadow-sm">
+      <nav className="flex gap-1 -mb-px" aria-label="Tabs">
+        {tabs.map((tab) => {
+          const isActive = activeView === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveView(tab.id)}
+              className={`relative flex items-center gap-2 whitespace-nowrap py-3.5 px-4 text-sm font-semibold transition-all duration-200 rounded-t-lg
+                ${isActive
+                  ? 'text-[var(--color-primary-600)] bg-[var(--color-primary-50)]'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+            >
+              {TAB_ICONS[tab.id]}
+              {tab.label}
+              {isActive && (
+                <span className="absolute bottom-0 right-0 left-0 h-0.5 bg-[var(--color-primary-500)] rounded-full" />
+              )}
+            </button>
+          );
+        })}
       </nav>
     </div>
   );
