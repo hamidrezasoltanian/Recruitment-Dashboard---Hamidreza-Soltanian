@@ -5,7 +5,7 @@ FROM node:18-alpine
 WORKDIR /app
 
 # Install dependencies for native modules
-RUN apk add --no-cache python3 make g++ openssl wget
+RUN apk add --no-cache python3 make g++ openssl
 
 # Copy package files
 COPY package*.json ./
@@ -34,9 +34,9 @@ USER nodejs
 # Expose port
 EXPOSE 3002
 
-# Health check using wget (available in Alpine)
-HEALTHCHECK --interval=15s --timeout=10s --start-period=90s --retries=5 \
-  CMD wget -qO /dev/null http://localhost:3002/api/health || exit 1
+# Health check using netcat (available in Alpine BusyBox)
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=5 \
+  CMD nc -z localhost 3002 || exit 1
 
 # Run migrations then seed then start server
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/seed.js 2>/dev/null; npm start"]
