@@ -173,28 +173,75 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick, o
 
 
   return (
-    <header className="bg-white shadow-md p-4 flex flex-wrap justify-between items-center sticky top-0 z-30 gap-4">
-      <div className="flex items-center gap-4">
-        <h1 className="text-xl md:text-2xl font-bold text-gray-800">داشبورد استخدام</h1>
-        <button onClick={onAddCandidateClick} className="text-sm bg-[var(--color-primary-600)] hover:bg-[var(--color-primary-700)] text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
-            <span>افزودن سریع</span>
+    <header className="bg-white border-b border-gray-100 shadow-sm px-4 md:px-6 py-3 flex flex-wrap justify-between items-center sticky top-0 z-30 gap-3">
+      {/* Brand */}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center justify-center w-9 h-9 rounded-xl shadow-sm" style={{background: 'linear-gradient(135deg, var(--color-primary-500), var(--color-primary-700))'}}>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </div>
+        <h1 className="text-lg md:text-xl font-extrabold text-gray-800">داشبورد استخدام</h1>
+        <button
+          onClick={onAddCandidateClick}
+          className="flex items-center gap-1.5 text-sm font-bold text-white px-3 py-2 rounded-lg shadow-sm hover:shadow-md hover:scale-[1.02] transition-all"
+          style={{background: 'linear-gradient(135deg, var(--color-primary-500), var(--color-primary-700))'}}>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
+          <span className="hidden sm:inline">افزودن سریع</span>
         </button>
       </div>
-      
-      <div className="flex items-center gap-2 flex-wrap">
-        <button onClick={handleBulkReminder} className="text-sm bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">یادآور گروهی</button>
-        <button onClick={handleBackup} className="text-sm bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">پشتیبان‌گیری</button>
+
+      {/* Actions */}
+      <div className="flex items-center gap-1.5">
+        <button
+          onClick={handleBulkReminder}
+          title="یادآور گروهی"
+          className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-2 rounded-lg transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+          <span className="hidden md:inline">یادآور</span>
+        </button>
+        <button
+          onClick={handleBackup}
+          title="پشتیبان‌گیری"
+          className="flex items-center gap-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3 py-2 rounded-lg transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+          <span className="hidden md:inline">پشتیبان</span>
+        </button>
         <input type="file" id="restore-input" ref={restoreInputRef} className="hidden" accept=".json" onChange={handleRestore} />
-        <button onClick={handleRestoreClick} className="text-sm bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">بازیابی</button>
+        <button
+          onClick={handleRestoreClick}
+          title="بازیابی"
+          className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-2 rounded-lg transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+          <span className="hidden md:inline">بازیابی</span>
+        </button>
       </div>
-      
-      <div className="flex items-center gap-4">
-        {user && <span className="text-sm text-gray-600 font-medium">خوش آمدید، {user.name}</span>}
-        {user?.isAdmin && (
-            <button onClick={onSettingsClick} className="text-sm bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">تنظیمات</button>
+
+      {/* User menu */}
+      <div className="flex items-center gap-2">
+        {user && (
+          <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5">
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{background: 'var(--color-primary-600)'}}>
+              {user.name?.charAt(0) || 'U'}
+            </div>
+            <span className="text-sm font-medium text-gray-700 hidden sm:inline">{user.name}</span>
+          </div>
         )}
-        <button onClick={logout} className="text-sm bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">خروج</button>
+        {user?.isAdmin && (
+          <button
+            onClick={onSettingsClick}
+            title="تنظیمات"
+            className="flex items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-gray-200 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+          </button>
+        )}
+        <button
+          onClick={logout}
+          title="خروج"
+          className="flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 px-3 py-2 rounded-lg transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+          <span className="hidden sm:inline">خروج</span>
+        </button>
       </div>
     </header>
   );

@@ -10,21 +10,23 @@ interface StatCardProps {
     icon: React.ReactNode;
     label: string;
     value: number | string;
-    color: string;
-    textColor: string;
+    gradient: string;
+    iconBg: string;
 }
 
 declare const persianDate: any;
 
-const StatCard: React.FC<StatCardProps> = ({ icon, label, value, color, textColor }) => (
-    <div className="bg-white p-4 rounded-lg shadow-sm flex items-center">
-        <div className={`p-3 rounded-full mr-4 ${color} ${textColor}`}>
+const StatCard: React.FC<StatCardProps> = ({ icon, label, value, gradient, iconBg }) => (
+    <div className={`relative overflow-hidden p-5 rounded-2xl shadow-md flex items-center gap-4 ${gradient}`}>
+        <div className={`flex-shrink-0 p-3 rounded-xl ${iconBg} shadow-sm`}>
             {icon}
         </div>
-        <div>
-            <p className="text-2xl font-bold text-gray-800">{value}</p>
-            <p className="text-sm font-medium text-gray-500">{label}</p>
+        <div className="min-w-0">
+            <p className="text-3xl font-extrabold text-white">{value}</p>
+            <p className="text-sm font-medium text-white/80 mt-0.5">{label}</p>
         </div>
+        <div className="absolute -left-4 -bottom-4 w-20 h-20 rounded-full bg-white/10"></div>
+        <div className="absolute -left-2 top-[-30px] w-14 h-14 rounded-full bg-white/5"></div>
     </div>
 );
 
@@ -91,50 +93,53 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ candidates }) => {
     return (
         <div className="mb-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <StatCard 
-                    label="متقاضیان فعال" 
-                    value={stats.activeCount} 
-                    color="bg-blue-100"
-                    textColor="text-blue-600"
-                    icon={<UserIcon className="h-6 w-6" />}
+                <StatCard
+                    label="متقاضیان فعال"
+                    value={stats.activeCount}
+                    gradient="bg-gradient-to-br from-blue-500 to-blue-700"
+                    iconBg="bg-white/20"
+                    icon={<UserIcon className="h-6 w-6 text-white" />}
                 />
-                <StatCard 
-                    label="جدید در این هفته" 
-                    value={stats.newThisWeek} 
-                    color="bg-green-100"
-                    textColor="text-green-600"
-                    icon={<SparklesIcon className="h-6 w-6" />}
+                <StatCard
+                    label="جدید در این هفته"
+                    value={stats.newThisWeek}
+                    gradient="bg-gradient-to-br from-emerald-500 to-emerald-700"
+                    iconBg="bg-white/20"
+                    icon={<SparklesIcon className="h-6 w-6 text-white" />}
                 />
-                <StatCard 
-                    label="مصاحبه‌های این هفته" 
-                    value={stats.interviewsThisWeek} 
-                    color="bg-amber-100"
-                    textColor="text-amber-600"
-                    icon={<CalendarIcon className="h-6 w-6" />}
+                <StatCard
+                    label="مصاحبه‌های این هفته"
+                    value={stats.interviewsThisWeek}
+                    gradient="bg-gradient-to-br from-amber-500 to-orange-600"
+                    iconBg="bg-white/20"
+                    icon={<CalendarIcon className="h-6 w-6 text-white" />}
                 />
-                 <StatCard 
-                    label="استخدام شده" 
-                    value={stats.offersExtended} 
-                    color="bg-[var(--color-primary-100)]"
-                    textColor="text-[var(--color-primary-600)]"
-                    icon={<BriefcaseIcon className="h-6 w-6" />}
+                <StatCard
+                    label="استخدام شده"
+                    value={stats.offersExtended}
+                    gradient="bg-gradient-to-br from-[var(--color-primary-500)] to-[var(--color-primary-800)]"
+                    iconBg="bg-white/20"
+                    icon={<BriefcaseIcon className="h-6 w-6 text-white" />}
                 />
             </div>
 
             {stats.sourceData.length > 0 && (
-                <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm">
-                    <h3 className="text-lg font-bold text-gray-800 mb-4">متقاضیان بر اساس منبع</h3>
-                    <div className="space-y-3">
+                <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-md border border-gray-100">
+                    <div className="flex items-center gap-2 mb-5">
+                        <div className="w-1 h-5 rounded-full" style={{background: 'var(--color-primary-500)'}}></div>
+                        <h3 className="text-base font-bold text-gray-800">متقاضیان بر اساس منبع</h3>
+                    </div>
+                    <div className="space-y-3.5">
                         {stats.sourceData.map(source => (
-                            <div key={source.name} className="flex items-center">
-                                <p className="w-32 text-sm font-medium text-gray-600 truncate">{source.name}</p>
-                                <div className="flex-1 bg-gray-200 rounded-full h-4 ml-4">
-                                    <div 
-                                        className="bg-[var(--color-primary-500)] h-4 rounded-full" 
-                                        style={{ width: `${source.percentage}%` }}
+                            <div key={source.name} className="flex items-center gap-3">
+                                <p className="w-28 text-sm font-semibold text-gray-600 truncate">{source.name}</p>
+                                <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
+                                    <div
+                                        className="h-3 rounded-full transition-all duration-500"
+                                        style={{ width: `${source.percentage}%`, background: 'linear-gradient(90deg, var(--color-primary-400), var(--color-primary-600))' }}
                                     ></div>
                                 </div>
-                                <p className="w-12 text-left text-sm font-bold text-gray-700">{source.count}</p>
+                                <p className="w-8 text-left text-sm font-bold text-gray-700">{source.count}</p>
                             </div>
                         ))}
                     </div>
