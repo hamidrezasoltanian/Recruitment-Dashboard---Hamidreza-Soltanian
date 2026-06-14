@@ -15,6 +15,7 @@ export interface KanbanStage {
   id: StageId;
   title: string;
   isCore?: boolean; // Core stages cannot be deleted
+  order?: number;
 }
 
 export interface HistoryEntry {

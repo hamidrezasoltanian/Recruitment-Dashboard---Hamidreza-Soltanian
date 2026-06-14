@@ -7,7 +7,6 @@ import {
   Template, 
   CompanyProfile, 
   TestLibraryItem, 
-  Source,
   ApiResponse 
 } from '../types';
 
@@ -297,13 +296,13 @@ class ApiService {
     await this.request(`/settings/job-positions/${id}`, { method: 'DELETE' });
   }
 
-  async getSources(): Promise<Source[]> {
-    const response = await this.request<Source[]>('/settings/sources');
+  async getSources(): Promise<any[]> {
+    const response = await this.request<any[]>('/settings/sources');
     return response.data!;
   }
 
-  async addSource(name: string): Promise<Source> {
-    const response = await this.request<Source>('/settings/sources', {
+  async addSource(name: string): Promise<any> {
+    const response = await this.request<any>('/settings/sources', {
       method: 'POST',
       body: JSON.stringify({ name }),
     });
