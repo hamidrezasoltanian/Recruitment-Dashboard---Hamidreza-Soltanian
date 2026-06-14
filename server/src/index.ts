@@ -33,7 +33,7 @@ app.use(helmet({
 }));
 
 // Apply rate limiting
-app.use(applyRateLimit);
+applyRateLimit(app);
 
 // CORS configuration
 app.use(cors({
