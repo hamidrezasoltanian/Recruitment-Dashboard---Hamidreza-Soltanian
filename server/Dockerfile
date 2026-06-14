@@ -39,5 +39,5 @@ HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=5 \
   CMD nc -z localhost 3002 || exit 1
 
 # Run migrations then seed then start server
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/seed.js 2>/dev/null; npm start"]
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node dist/seed.js 2>/dev/null; npm start"]
 
