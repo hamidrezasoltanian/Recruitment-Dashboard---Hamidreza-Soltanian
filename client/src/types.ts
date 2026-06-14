@@ -2,7 +2,7 @@
 
 export type StageId = string;
 
-export type Source = 'linkedin' | 'indeed' | 'glassdoor' | 'company_website' | 'referral' | 'recruitment_agency' | 'university' | 'other';
+export type Source = string;
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -16,6 +16,8 @@ export interface KanbanStage {
   title: string;
   isCore?: boolean; // Core stages cannot be deleted
   order?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface HistoryEntry {

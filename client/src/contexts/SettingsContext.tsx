@@ -51,10 +51,10 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     apiService.getStages().then(data => {
       if (data && data.length > 0) setStages(data as any);
     }).catch(() => {});
-    apiService.getSources().then(data => {
+    apiService.getSources().then((data: any[]) => {
       if (data && data.length > 0) {
-        setSourceObjects(data.map((s: any) => ({ id: s.id, name: s.name || s })));
-        setSources(data.map((s: any) => s.name || s));
+        setSourceObjects(data.map((s: any) => ({ id: String(s.id || s), name: String(s.name || s) })));
+        setSources(data.map((s: any) => String(s.name || s)));
       }
     }).catch(() => {});
     apiService.getCompanyProfile().then(data => {
@@ -93,7 +93,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   const addStage = async (title: string) => {
     try {
-      const created = await apiService.createStage({ title, isCore: false, order: stages.length });
+      const created = await apiService.createStage({ title, isCore: false } as any);
       setStages(prev => [...prev, created as any]);
     } catch {
       // fallback: local only
