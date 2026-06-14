@@ -16,6 +16,7 @@ interface CandidatesContextType {
   addCustomHistoryEntry: (id: string, actionText: string) => Promise<void>;
   updateTestResult: (candidateId: string, testId: string, resultData: Partial<TestResult>) => Promise<void>;
   refreshCandidates: () => Promise<void>;
+  setCandidates: (candidates: Candidate[], suppressToast?: boolean) => Promise<void>;
 }
 
 const CandidatesContext = createContext<CandidatesContextType | undefined>(undefined);
@@ -134,6 +135,13 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   };
 
+  const bulkSetCandidates = async (newCandidates: Candidate[], suppressToast?: boolean) => {
+    setCandidates(newCandidates);
+    if (!suppressToast) {
+      addToast('داده‌های متقاضیان بازیابی شد.', 'success');
+    }
+  };
+
   const value = {
     candidates,
     isLoading,
@@ -146,6 +154,7 @@ export const CandidatesProvider: React.FC<{ children: ReactNode }> = ({ children
     addCustomHistoryEntry,
     updateTestResult,
     refreshCandidates,
+    setCandidates: bulkSetCandidates,
   };
 
   return <CandidatesContext.Provider value={value}>{children}</CandidatesContext.Provider>;

@@ -97,7 +97,7 @@ const getDbService = () => {
     }
   },
 
-  async saveTestFile(candidateId: string, testId: string, file: File): Promise<string> {
+  async saveTestFile(candidateId: string, testId: string, _file: File): Promise<string> {
     // For now, just simulate saving test file
     console.log('Test file saving simulated for candidate:', candidateId, 'test:', testId);
     return `simulated-test-${candidateId}-${testId}.pdf`;

@@ -9,7 +9,7 @@ interface SSOAuthGuardProps {
 export default function SSOAuthGuard({ children, required = true }: SSOAuthGuardProps) {
   const [loading, setLoading] = useState(true)
   const [authenticated, setAuthenticated] = useState(false)
-  const [user, setUser] = useState<SSOUser | null>(null)
+  const [_user, setUser] = useState<SSOUser | null>(null)
 
   useEffect(() => {
     // Handle SSO redirect (if coming from main system)
