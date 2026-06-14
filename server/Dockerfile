@@ -40,10 +40,10 @@ USER nodejs
 # Expose port
 EXPOSE 3002
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD wget -qO- http://localhost:3002/api/health || exit 1
+# Health check - give enough start time for migrations
+HEALTHCHECK --interval=15s --timeout=10s --start-period=120s --retries=5 \
+  CMD node -e "require('http').get('http://localhost:3002/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
-# Entrypoint: run migrations then start
-CMD ["sh", "-c", "npx prisma migrate deploy && npx ts-node src/seed.ts 2>/dev/null || true && npm start"]
+# Run migrations with local binary, then seed (compiled JS), then start
+CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && node dist/seed.js 2>/dev/null || true && npm start"]
 
