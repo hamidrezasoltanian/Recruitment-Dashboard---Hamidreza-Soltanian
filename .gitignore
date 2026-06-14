@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+server/node_modules/
+client/node_modules/
+
+# Build outputs
+dist/
+server/dist/
+client/dist/
+
+# Environment files
+.env
+.env.local
+server/.env
+server/env.local
+client/.env
+client/env.local
+
+# Uploads
+server/uploads/
+
+# Prisma generated
+server/node_modules/.prisma/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Temp
+*.tmp
+*.temp

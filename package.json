@@ -1,26 +1,25 @@
 {
   "name": "recruitment-dashboard",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "A comprehensive dashboard for managing the recruitment process.",
+  "description": "Full-stack recruitment management dashboard with PostgreSQL backend",
   "scripts": {
-    "build": "node build.js",
-    "start": "serve dist"
-  },
-  "dependencies": {
-    "@dnd-kit/core": "^6.3.1",
-    "@dnd-kit/sortable": "^10.0.0",
-    "@google/genai": "^0.15.0",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "build": "npm run build:server && npm run build:client",
+    "build:server": "cd server && npm run build",
+    "build:client": "cd client && npm run build",
+    "install:all": "npm install && cd server && npm install && cd ../client && npm install",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:build": "docker compose build",
+    "db:migrate": "cd server && npx prisma migrate deploy",
+    "db:seed": "cd server && npx ts-node src/seed.ts",
+    "db:studio": "cd server && npx prisma studio"
   },
   "devDependencies": {
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "esbuild": "^0.23.0",
-    "fs-extra": "^11.2.0",
-    "serve": "^14.2.3",
-    "tailwindcss": "^3.4.4",
-    "typescript": "^5.5.3"
+    "concurrently": "^8.2.2"
   }
 }
