@@ -115,7 +115,7 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ candidates }) => {
                         متقاضیان بر اساس منبع
                     </h3>
                     <div className="space-y-3">
-                        {stats.sourceData.map((source, i) => (
+                        {stats.sourceData.map((source) => (
                             <div key={source.name} className="flex items-center gap-3">
                                 <p className="w-28 text-sm font-medium text-gray-600 truncate flex-shrink-0">{source.name}</p>
                                 <div className="flex-1 bg-gray-100 rounded-full h-2.5 overflow-hidden">
