@@ -274,10 +274,24 @@ export const updateCandidate = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // Only update scalar fields - exclude relations and computed fields
+    const { name, email, phone, position, source, stage, rating,
+            interviewDate, interviewTime, interviewTimeChanged, hasResume } = updateData;
+
     const candidate = await prisma.candidate.update({
       where: { id },
       data: {
-        ...updateData,
+        ...(name !== undefined && { name }),
+        ...(email !== undefined && { email }),
+        ...(phone !== undefined && { phone }),
+        ...(position !== undefined && { position }),
+        ...(source !== undefined && { source }),
+        ...(stage !== undefined && { stage }),
+        ...(rating !== undefined && { rating }),
+        ...(interviewDate !== undefined && { interviewDate }),
+        ...(interviewTime !== undefined && { interviewTime }),
+        ...(interviewTimeChanged !== undefined && { interviewTimeChanged }),
+        ...(hasResume !== undefined && { hasResume }),
         updatedAt: new Date()
       },
       include: {

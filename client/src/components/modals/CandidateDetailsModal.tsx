@@ -5,6 +5,7 @@ import StarRating from '../ui/StarRating';
 import { useCandidates } from '../../contexts/CandidatesContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { dbService } from '../../services/dbService';
+import { apiService } from '../../services/apiService';
 import { useToast } from '../../contexts/ToastContext';
 import { useSettings } from '../../contexts/SettingsContext';
 import KamaDatePicker from '../ui/KamaDatePicker';
@@ -118,10 +119,17 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
     if (!candidate.hasResume) return;
     setIsLoadingResume(true);
     try {
-        const blob = await dbService.getResume(candidate.id);
+        // Try API first (server-stored resumes)
+        let blob: Blob | null = null;
+        try {
+            blob = await apiService.downloadResume(candidate.id);
+        } catch {
+            // Fallback to localStorage for old resumes
+            blob = await dbService.getResume(candidate.id);
+        }
         if (blob) {
-            // Convert Blob to File
-            const file = new File([blob], 'resume.pdf', { type: blob.type });
+            const ext = blob.type.includes('pdf') ? '.pdf' : blob.type.includes('word') ? '.docx' : '.pdf';
+            const file = new File([blob], `resume${ext}`, { type: blob.type });
             onViewResume(file);
         } else {
             addToast('فایل رزومه یافت نشد.', 'error');
