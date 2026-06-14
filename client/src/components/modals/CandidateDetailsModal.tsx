@@ -315,7 +315,7 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
                   <div className="max-h-40 overflow-y-auto space-y-3 pr-2 border-b pb-2">
                       {candidate.history.map((h, i) => (
                           <div key={i} className="text-sm">
-                              <p className="font-semibold text-gray-700">{h.action} <span className="font-normal text-gray-500">توسط {h.user}</span></p>
+                              <p className="font-semibold text-gray-700">{h.action} <span className="font-normal text-gray-500">توسط {typeof h.user === 'object' ? (h.user as any)?.name : h.user}</span></p>
                               <p className="text-xs text-gray-400">{formatTimestamp(h.timestamp)}</p>
                           </div>
                       ))}
@@ -333,7 +333,7 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
                       {candidate.comments.map(c => (
                           <div key={c.id} className="bg-blue-50 p-3 rounded-lg">
                               <p className="text-sm text-gray-800">{c.text}</p>
-                              <p className="text-xs text-gray-500 mt-2">توسط {c.user} در {formatTimestamp(c.timestamp)}</p>
+                              <p className="text-xs text-gray-500 mt-2">توسط {typeof c.user === 'object' ? (c.user as any)?.name : c.user} در {formatTimestamp(c.timestamp)}</p>
                           </div>
                       ))}
                       {candidate.comments.length === 0 && <p className="text-sm text-gray-500">یادداشتی ثبت نشده است.</p>}
