@@ -283,7 +283,7 @@ const TemplateManagementPanel: React.FC = () => {
     if (editingId === 'new') {
       addTemplate(templateData);
     } else if (editingId) {
-      updateTemplate({ id: editingId, ...templateData });
+      updateTemplate(editingId, templateData);
     }
     setEditingId(null);
   };

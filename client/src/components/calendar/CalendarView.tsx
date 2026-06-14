@@ -29,7 +29,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({ onViewDetails }) => {
     
     // Get the first day of the Persian month
     const firstDayOfPersianMonth = moment(`${persianYear}/${String(persianMonth).padStart(2, '0')}/01`, 'jYYYY/jMM/jDD');
+    // @ts-ignore - moment-jalaali extends moment with jMonth/jDate support
     const lastDayOfPersianMonth = firstDayOfPersianMonth.clone().endOf('jMonth');
+    // @ts-ignore
     const lastDay = lastDayOfPersianMonth.jDate();
     
     // Get the day of week for the first day (0: Saturday, 1: Sunday, ..., 6: Friday)
@@ -46,6 +48,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ onViewDetails }) => {
 
   const changeMonth = (amount: number) => {
     const persianMoment = moment(currentDate);
+    // @ts-ignore - moment-jalaali extends moment with jMonth support
     const newPersianMoment = persianMoment.clone().add(amount, 'jMonth');
     setCurrentDate(newPersianMoment.toDate());
   };
