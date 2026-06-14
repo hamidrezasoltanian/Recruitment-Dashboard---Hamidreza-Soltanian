@@ -6,6 +6,7 @@ import {
   updateCandidate,
   deleteCandidate,
   updateCandidateStage,
+  analyzeResume,
   validateCreateCandidate,
   validateUpdateCandidate,
   validateUpdateStage
@@ -28,6 +29,9 @@ router.post('/', validateCreateCandidate, createCandidate);
 
 // PUT /api/candidates/:id - Update candidate
 router.put('/:id', validateUpdateCandidate, updateCandidate);
+
+// POST /api/candidates/:id/analyze-resume - Parse/Analyze resume using pdftotext
+router.post('/:id/analyze-resume', analyzeResume);
 
 // DELETE /api/candidates/:id - Delete candidate
 router.delete('/:id', deleteCandidate);

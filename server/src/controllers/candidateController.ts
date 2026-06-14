@@ -3,6 +3,8 @@ import { PrismaClient } from '@prisma/client';
 import { body, validationResult, query } from 'express-validator';
 import { ApiResponse, Candidate } from '../types';
 import { AuthRequest } from '../middleware/auth';
+import { execSync } from 'child_process';
+import fs from 'fs';
 
 const prisma = new PrismaClient();
 
@@ -463,6 +465,248 @@ export const updateCandidateStage = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       error: 'خطا در تغییر مرحله متقاضی'
+    });
+  }
+};
+
+export const analyzeResume = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user!.userId;
+
+    const dbUser = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+    const userName = dbUser ? dbUser.name : req.user!.username;
+
+    // 1. Get Candidate with ResumeFile
+    const candidate = await prisma.candidate.findUnique({
+      where: { id },
+      include: {
+        resumeFiles: true
+      }
+    });
+
+    if (!candidate) {
+      return res.status(404).json({
+        success: false,
+        error: 'متقاضی یافت نشد'
+      });
+    }
+
+    const resumeFile = candidate.resumeFiles[0];
+    if (!resumeFile) {
+      return res.status(400).json({
+        success: false,
+        error: 'رزومه‌ای برای این متقاضی یافت نشده است. لطفا ابتدا رزومه را آپلود کنید.'
+      });
+    }
+
+    if (!fs.existsSync(resumeFile.path)) {
+      return res.status(404).json({
+        success: false,
+        error: 'فایل رزومه روی سرور یافت نشد'
+      });
+    }
+
+    // 2. Extract Text using pdftotext
+    let rawText = '';
+    try {
+      rawText = execSync(`pdftotext "${resumeFile.path}" -`, { encoding: 'utf-8' });
+    } catch (err: any) {
+      console.error('pdftotext error:', err);
+      return res.status(500).json({
+        success: false,
+        error: 'خطا در استخراج متن رزومه. لطفا مطمئن شوید فایل PDF سالم است.'
+      });
+    }
+
+    // 3. Normalize Persian Text
+    let text = rawText.normalize('NFKC');
+    text = text.replace(/[\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '');
+
+    // 4. Parse Job Hopping
+    const durationRegex = /(\d+)\s*\)\s*(?:\d+)?\s*(سال|ماه)(?:\s*و\s*(\d+)?\s*ماه)?/g;
+    let match;
+    const durations: number[] = [];
+
+    while ((match = durationRegex.exec(text)) !== null) {
+      const val1 = parseInt(match[1], 10);
+      const type1 = match[2];
+      const val2 = match[3] ? parseInt(match[3], 10) : 0;
+
+      let months = 0;
+      if (type1 === 'ماه') {
+        months = val1;
+      } else if (type1 === 'سال') {
+        months = val1 * 12 + val2;
+      }
+      durations.push(months);
+    }
+
+    let jobHopping = 'hopping_green';
+    if (durations.length > 0) {
+      const shortJobsCount = durations.filter(m => m < 12).length;
+      const totalJobs = durations.length;
+      
+      if (totalJobs >= 2 && (shortJobsCount / totalJobs) >= 0.5) {
+        jobHopping = 'hopping_red';
+      } else if (shortJobsCount > 0) {
+        jobHopping = 'hopping_yellow';
+      } else {
+        jobHopping = 'hopping_green';
+      }
+    }
+
+    // 5. Parse Relevant Experience and Requested Salary
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    let foundHeading = false;
+    let totalExperience = '';
+    let parsedSalaryRaw = '';
+
+    for (const line of lines) {
+      if (line.includes('می زان سابقه کاری') || line.includes('حقوق و سابقه')) {
+        foundHeading = true;
+      }
+      if (foundHeading) {
+        if (/^\s*\d+\s*(سال|ماه)\s*$/.test(line) && !totalExperience) {
+          totalExperience = line.trim();
+        }
+        if ((line.includes('میلیون') || line.includes('توم ان') || line.includes('تومان') || line.includes('توافقی')) 
+            && !line.includes('تا') && !line.includes(')') && !parsedSalaryRaw) {
+          parsedSalaryRaw = line.trim();
+        }
+      }
+    }
+
+    let relevantExperience = 'exp_red';
+    if (totalExperience) {
+      const yearMatch = totalExperience.match(/(\d+)\s*سال/);
+      const monthMatch = totalExperience.match(/(\d+)\s*ماه/);
+      let totalMonths = 0;
+      if (yearMatch) {
+        totalMonths += parseInt(yearMatch[1], 10) * 12;
+      }
+      if (monthMatch) {
+        totalMonths += parseInt(monthMatch[1], 10);
+      }
+
+      if (totalMonths > 36) {
+        relevantExperience = 'exp_green';
+      } else if (totalMonths >= 12) {
+        relevantExperience = 'exp_yellow';
+      } else {
+        relevantExperience = 'exp_red';
+      }
+    }
+
+    let requestedSalary = '';
+    if (parsedSalaryRaw) {
+      requestedSalary = parsedSalaryRaw;
+    } else {
+      // Fallback
+      const salaryRegex = /حقوق\s*:\s*([\s\S]*?)(?:تومان|توم\s*ان|ریال)/;
+      const salaryMatch = text.match(salaryRegex);
+      if (salaryMatch) {
+        const cleanSalary = salaryMatch[1].replace(/\s+/g, ' ').trim();
+        requestedSalary = `${cleanSalary} تومان`;
+      }
+    }
+
+    // 7. Update Candidate Evaluation Field
+    let currentEval: any = {};
+    if (candidate.evaluation) {
+      try {
+        currentEval = JSON.parse(candidate.evaluation);
+      } catch (e) {
+        currentEval = {};
+      }
+    }
+
+    const currentAnswers = currentEval.answers || {};
+
+    const updatedAnswers = {
+      ...currentAnswers,
+      jobHopping,
+      relevantExperience,
+      resumeAccuracy: 'عالی',
+      requestedSalary
+    };
+
+    const updatedEval = {
+      ...currentEval,
+      evaluatorName: userName,
+      evaluatorUsername: req.user!.username,
+      candidateName: candidate.name,
+      updatedAt: new Date().toISOString(),
+      answers: updatedAnswers
+    };
+
+    const updatedCandidate = await prisma.candidate.update({
+      where: { id },
+      data: {
+        evaluation: JSON.stringify(updatedEval)
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            name: true,
+            isAdmin: true
+          }
+        },
+        comments: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                name: true
+              }
+            }
+          },
+          orderBy: { createdAt: 'desc' }
+        },
+        history: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                name: true
+              }
+            }
+          },
+          orderBy: { createdAt: 'desc' }
+        },
+        testResults: {
+          orderBy: { createdAt: 'desc' }
+        },
+        resumeFiles: true,
+        testFiles: true
+      }
+    });
+
+    // 8. Add History entry
+    await prisma.historyEntry.create({
+      data: {
+        action: `آنالیز هوشمند رزومه (جاب‌ویژن) انجام شد و فیلدهای ارزیابی اولیه تکمیل گردید`,
+        candidateId: id,
+        userId
+      }
+    });
+
+    res.json({
+      success: true,
+      data: updatedCandidate,
+      message: 'آنالیز رزومه با موفقیت انجام شد'
+    });
+  } catch (error) {
+    console.error('Analyze resume error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'خطا در آنالیز رزومه متقاضی'
     });
   }
 };

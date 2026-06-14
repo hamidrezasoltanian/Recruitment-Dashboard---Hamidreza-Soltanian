@@ -147,6 +147,13 @@ class ApiService {
     return response.data!;
   }
 
+  async analyzeResume(id: string): Promise<Candidate> {
+    const response = await this.request<Candidate>(`/candidates/${id}/analyze-resume`, {
+      method: 'POST',
+    });
+    return response.data!;
+  }
+
   // Comment methods
   async addComment(candidateId: string, text: string): Promise<Comment> {
     const response = await this.request<Comment>(`/comments/candidates/${candidateId}`, {

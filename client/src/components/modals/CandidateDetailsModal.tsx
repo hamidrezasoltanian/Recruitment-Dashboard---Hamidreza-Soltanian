@@ -50,6 +50,7 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
   
   const [newComment, setNewComment] = useState('');
   const [isLoadingResume, setIsLoadingResume] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [customHistoryEvent, setCustomHistoryEvent] = useState('');
   const [interviewDate, setInterviewDate] = useState('');
   const [interviewTime, setInterviewTime] = useState('');
@@ -196,6 +197,30 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
       addCustomHistoryEntry(candidate.id, `ارزیابی متقاضی ثبت/ویرایش شد (توسط ${user.name})`);
     } catch {
       addToast('خطا در ذخیره ارزیابی.', 'error');
+    }
+  };
+
+  const handleAnalyzeResume = async () => {
+    if (!candidate) return;
+    setIsAnalyzing(true);
+    try {
+      const updated = await apiService.analyzeResume(candidate.id);
+      addToast('رزومه با موفقیت آنالیز شد و فیلدهای اولیه پر شدند.', 'success');
+      
+      if (updated.evaluation) {
+        const parsed = JSON.parse(updated.evaluation);
+        const ans = parsed.answers || {};
+        setJobHopping(ans.jobHopping || '');
+        setRelevantExperience(ans.relevantExperience || '');
+        setResumeAccuracy(ans.resumeAccuracy || '');
+        setRequestedSalary(ans.requestedSalary || '');
+      }
+      
+      onEdit(updated);
+    } catch (err: any) {
+      addToast(err.message || 'خطا در آنالیز رزومه.', 'error');
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -524,8 +549,29 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
 
                   {/* SECTION 1: Pre-Screening */}
                   <div className="p-5 border border-gray-200 rounded-xl bg-white space-y-4">
-                    <h3 className="text-md font-bold text-gray-800 border-b pb-2 flex items-center gap-2">
+                    <h3 className="text-md font-bold text-gray-800 border-b pb-2 flex items-center justify-between">
                       <span>بخش اول: ارزیابی اولیه رزومه (Pre-Screening)</span>
+                      {candidate.hasResume && (
+                        <button
+                          onClick={handleAnalyzeResume}
+                          disabled={isAnalyzing}
+                          className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs shadow-md transition-all disabled:opacity-50"
+                        >
+                          {isAnalyzing ? (
+                            <>
+                              <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                              </svg>
+                              <span>در حال آنالیز...</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>⚡ آنالیز هوشمند رزومه (جاب‌ویژن)</span>
+                            </>
+                          )}
+                        </button>
+                      )}
                     </h3>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
