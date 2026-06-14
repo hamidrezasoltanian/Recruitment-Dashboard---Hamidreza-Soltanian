@@ -1,164 +1,16 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
   <head>
-    <base href="/" id="base-tag">
-    <script>
-      // CRITICAL: Set base href BEFORE any assets load
-      (function() {
-        try {
-          const currentPath = window.location.pathname;
-          console.log('[ATS Base Tag] Current pathname:', currentPath);
-          console.log('[ATS Base Tag] Full URL:', window.location.href);
-          
-          let baseHref = '/';
-          
-          if (currentPath.includes('/api/proxy/frontend/')) {
-            const match = currentPath.match(/^(\/api\/proxy\/frontend\/[^\/]+)/);
-            if (match) {
-              baseHref = match[1] + '/';
-              console.log('[ATS Base Tag] ✅ Proxy mode detected, setting to:', baseHref);
-            } else {
-              baseHref = currentPath.substring(0, currentPath.lastIndexOf('/') + 1);
-              console.log('[ATS Base Tag] ⚠️ Using fallback:', baseHref);
-            }
-          } else {
-            console.log('[ATS Base Tag] ⚠️ Not in proxy path, using default: /');
-          }
-          
-          // Update base tag
-          const baseTag = document.getElementById('base-tag') || document.createElement('base');
-          if (!baseTag.id) baseTag.id = 'base-tag';
-          baseTag.href = baseHref;
-          if (!document.getElementById('base-tag')) {
-            document.head.insertBefore(baseTag, document.head.firstChild);
-          }
-          console.log('[ATS Base Tag] ✅ Final base href:', baseTag.href);
-        } catch (e) {
-          console.error('[ATS Base Tag] ❌ Error setting base:', e);
-          const baseTag = document.getElementById('base-tag');
-          if (baseTag) baseTag.href = '/';
-        }
-      })();
-    </script>
-    <script>
-      // CRITICAL: Forward console logs from iframe to parent window
-      (function() {
-        const isInIframe = window.self !== window.top;
-        if (isInIframe) {
-          const originalLog = console.log.bind(console);
-          const originalError = console.error.bind(console);
-          const originalWarn = console.warn.bind(console);
-          
-          const forwardToParent = (level, args) => {
-            try {
-              window.parent.postMessage({
-                type: 'console-log',
-                level: level,
-                args: args.map(arg => {
-                  if (typeof arg === 'object' && arg !== null) {
-                    try { return JSON.stringify(arg, null, 2); } catch { return String(arg); }
-                  }
-                  return String(arg);
-                }),
-                timestamp: new Date().toISOString()
-              }, '*');
-            } catch (e) {}
-          };
-          
-          console.log = function(...args) {
-            originalLog.apply(console, args);
-            forwardToParent('log', args);
-          };
-          console.error = function(...args) {
-            originalError.apply(console, args);
-            forwardToParent('error', args);
-          };
-          console.warn = function(...args) {
-            originalWarn.apply(console, args);
-            forwardToParent('warn', args);
-          };
-          
-          originalLog('[ATS Iframe] Console forwarding enabled');
-        }
-      })();
-    </script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap" rel="stylesheet">
-    <title>Recruitment Dashboard</title>
+    <title>داشبورد استخدام</title>
   </head>
   <body>
-    <div id="root">
-      <div style="padding: 20px; font-family: Arial; direction: rtl; text-align: center;">
-        <div style="border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto;"></div>
-        <p>در حال بارگذاری...</p>
-      </div>
-    </div>
-    <script>
-      // Fix script src based on current location
-      // CRITICAL: This must run AFTER base tag is set
-      (function() {
-        // Wait for DOM to be ready
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(injectMainScript, 100);
-          });
-        } else {
-          setTimeout(injectMainScript, 100);
-        }
-        
-        function injectMainScript() {
-          const currentPath = window.location.pathname;
-          const currentSearch = window.location.search;
-          let scriptSrc = '/src/main.tsx';
-          
-          console.log('[ATS HTML] Injecting main script, pathname:', currentPath);
-          console.log('[ATS HTML] Current href:', window.location.href);
-          
-          // Get base tag if it exists
-          const baseTag = document.querySelector('base');
-          const baseHref = baseTag ? baseTag.href : '/';
-          console.log('[ATS HTML] Base href:', baseHref);
-          
-          if (currentPath.includes('/api/proxy/frontend/')) {
-            scriptSrc = currentPath.replace(/\/$/, '') + '/src/main.tsx';
-            console.log('[ATS HTML] Proxy mode detected, using script src:', scriptSrc);
-          } else if (baseHref && baseHref !== '/') {
-            // Use base href if available
-            const baseUrl = new URL(baseHref, window.location.href);
-            scriptSrc = baseUrl.pathname.replace(/\/$/, '') + '/src/main.tsx';
-            console.log('[ATS HTML] Using base href for script:', scriptSrc);
-          }
-          
-          // Check if script already exists
-          if (document.querySelector('script[src*="main.tsx"]')) {
-            console.log('[ATS HTML] Main script already exists, skipping');
-            return;
-          }
-          
-          const script = document.createElement('script');
-          script.type = 'module';
-          script.src = scriptSrc + currentSearch;
-          script.onerror = function(event) {
-            console.error('[ATS HTML] Error loading main.tsx:', event, 'src:', scriptSrc);
-            console.error('[ATS HTML] Current location:', window.location.href);
-            console.error('[ATS HTML] Base tag:', baseTag?.outerHTML);
-          };
-          script.onload = function() {
-            console.log('[ATS HTML] main.tsx loaded successfully');
-          };
-          document.body.appendChild(script);
-        }
-      })();
-    </script>
-    <style>
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-    </style>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
