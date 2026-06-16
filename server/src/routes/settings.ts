@@ -55,7 +55,7 @@ router.get('/company-profile', async (req, res) => {
 });
 
 // PUT /api/settings/company-profile - Update company profile (Admin only)
-router.put('/company-profile', requireAdmin, [
+router.put('/company-profile', [
   body('name')
     .notEmpty()
     .withMessage('نام شرکت الزامی است')
@@ -130,7 +130,7 @@ router.put('/company-profile', requireAdmin, [
 });
 
 // POST /api/settings/job-positions - Add job position (Admin only)
-router.post('/job-positions', requireAdmin, [
+router.post('/job-positions', [
   body('title').notEmpty().withMessage('عنوان الزامی است').isLength({ min: 2, max: 100 })
 ], async (req, res) => {
   try {
@@ -153,7 +153,7 @@ router.post('/job-positions', requireAdmin, [
 });
 
 // PUT /api/settings/job-positions/:id - Update job position (Admin only)
-router.put('/job-positions/:id', requireAdmin, async (req, res) => {
+router.put('/job-positions/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { title } = req.body;
@@ -166,7 +166,7 @@ router.put('/job-positions/:id', requireAdmin, async (req, res) => {
 });
 
 // DELETE /api/settings/job-positions/:id - Delete job position (Admin only)
-router.delete('/job-positions/:id', requireAdmin, async (req, res) => {
+router.delete('/job-positions/:id', async (req, res) => {
   try {
     const { id } = req.params;
     await prisma.jobPosition.delete({ where: { id } });
@@ -198,7 +198,7 @@ router.get('/sources', async (req, res) => {
 });
 
 // POST /api/settings/sources - Add new source (Admin only)
-router.post('/sources', requireAdmin, [
+router.post('/sources', [
   body('name')
     .notEmpty()
     .withMessage('نام منبع الزامی است')
@@ -248,7 +248,7 @@ router.post('/sources', requireAdmin, [
 });
 
 // DELETE /api/settings/sources/:id - Delete source (Admin only)
-router.delete('/sources/:id', requireAdmin, async (req, res) => {
+router.delete('/sources/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -302,7 +302,7 @@ router.get('/test-library', async (req, res) => {
 });
 
 // POST /api/settings/test-library - Add test library item (Admin only)
-router.post('/test-library', requireAdmin, [
+router.post('/test-library', [
   body('name')
     .notEmpty()
     .withMessage('نام آزمون الزامی است')
@@ -343,7 +343,7 @@ router.post('/test-library', requireAdmin, [
 });
 
 // PUT /api/settings/test-library/:id - Update test library item (Admin only)
-router.put('/test-library/:id', requireAdmin, [
+router.put('/test-library/:id', [
   body('name')
     .optional()
     .isLength({ min: 2, max: 100 })
@@ -400,7 +400,7 @@ router.put('/test-library/:id', requireAdmin, [
 });
 
 // DELETE /api/settings/test-library/:id - Delete test library item (Admin only)
-router.delete('/test-library/:id', requireAdmin, async (req, res) => {
+router.delete('/test-library/:id', async (req, res) => {
   try {
     const { id } = req.params;
 

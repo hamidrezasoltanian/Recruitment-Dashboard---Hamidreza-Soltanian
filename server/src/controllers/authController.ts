@@ -81,6 +81,7 @@ export const register = async (req: Request, res: Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('Register validation failed:', JSON.stringify(errors.array(), null, 2));
       return res.status(400).json({
         success: false,
         error: 'داده‌های ورودی نامعتبر',
@@ -236,8 +237,8 @@ export const validateLogin = [
   body('username')
     .notEmpty()
     .withMessage('نام کاربری الزامی است')
-    .isLength({ min: 3 })
-    .withMessage('نام کاربری باید حداقل 3 کاراکتر باشد'),
+    .isLength({ min: 2 })
+    .withMessage('نام کاربری باید حداقل 2 کاراکتر باشد'),
   body('password')
     .notEmpty()
     .withMessage('رمز عبور الزامی است')
@@ -249,10 +250,10 @@ export const validateRegister = [
   body('username')
     .notEmpty()
     .withMessage('نام کاربری الزامی است')
-    .isLength({ min: 3 })
-    .withMessage('نام کاربری باید حداقل 3 کاراکتر باشد')
-    .matches(/^[a-zA-Z0-9_]+$/)
-    .withMessage('نام کاربری فقط می‌تواند شامل حروف، اعداد و خط تیره باشد'),
+    .isLength({ min: 2 })
+    .withMessage('نام کاربری باید حداقل 2 کاراکتر باشد')
+    .matches(/^[a-zA-Z0-9_.-]+$/)
+    .withMessage('نام کاربری فقط می‌تواند شامل حروف انگلیسی، اعداد، نقطه (.)، خط تیره (-) و زیرخط (_) باشد'),
   body('name')
     .notEmpty()
     .withMessage('نام الزامی است')
@@ -275,4 +276,92 @@ export const validateChangePassword = [
     .isLength({ min: 6 })
     .withMessage('رمز عبور جدید باید حداقل 6 کاراکتر باشد')
 ];
+
+export const getAllUsers = async (req: Request, res: Response) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        isAdmin: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+    res.json({
+      success: true,
+      data: users
+    });
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'خطا در دریافت لیست کاربران'
+    });
+  }
+};
+
+export const updateUser = async (req: Request, res: Response) => {
+  try {
+    const { username } = req.params;
+    const { name, password, isAdmin } = req.body;
+    const updateData: any = {};
+    if (name !== undefined) updateData.name = name;
+    if (isAdmin !== undefined) updateData.isAdmin = isAdmin;
+    if (password) {
+      updateData.password = await bcrypt.hash(password, 12);
+    }
+    const user = await prisma.user.update({
+      where: { username: username.toLowerCase() },
+      data: updateData,
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        isAdmin: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+    res.json({
+      success: true,
+      data: user,
+      message: 'کاربر با موفقیت ویرایش شد'
+    });
+  } catch (error) {
+    console.error('Update user error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'خطا در ویرایش کاربر'
+    });
+  }
+};
+
+export const deleteUser = async (req: Request, res: Response) => {
+  try {
+    const { username } = req.params;
+    // Prevent deleting yourself
+    const currentUsername = (req as any).user.username;
+    if (currentUsername.toLowerCase() === username.toLowerCase()) {
+      return res.status(400).json({
+        success: false,
+        error: 'شما نمی‌توانید حساب کاربری خود را حذف کنید'
+      });
+    }
+    await prisma.user.delete({
+      where: { username: username.toLowerCase() }
+    });
+    res.json({
+      success: true,
+      message: 'کاربر با موفقیت حذف شد'
+    });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'خطا در حذف کاربر'
+    });
+  }
+};
 

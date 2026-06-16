@@ -2,11 +2,121 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { execSync } from 'child_process';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth';
 
 const prisma = new PrismaClient();
 const router = express.Router();
+
+// Helper to clean Persian spaces
+const cleanPersianSpaces = (str: string): string => {
+  let cleaned = str.replace(/\s+/g, ' ').trim();
+  const commonFixes: { [key: string]: string } = {
+    'مه رناز': 'مهرناز',
+    'کا ر': 'کار',
+    'کار شنا': 'کارشنا',
+    'رشناس': 'رشناس',
+    'توم ان': 'تومان',
+    'امو زشی': 'آموزشی',
+    'آمو زش': 'آموزش',
+    'مد ر': 'مدیر',
+    'می زان': 'میزان',
+    'ثب ت': 'ثبت',
+    'م بایل': 'موبایل',
+    'شنا سه': 'شناسه',
+    'کار ری': 'کاربری',
+    'دان شگاه': 'دانشگاه',
+    'آ کادم': 'آکادم',
+    'تکمی ل': 'تکمیل',
+    'ارز یابی': 'ارزیابی',
+    'سوا بق': 'سوابق',
+  };
+  for (const [wrong, right] of Object.entries(commonFixes)) {
+    const regex = new RegExp(wrong, 'g');
+    cleaned = cleaned.replace(regex, right);
+  }
+  return cleaned;
+};
+
+// Helper to fix Persian name spacing
+const fixPersianNameSpacing = (nameStr: string): string => {
+  // 1. Check if the string is heavily spaced out (average word length is small)
+  const rawParts = nameStr.trim().split(/\s+/);
+  if (rawParts.length > 2) {
+    const avgLen = rawParts.reduce((sum, p) => sum + p.length, 0) / rawParts.length;
+    if (avgLen < 1.8) {
+      // It's a spaced-out string. Try to split by larger spaces (2 or more spaces)
+      const segments = nameStr.trim().split(/\s{2,}/);
+      if (segments.length > 1) {
+        // Merge characters inside each segment and join them with a single space
+        return segments.map(seg => seg.replace(/\s+/g, '')).join(' ').trim();
+      }
+    }
+  }
+
+  let cleaned = cleanPersianSpaces(nameStr);
+  let parts = cleaned.split(' ');
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let i = 0; i < parts.length - 1; i++) {
+      const part1 = parts[i];
+      const part2 = parts[i + 1];
+      const isPart1Single = part1.length === 1;
+      const isPart2Single = part2.length === 1;
+      const nonConnecting = ['ا', 'د', 'ذ', 'ر', 'ز', 'ژ', 'و', 'آ', 'أ', 'إ', 'ؤ'];
+      const lastChar1 = part1.charAt(part1.length - 1);
+      const part1EndsWithConnecting = !nonConnecting.includes(lastChar1) && /[\u0600-\u06FF]/.test(lastChar1);
+      let shouldMerge = false;
+      if (isPart1Single || isPart2Single) {
+        shouldMerge = true;
+      } else if (part1.length <= 2 && part1EndsWithConnecting) {
+        shouldMerge = true;
+      }
+      if (shouldMerge) {
+        parts[i] = part1 + part2;
+        parts.splice(i + 1, 1);
+        changed = true;
+        break;
+      }
+    }
+  }
+  return parts.join(' ').replace(/\s+/g, ' ').trim();
+};
+
+// Helper to extract clean name from filename if possible
+const getNameFromFilename = (filename: string): string => {
+  let cleanName = filename.replace(/\.[^/.]+$/, "");
+  cleanName = cleanName.replace(/[\s_\-]+/g, ' ').trim();
+  cleanName = cleanName.normalize('NFKC');
+  cleanName = cleanName.replace(/[\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '');
+
+  const stopWords = [
+    'resume', 'cv', 'pdf', 'file', 'job', 'applicant', 'candidate', 'senior', 'junior', 'intern', 'developer',
+    'react', 'node', 'frontend', 'backend', 'fullstack', 'python', 'java', 'go', 'engineer', 'manager', 'sales',
+    'رزومه', 'کارجو', 'کاندید', 'همکار', 'متقاضی', 'برنامه نویس', 'برنامه', 'نویس', 'طراح', 'فروش', 'مدیر',
+    'کارشناس', 'پشتیبان', 'طراحی', 'توسعه دهنده', 'توسعه‌دهنده', 'مهندس', 'ارشد', 'جونیور', 'کارآموز', 'جدید',
+    'توسعه', 'دهنده', 'پشتیبانی', 'طراح', 'بازاریاب', 'سایت', 'ایران', 'تهران', 'فارسی', 'انگلیسی', 'ارتباطات',
+    'بین الملل', 'مدیریت', 'بازاریابی', 'کارشناسی', 'ارشد', 'دکتری', 'دیپلم', 'لیسانس', 'فوق لیسانس'
+  ];
+
+  let parts = cleanName.split(' ');
+  parts = parts.filter(part => {
+    const p = part.toLowerCase().trim();
+    if (!p) return false;
+    if (stopWords.includes(p)) return false;
+    if (/^\d+$/.test(p)) return false;
+    return true;
+  });
+
+  if (parts.length === 0) return '';
+  const joined = parts.join(' ');
+  if (/[\u0600-\u06FF]/.test(joined)) {
+    return fixPersianNameSpacing(joined);
+  }
+  return joined.trim();
+};
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -240,7 +350,7 @@ router.post('/test/:candidateId/:testId', upload.single('testFile'), async (req,
       });
     }
 
-    // Create new test file record
+    // Create new test file record (legacy)
     const testFile = await prisma.testFile.create({
       data: {
         filename: file.filename,
@@ -252,6 +362,38 @@ router.post('/test/:candidateId/:testId', upload.single('testFile'), async (req,
         candidateId
       }
     });
+
+    // Update or create corresponding TestResult with the file details
+    const existingResult = await prisma.testResult.findFirst({
+      where: { candidateId, testId }
+    });
+
+    if (existingResult) {
+      await prisma.testResult.update({
+        where: { id: existingResult.id },
+        data: {
+          filename: file.filename,
+          originalName: file.originalname,
+          mimeType: file.mimetype,
+          size: file.size,
+          path: file.path,
+          status: 'review'
+        }
+      });
+    } else {
+      await prisma.testResult.create({
+        data: {
+          candidateId,
+          testId,
+          filename: file.filename,
+          originalName: file.originalname,
+          mimeType: file.mimetype,
+          size: file.size,
+          path: file.path,
+          status: 'review'
+        }
+      });
+    }
 
     res.status(201).json({
       success: true,
@@ -272,6 +414,22 @@ router.get('/test/:candidateId/:testId', async (req, res) => {
   try {
     const { candidateId, testId } = req.params;
 
+    // Check TestResult first
+    const testResult = await prisma.testResult.findFirst({
+      where: { candidateId, testId }
+    });
+
+    if (testResult && testResult.path && testResult.originalName) {
+      if (!fs.existsSync(testResult.path)) {
+        return res.status(404).json({
+          success: false,
+          error: 'فایل نتیجه آزمون در سرور یافت نشد'
+        });
+      }
+      return res.download(testResult.path, testResult.originalName);
+    }
+
+    // Fallback to TestFile
     const testFile = await prisma.testFile.findFirst({
       where: { 
         candidateId,
@@ -307,7 +465,32 @@ router.get('/test/:candidateId/:testId', async (req, res) => {
 router.delete('/test/:candidateId/:testId', async (req, res) => {
   try {
     const { candidateId, testId } = req.params;
+    let deletedCount = 0;
 
+    // 1. Clear from TestResult
+    const testResult = await prisma.testResult.findFirst({
+      where: { candidateId, testId }
+    });
+
+    if (testResult && testResult.path) {
+      if (fs.existsSync(testResult.path)) {
+        fs.unlinkSync(testResult.path);
+      }
+      await prisma.testResult.update({
+        where: { id: testResult.id },
+        data: {
+          filename: null,
+          originalName: null,
+          mimeType: null,
+          size: null,
+          path: null,
+          status: 'pending' // revert to pending status
+        }
+      });
+      deletedCount++;
+    }
+
+    // 2. Clear from TestFile (legacy)
     const testFile = await prisma.testFile.findFirst({
       where: { 
         candidateId,
@@ -315,22 +498,22 @@ router.delete('/test/:candidateId/:testId', async (req, res) => {
       }
     });
 
-    if (!testFile) {
+    if (testFile) {
+      if (fs.existsSync(testFile.path)) {
+        fs.unlinkSync(testFile.path);
+      }
+      await prisma.testFile.delete({
+        where: { id: testFile.id }
+      });
+      deletedCount++;
+    }
+
+    if (deletedCount === 0) {
       return res.status(404).json({
         success: false,
         error: 'فایل نتیجه آزمون یافت نشد'
       });
     }
-
-    // Delete file from filesystem
-    if (fs.existsSync(testFile.path)) {
-      fs.unlinkSync(testFile.path);
-    }
-
-    // Delete from database
-    await prisma.testFile.delete({
-      where: { id: testFile.id }
-    });
 
     res.json({
       success: true,
@@ -341,6 +524,539 @@ router.delete('/test/:candidateId/:testId', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'خطا در حذف فایل نتیجه آزمون'
+    });
+  }
+});
+
+// POST /api/files/analyze-temp - Analyze a uploaded temp resume file
+router.post('/analyze-temp', upload.single('resume'), async (req, res) => {
+  try {
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({
+        success: false,
+        error: 'فایل رزومه الزامی است'
+      });
+    }
+
+    // 2. Extract Text using pdftotext
+    let rawText = '';
+    let rawLayoutText = '';
+    try {
+      rawText = execSync(`pdftotext "${file.path}" -`, { encoding: 'utf-8' });
+      rawLayoutText = execSync(`pdftotext -layout "${file.path}" -`, { encoding: 'utf-8' });
+    } catch (err: any) {
+      console.error('pdftotext error:', err);
+      // clean up file
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+      return res.status(500).json({
+        success: false,
+        error: 'خطا در استخراج متن رزومه. لطفا مطمئن شوید فایل PDF سالم است.'
+      });
+    }
+
+    // Clean up temporary file immediately after extracting text!
+    if (fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
+    }
+
+    // 3. Normalize Persian Text
+    let text = rawText.normalize('NFKC');
+    text = text.replace(/[\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '');
+
+    let layoutText = rawLayoutText.normalize('NFKC');
+    layoutText = layoutText.replace(/[\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '');
+
+
+
+    // Extract Name, Email, Phone
+    const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+    const parsedEmail = emailMatch ? emailMatch[0].trim() : '';
+
+    const phoneMatch = text.match(/09\d{9}/) || text.match(/09\d{2}[-\s]*\d{3}[-\s]*\d{4}/);
+    const parsedPhone = phoneMatch ? phoneMatch[0].replace(/[-\s]/g, '') : '';
+
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    let parsedName = getNameFromFilename(file.originalname);
+    if (!parsedName) {
+      for (const line of lines) {
+        if (
+          line.length >= 3 &&
+          line.length <= 30 &&
+          !line.includes(':') &&
+          !line.includes('روز') &&
+          !line.includes('رسانی') &&
+          !line.includes('سوابق') &&
+          !line.includes('شناسه') &&
+          !line.includes('کاربری') &&
+          !line.includes('صفحه') &&
+          !/\d/.test(line)
+        ) {
+          parsedName = fixPersianNameSpacing(line);
+          break;
+        }
+      }
+    }
+
+    // 4. Parse Job Hopping
+    const durationRegex = /(\d+)\s*\)\s*(?:\d+)?\s*(سال|ماه)(?:\s*و\s*(\d+)?\s*ماه)?/g;
+    let match;
+    const durations: number[] = [];
+
+    while ((match = durationRegex.exec(text)) !== null) {
+      const val1 = parseInt(match[1], 10);
+      const type1 = match[2];
+      const val2 = match[3] ? parseInt(match[3], 10) : 0;
+
+      let months = 0;
+      if (type1 === 'ماه') {
+        months = val1;
+      } else if (type1 === 'سال') {
+        months = val1 * 12 + val2;
+      }
+      durations.push(months);
+    }
+
+    let jobHopping = 'hopping_green';
+    if (durations.length > 0) {
+      const shortJobsCount = durations.filter(m => m < 12).length;
+      const totalJobs = durations.length;
+      
+      if (totalJobs >= 2 && (shortJobsCount / totalJobs) >= 0.5) {
+        jobHopping = 'hopping_red';
+      } else if (shortJobsCount > 0) {
+        jobHopping = 'hopping_yellow';
+      }
+    }
+
+    // 5. Parse Relevant Experience and Requested Salary
+    let parsedExperience = '';
+    let parsedSalary = '';
+
+    const layoutLines = layoutText.split('\n');
+    for (const line of layoutLines) {
+      if (line.includes('می زان سابقه کاری') || line.includes('میزان سابقه کاری')) {
+        const expMatch = line.match(/(\d+)\s*(سال|ماه)/);
+        if (expMatch) {
+          parsedExperience = expMatch[0].trim();
+        }
+      }
+      if (line.includes('حقوق') && !line.includes('حقوق و سابقه')) {
+        const parts = line.split(/حقوق\s*:/);
+        if (parts.length > 1) {
+          const leftPart = parts[0].trim();
+          const salaryMatch = leftPart.match(/(\d+\s*-\s*\d+\s*میلیون\s*توم\s*ان)|(\d+\s*-\s*\d+\s*میلیون\s*تومان)|(توافقی)/);
+          if (salaryMatch) {
+            parsedSalary = cleanPersianSpaces(salaryMatch[0]);
+          } else {
+            parsedSalary = cleanPersianSpaces(leftPart.split(/\s{2,}/).pop() || '');
+          }
+        }
+      }
+    }
+
+    // Fallbacks if layout mode failed to extract
+    if (!parsedExperience) {
+      let foundHeading = false;
+      for (const line of lines) {
+        if (line.includes('می زان سابقه کاری') || line.includes('حقوق و سابقه')) {
+          foundHeading = true;
+        }
+        if (foundHeading && /^\s*\d+\s*(سال|ماه)\s*$/.test(line)) {
+          parsedExperience = cleanPersianSpaces(line);
+          break;
+        }
+      }
+    }
+
+    if (!parsedSalary) {
+      let foundHeading = false;
+      for (const line of lines) {
+        if (line.includes('می زان سابقه کاری') || line.includes('حقوق و سابقه')) {
+          foundHeading = true;
+        }
+        if (foundHeading && (line.includes('میلیون') || line.includes('تومان') || line.includes('توافقی')) && !line.includes('تا') && !line.includes(')')) {
+          parsedSalary = cleanPersianSpaces(line);
+          break;
+        }
+      }
+    }
+
+    let relevantExperience = 'exp_red';
+    if (parsedExperience) {
+      const yearMatch = parsedExperience.match(/(\d+)\s*سال/);
+      const monthMatch = parsedExperience.match(/(\d+)\s*ماه/);
+      let totalMonths = 0;
+      if (yearMatch) {
+        totalMonths += parseInt(yearMatch[1], 10) * 12;
+      }
+      if (monthMatch) {
+        totalMonths += parseInt(monthMatch[1], 10);
+      }
+
+      if (totalMonths > 36) {
+        relevantExperience = 'exp_green';
+      } else if (totalMonths >= 12) {
+        relevantExperience = 'exp_yellow';
+      }
+    }
+
+    let requestedSalary = parsedSalary;
+    if (!requestedSalary) {
+      const salaryRegex = /حقوق\s*:\s*([\s\S]*?)(?:تومان|توم\s*ان|ریال)/;
+      const salaryMatch = text.match(salaryRegex);
+      if (salaryMatch) {
+        const cleanSalary = salaryMatch[1].replace(/\s+/g, ' ').trim();
+        requestedSalary = `${cleanSalary} تومان`;
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        name: parsedName,
+        email: parsedEmail,
+        phone: parsedPhone,
+        jobHopping,
+        relevantExperience,
+        requestedSalary
+      }
+    });
+
+  } catch (error) {
+    console.error('Analyze temp resume error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'خطا در آنالیز اولیه رزومه'
+    });
+  }
+});
+
+function parseResumeData(text: string, layoutText: string, defaultName: string) {
+  // Normalize
+  let normText = text.normalize('NFKC');
+  normText = normText.replace(/[\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '');
+
+  let normLayoutText = layoutText.normalize('NFKC');
+  normLayoutText = normLayoutText.replace(/[\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '');
+
+
+
+
+  const emailMatch = normText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+  const email = emailMatch ? emailMatch[0].trim() : '';
+
+  const phoneMatch = normText.match(/09\d{9}/) || normText.match(/09\d{2}[-\s]*\d{3}[-\s]*\d{4}/);
+  const phone = phoneMatch ? phoneMatch[0].replace(/[-\s]/g, '') : '';
+
+  const lines = normText.split('\n').map(l => l.trim()).filter(Boolean);
+  let name = getNameFromFilename(defaultName);
+  if (!name) {
+    for (const line of lines) {
+      if (
+        line.length >= 3 &&
+        line.length <= 30 &&
+        !line.includes(':') &&
+        !line.includes('روز') &&
+        !line.includes('رسانی') &&
+        !line.includes('سوابق') &&
+        !line.includes('شناسه') &&
+        !line.includes('کاربری') &&
+        !line.includes('صفحه') &&
+        !/\d/.test(line)
+      ) {
+        name = fixPersianNameSpacing(line);
+        break;
+      }
+    }
+  }
+  if (!name) {
+    name = fixPersianNameSpacing(defaultName);
+  }
+
+  // Job Hopping
+  const durationRegex = /(\d+)\s*\)\s*(?:\d+)?\s*(سال|ماه)(?:\s*و\s*(\d+)?\s*ماه)?/g;
+  let match;
+  const durations: number[] = [];
+  while ((match = durationRegex.exec(normText)) !== null) {
+    const val1 = parseInt(match[1], 10);
+    const type1 = match[2];
+    const val2 = match[3] ? parseInt(match[3], 10) : 0;
+    let months = 0;
+    if (type1 === 'ماه') {
+      months = val1;
+    } else if (type1 === 'سال') {
+      months = val1 * 12 + val2;
+    }
+    durations.push(months);
+  }
+
+  let jobHopping = 'hopping_green';
+  if (durations.length > 0) {
+    const shortJobsCount = durations.filter(m => m < 12).length;
+    const totalJobs = durations.length;
+    if (totalJobs >= 2 && (shortJobsCount / totalJobs) >= 0.5) {
+      jobHopping = 'hopping_red';
+    } else if (shortJobsCount > 0) {
+      jobHopping = 'hopping_yellow';
+    }
+  }
+
+  // Experience & Salary
+  let parsedExperience = '';
+  let parsedSalary = '';
+  const layoutLines = normLayoutText.split('\n');
+  for (const line of layoutLines) {
+    if (line.includes('می زان سابقه کاری') || line.includes('میزان سابقه کاری')) {
+      const expMatch = line.match(/(\d+)\s*(سال|ماه)/);
+      if (expMatch) parsedExperience = expMatch[0].trim();
+    }
+    if (line.includes('حقوق') && !line.includes('حقوق و سابقه')) {
+      const parts = line.split(/حقوق\s*:/);
+      if (parts.length > 1) {
+        const leftPart = parts[0].trim();
+        const salaryMatch = leftPart.match(/(\d+\s*-\s*\d+\s*میلیون\s*توم\s*ان)|(\d+\s*-\s*\d+\s*میلیون\s*تومان)|(توافقی)/);
+        if (salaryMatch) {
+          parsedSalary = cleanPersianSpaces(salaryMatch[0]);
+        } else {
+          parsedSalary = cleanPersianSpaces(leftPart.split(/\s{2,}/).pop() || '');
+        }
+      }
+    }
+  }
+
+  let relevantExperience = 'exp_red';
+  if (parsedExperience) {
+    const yearMatch = parsedExperience.match(/(\d+)\s*سال/);
+    const monthMatch = parsedExperience.match(/(\d+)\s*ماه/);
+    let totalMonths = 0;
+    if (yearMatch) totalMonths += parseInt(yearMatch[1], 10) * 12;
+    if (monthMatch) totalMonths += parseInt(monthMatch[1], 10);
+    if (totalMonths > 36) {
+      relevantExperience = 'exp_green';
+    } else if (totalMonths >= 12) {
+      relevantExperience = 'exp_yellow';
+    }
+  }
+
+  let requestedSalary = parsedSalary;
+  if (!requestedSalary) {
+    const salaryRegex = /حقوق\s*:\s*([\s\S]*?)(?:تومان|توم\s*ان|ریال)/;
+    const salaryMatch = normText.match(salaryRegex);
+    if (salaryMatch) {
+      const cleanSalary = salaryMatch[1].replace(/\s+/g, ' ').trim();
+      requestedSalary = `${cleanSalary} تومان`;
+    }
+  }
+
+  return {
+    name,
+    email,
+    phone,
+    jobHopping,
+    relevantExperience,
+    requestedSalary
+  };
+}
+
+// POST /api/files/bulk-upload-resumes - Bulk upload and parse resumes
+router.post('/bulk-upload-resumes', upload.array('resumes'), async (req, res) => {
+  try {
+    const files = req.files as Express.Multer.File[];
+    if (!files || files.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'هیچ فایلی ارسال نشده است'
+      });
+    }
+
+    const addedCandidates: any[] = [];
+    const skippedCandidates: any[] = [];
+    const errors: any[] = [];
+
+    // Get company profile for job position matching
+    const companyProfile = await prisma.companyProfile.findFirst({
+      include: { jobPositions: true }
+    });
+
+    for (const file of files) {
+      try {
+        // 1. Extract text using pdftotext
+        let rawText = '';
+        let rawLayoutText = '';
+        try {
+          rawText = execSync(`pdftotext "${file.path}" -`, { encoding: 'utf-8' });
+          rawLayoutText = execSync(`pdftotext -layout "${file.path}" -`, { encoding: 'utf-8' });
+        } catch (err: any) {
+          console.error('pdftotext error during bulk:', err);
+          if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+          errors.push({
+            filename: file.originalname,
+            error: 'خطا در استخراج متن فایل PDF'
+          });
+          continue;
+        }
+
+        // 2. Parse text
+        const defaultName = path.basename(file.originalname, path.extname(file.originalname));
+        const parsed = parseResumeData(rawText, rawLayoutText, defaultName);
+
+        const cleanName = parsed.name ? parsed.name.replace(/\s+/g, ' ').trim() : '';
+        const cleanEmail = parsed.email ? parsed.email.replace(/\s+/g, '').trim().toLowerCase() : '';
+        const cleanPhone = parsed.phone ? parsed.phone.replace(/\s+/g, '').trim() : '';
+
+        // 3. Duplicate check
+        let isDuplicate = false;
+        let duplicateReason = '';
+
+        if (cleanEmail) {
+          const existingByEmail = await prisma.candidate.findFirst({
+            where: { email: cleanEmail }
+          });
+          if (existingByEmail) {
+            isDuplicate = true;
+            duplicateReason = `متقاضی با ایمیل ${cleanEmail} از قبل وجود دارد`;
+          }
+        }
+
+        if (!isDuplicate && cleanPhone) {
+          const existingByPhone = await prisma.candidate.findFirst({
+            where: { phone: cleanPhone }
+          });
+          if (existingByPhone) {
+            isDuplicate = true;
+            duplicateReason = `متقاضی با شماره تلفن ${cleanPhone} از قبل وجود دارد`;
+          }
+        }
+
+        if (isDuplicate) {
+          if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+          skippedCandidates.push({
+            filename: file.originalname,
+            name: cleanName,
+            reason: duplicateReason
+          });
+          continue;
+        }
+
+        // 4. Job position matching
+        let position = 'ثبت‌نشده';
+        if (companyProfile && companyProfile.jobPositions && companyProfile.jobPositions.length > 0) {
+          const textLower = rawText.toLowerCase();
+          const matchedJob = companyProfile.jobPositions.find(job => 
+            textLower.includes(job.title.toLowerCase())
+          );
+          if (matchedJob) {
+            position = matchedJob.title;
+          } else {
+            position = companyProfile.jobPositions[0].title;
+          }
+        }
+
+        // 5. Create Candidate
+        // Default evaluation
+        const initialEvaluation = {
+          jobHopping: parsed.jobHopping,
+          relevantExperience: parsed.relevantExperience,
+          requestedSalary: parsed.requestedSalary,
+          resumeAccuracy: 'متوسط',
+          phoneEnergy: 0,
+          phoneRoutine: '',
+          phoneScenario: '',
+          requestedSalaryNum: '',
+          phoneResult: '',
+          discDominant: [],
+          supportFit: '',
+          starHonesty: 0,
+          starHonestyExample: '',
+          starStress: 0,
+          starTeamwork: 0,
+          rolePlayAccuracy: '',
+          rolePlaySpeed: '',
+          referenceCheck: '',
+          finalDecision: '',
+          finalNotes: '',
+          evaluatorName: (req as any).user.name,
+          updatedAt: new Date().toISOString()
+        };
+
+        const candidate = await prisma.candidate.create({
+          data: {
+            name: cleanName,
+            email: cleanEmail || `${Date.now()}@example.com`,
+            phone: cleanPhone || '09000000000',
+            position,
+            stage: 'inbox', // Stage 1 (Inbox)
+            source: 'آپلود گروهی رزومه',
+            rating: 0,
+            hasResume: true,
+            evaluation: JSON.stringify(initialEvaluation),
+            userId: (req as any).user.userId,
+            comments: {
+              create: [
+                {
+                  text: 'این متقاضی از طریق آپلود گروهی رزومه به سیستم اضافه شد.',
+                  userId: (req as any).user.userId
+                }
+              ]
+            },
+            history: {
+              create: [
+                {
+                  action: 'ثبت متقاضی از طریق آپلود گروهی رزومه',
+                  details: 'اطلاعات اولیه با استخراج متن رزومه تکمیل شد.',
+                  userId: (req as any).user.userId
+                }
+              ]
+            }
+          }
+        });
+
+        // 6. Link ResumeFile
+        await prisma.resumeFile.create({
+          data: {
+            filename: file.filename,
+            originalName: file.originalname,
+            mimeType: file.mimetype,
+            size: file.size,
+            path: file.path,
+            candidateId: candidate.id
+          }
+        });
+
+        addedCandidates.push({
+          id: candidate.id,
+          name: candidate.name,
+          email: candidate.email,
+          phone: candidate.phone,
+          position: candidate.position
+        });
+
+      } catch (err: any) {
+        console.error('Error importing single resume:', err);
+        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+        errors.push({
+          filename: file.originalname,
+          error: err.message || 'خطای غیرمنتظره در ثبت متقاضی'
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      addedCount: addedCandidates.length,
+      addedCandidates,
+      skippedCandidates,
+      errors
+    });
+
+  } catch (error: any) {
+    console.error('Bulk upload resumes error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'خطا در پردازش گروهی رزومه‌ها'
     });
   }
 });

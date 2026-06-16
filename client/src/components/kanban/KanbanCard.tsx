@@ -5,6 +5,7 @@ import StarRating from '../ui/StarRating';
 import { getJobColor } from '../../utils/colorUtils';
 import { WhatsappIcon } from '../ui/Icons';
 import moment from 'moment-jalaali';
+import { useSettings } from '../../contexts/SettingsContext';
 
 declare const persianDate: any;
 
@@ -40,7 +41,22 @@ const formatWhatsAppNumber = (phone: string): string => {
   return cleaned;
 };
 
+const statusClasses: Record<string, string> = {
+  pending: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+  passed: 'bg-green-50 text-green-700 border-green-200',
+  failed: 'bg-red-50 text-red-700 border-red-200',
+  review: 'bg-blue-50 text-blue-700 border-blue-200',
+};
+
+const statusText: Record<string, string> = {
+  pending: 'در انتظار',
+  passed: 'قبول',
+  failed: 'مردود',
+  review: 'نیاز به بررسی',
+};
+
 const KanbanCard: React.FC<KanbanCardProps> = ({ candidate, onViewDetails, onEdit }) => {
+  const { testLibrary } = useSettings();
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: candidate.id,
     data: { candidate },
@@ -147,6 +163,27 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ candidate, onViewDetails, onEdi
           </a>
         )}
       </div>
+
+      {/* Test results badges */}
+      {candidate.testResults && candidate.testResults.some((tr: any) => tr.status !== 'not_sent') && (
+        <div className="flex flex-wrap gap-1 mt-1 mb-2">
+          {candidate.testResults.map((tr: any) => {
+            const testItem = testLibrary.find((t: any) => t.id === tr.testId);
+            if (!testItem || tr.status === 'not_sent') return null;
+            return (
+              <span 
+                key={tr.testId} 
+                className={`text-[9px] px-1.5 py-0.5 rounded border font-semibold flex items-center gap-1 ${statusClasses[tr.status] || ''}`}
+                title={`${testItem.name}: ${statusText[tr.status]}`}
+              >
+                <span>{testItem.name}</span>
+                <span>({statusText[tr.status]})</span>
+                {tr.file && <span title="دارای فایل پاسخ">📄</span>}
+              </span>
+            );
+          })}
+        </div>
+      )}
 
       {/* Bottom: Rating + Interview date */}
       <div className="flex items-center justify-between">

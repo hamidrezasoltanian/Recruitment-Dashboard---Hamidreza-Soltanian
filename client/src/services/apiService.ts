@@ -73,6 +73,25 @@ class ApiService {
     return response.data!;
   }
 
+  async getUsers(): Promise<User[]> {
+    const response = await this.request<User[]>('/auth/users');
+    return response.data!;
+  }
+
+  async updateUser(username: string, userData: any): Promise<User> {
+    const response = await this.request<User>(`/auth/users/${username}`, {
+      method: 'PUT',
+      body: JSON.stringify(userData),
+    });
+    return response.data!;
+  }
+
+  async deleteUser(username: string): Promise<void> {
+    await this.request(`/auth/users/${username}`, {
+      method: 'DELETE',
+    });
+  }
+
   async getProfile(): Promise<User> {
     const response = await this.request<User>('/auth/profile');
     return response.data!;
@@ -433,6 +452,49 @@ class ApiService {
     await this.request(`/files/test/${candidateId}/${testId}`, {
       method: 'DELETE',
     });
+  }
+
+  async analyzeTempResume(file: File): Promise<any> {
+    const formData = new FormData();
+    formData.append('resume', file);
+
+    const response = await fetch(`${API_BASE_URL}/files/analyze-temp`, {
+      method: 'POST',
+      headers: {
+        ...(this.token && { Authorization: `Bearer ${this.token}` }),
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'خطا در آنالیز فایل رزومه');
+    }
+
+    const resJson = await response.json();
+    return resJson.data;
+  }
+
+  async bulkUploadResumes(files: File[]): Promise<any> {
+    const formData = new FormData();
+    files.forEach(file => {
+      formData.append('resumes', file);
+    });
+
+    const response = await fetch(`${API_BASE_URL}/files/bulk-upload-resumes`, {
+      method: 'POST',
+      headers: {
+        ...(this.token && { Authorization: `Bearer ${this.token}` }),
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'خطا در آپلود گروهی رزومه‌ها');
+    }
+
+    return response.json();
   }
 }
 

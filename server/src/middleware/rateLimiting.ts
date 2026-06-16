@@ -15,7 +15,7 @@ export const generalLimiter = rateLimit({
 // Auth rate limiting (stricter)
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 requests per windowMs
+  max: 60, // limit each IP to 60 requests per windowMs (safe for team environment)
   message: {
     success: false,
     error: 'Too many authentication attempts, please try again later.',
@@ -27,7 +27,7 @@ export const authLimiter = rateLimit({
 // File upload rate limiting
 export const uploadLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 10, // limit each IP to 10 uploads per minute
+  max: 100, // limit each IP to 100 uploads per minute
   message: {
     success: false,
     error: 'Too many file uploads, please try again later.',
@@ -39,7 +39,7 @@ export const uploadLimiter = rateLimit({
 // Candidate operations rate limiting
 export const candidateLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 50, // limit each IP to 50 candidate operations per 5 minutes
+  max: 200, // limit each IP to 200 candidate operations per 5 minutes
   message: {
     success: false,
     error: 'Too many candidate operations, please try again later.',
@@ -51,7 +51,7 @@ export const candidateLimiter = rateLimit({
 // Comment operations rate limiting
 export const commentLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 30, // limit each IP to 30 comment operations per 5 minutes
+  max: 100, // limit each IP to 100 comment operations per 5 minutes
   message: {
     success: false,
     error: 'Too many comment operations, please try again later.',
@@ -63,7 +63,7 @@ export const commentLimiter = rateLimit({
 // Analytics rate limiting
 export const analyticsLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 20, // limit each IP to 20 analytics requests per minute
+  max: 100, // limit each IP to 100 analytics requests per minute
   message: {
     success: false,
     error: 'Too many analytics requests, please try again later.',
@@ -75,7 +75,7 @@ export const analyticsLimiter = rateLimit({
 // Monitoring rate limiting
 export const monitoringLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 10, // limit each IP to 10 monitoring requests per minute
+  max: 100, // limit each IP to 100 monitoring requests per minute
   message: {
     success: false,
     error: 'Too many monitoring requests, please try again later.',
@@ -87,7 +87,7 @@ export const monitoringLimiter = rateLimit({
 // Admin operations rate limiting
 export const adminLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 20, // limit each IP to 20 admin operations per 5 minutes
+  max: 100, // limit each IP to 100 admin operations per 5 minutes
   message: {
     success: false,
     error: 'Too many admin operations, please try again later.',
@@ -114,7 +114,8 @@ export const createRedisLimiter = (options: {
 export const applyRateLimit = (app: any) => {
   if (app && typeof app.use === 'function') {
     app.use(generalLimiter);
-    app.use('/api/auth', authLimiter);
+    app.use('/api/auth/login', authLimiter);
+    app.use('/api/auth/register', authLimiter);
     app.use('/api/files', uploadLimiter);
     app.use('/api/candidates', candidateLimiter);
     app.use('/api/comments', commentLimiter);

@@ -107,8 +107,13 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
   };
 
   const deleteStage = async (id: string) => {
+    const originalStages = [...stages];
     setStages(prev => prev.filter(s => s.id !== id));
-    apiService.deleteStage(id).catch(() => {});
+    try {
+      await apiService.deleteStage(id);
+    } catch (error) {
+      setStages(originalStages);
+    }
   };
 
   const updateCompanyProfile = async (profile: Partial<CompanyProfile>) => {

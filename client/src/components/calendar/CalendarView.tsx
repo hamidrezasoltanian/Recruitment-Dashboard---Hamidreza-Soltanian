@@ -17,7 +17,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ onViewDetails }) => {
   const [currentDate, setCurrentDate] = useState(() => new Date());
 
   const candidatesWithInterview = useMemo(() => 
-    candidates.filter(c => c.interviewDate && (c.stage.includes('interview') || c.stage === 'hired')),
+    candidates.filter(c => c.interviewDate),
     [candidates]
   );
 
@@ -58,19 +58,18 @@ const CalendarView: React.FC<CalendarViewProps> = ({ onViewDetails }) => {
         if (!c.interviewDate) return false;
         
         try {
-          // Convert Persian date to Gregorian using moment-jalaali
-          const persianDateStr = `${monthData.year}/${String(monthData.month).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
-          const persianMoment = moment(persianDateStr, 'jYYYY/jMM/jDD');
-          const gregorianDateStr = persianMoment.format('YYYY-MM-DD');
-          
-          // Compare with stored date (which is in Gregorian format)
-          return c.interviewDate === gregorianDateStr;
+          const storedMoment = moment(c.interviewDate, ['YYYY/MM/DD', 'YYYY-MM-DD'] as any);
+          if (!storedMoment.isValid()) return false;
+
+          const targetPersianStr = `${monthData.year}/${monthData.month}/${day}`;
+          const targetMoment = moment(targetPersianStr, 'jYYYY/jMM/jDD');
+
+          return storedMoment.isSame(targetMoment, 'day');
         } catch (e) {
           console.error('Error comparing dates:', e);
           return false;
         }
       }).sort((a, b) => {
-        // Sort by interview time, putting candidates without a time at the end
         if (a.interviewTime && b.interviewTime) {
           return a.interviewTime.localeCompare(b.interviewTime);
         }

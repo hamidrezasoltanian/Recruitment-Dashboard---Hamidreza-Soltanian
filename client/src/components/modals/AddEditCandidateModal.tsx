@@ -6,6 +6,7 @@ import StarRating from '../ui/StarRating';
 import { useSettings } from '../../contexts/SettingsContext';
 import KamaDatePicker from '../ui/KamaDatePicker';
 import { parseJobVisionProfile } from '../../utils/profileParser';
+import { apiService } from '../../services/apiService';
 
 interface AddEditCandidateModalProps {
   isOpen: boolean;
@@ -34,6 +35,8 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState('');
   const [importMsg, setImportMsg] = useState('');
+  const [evaluation, setEvaluation] = useState<string | undefined>();
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const AUTO_SAVE_KEY = 'candidate_form_draft';
   const AUTO_SAVE_INTERVAL = 2000; // 2 seconds
@@ -111,6 +114,7 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
       setRating(candidateToEdit.rating);
       setInterviewDate(candidateToEdit.interviewDate || '');
       setInterviewTime(candidateToEdit.interviewTime || '');
+      setEvaluation(candidateToEdit.evaluation || undefined);
       // Clear draft when editing existing candidate
       localStorage.removeItem(AUTO_SAVE_KEY);
     } else {
@@ -123,6 +127,7 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
       setRating(0);
       setInterviewDate('');
       setInterviewTime('');
+      setEvaluation(undefined);
     }
     setResumeFile(undefined);
     if (resumeInputRef.current) {
@@ -142,6 +147,7 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
       interviewDate: interviewDate || undefined,
       interviewTime: interviewTime || undefined,
       hasResume: !!resumeFile || candidateToEdit?.hasResume,
+      evaluation: evaluation,
     };
     // Clear draft after successful save
     localStorage.removeItem(AUTO_SAVE_KEY);
@@ -149,9 +155,60 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
     onClose();
   };
   
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
       if (e.target.files && e.target.files[0]) {
-          setResumeFile(e.target.files[0]);
+          const file = e.target.files[0];
+          setResumeFile(file);
+          
+          setIsAnalyzing(true);
+          try {
+              const data = await apiService.analyzeTempResume(file);
+              
+              if (data.name) setName(data.name);
+              if (data.email) setEmail(data.email);
+              if (data.phone) setPhone(data.phone);
+              
+              if (data.name) {
+                  setSource('جاب ویژن');
+              }
+              
+              const initialEvalAnswers = {
+                  jobHopping: data.jobHopping || '',
+                  relevantExperience: data.relevantExperience || '',
+                  resumeAccuracy: 'عالی',
+                  requestedSalary: data.requestedSalary || '',
+                  phoneEnergy: 0,
+                  phoneRoutine: '',
+                  phoneScenario: '',
+                  phoneResult: '',
+                  discDominant: [],
+                  supportFit: '',
+                  starHonesty: 0,
+                  starHonestyExample: '',
+                  starStress: 0,
+                  starTeamwork: 0,
+                  rolePlayAccuracy: '',
+                  rolePlaySpeed: '',
+                  referenceCheck: '',
+                  finalDecision: '',
+                  finalNotes: ''
+              };
+              
+              const newEval = {
+                  evaluatorName: 'سیستم (آنالیز خودکار)',
+                  evaluatorUsername: 'system',
+                  candidateName: data.name || 'متقاضی جدید',
+                  updatedAt: new Date().toISOString(),
+                  answers: initialEvalAnswers
+              };
+              
+              setEvaluation(JSON.stringify(newEval));
+          } catch (err: any) {
+              console.error(err);
+              alert('خطا در آنالیز رزومه: ' + (err.message || 'خطای نامشخص'));
+          } finally {
+              setIsAnalyzing(false);
+          }
       }
   };
 
@@ -272,7 +329,8 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
            </div>
            <div>
               <label className="block text-sm font-medium text-gray-700">رزومه</label>
-              <input ref={resumeInputRef} type="file" onChange={handleFileChange} accept=".pdf,.doc,.docx" className="mt-1 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[var(--color-primary-50)] file:text-[var(--color-primary-700)] hover:file:bg-[var(--color-primary-100)]"/>
+              <input ref={resumeInputRef} type="file" onChange={handleFileChange} accept=".pdf,.doc,.docx" disabled={isAnalyzing} className="mt-1 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[var(--color-primary-50)] file:text-[var(--color-primary-700)] hover:file:bg-[var(--color-primary-100)] disabled:opacity-50"/>
+              {isAnalyzing && <p className="text-xs text-blue-600 mt-1 animate-pulse">در حال آنالیز رزومه و استخراج هوشمند اطلاعات...</p>}
               {candidateToEdit?.hasResume && !resumeFile && <p className="text-xs text-green-600 mt-1">رزومه قبلا آپلود شده است.</p>}
            </div>
            <div>
@@ -281,12 +339,14 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
            </div>
         </div>
         <div className="flex justify-end gap-4 pt-4">
-          <button type="button" onClick={() => {
+          <button type="button" disabled={isAnalyzing} onClick={() => {
             // Clear draft when canceling
             localStorage.removeItem(AUTO_SAVE_KEY);
             onClose();
-          }} className="bg-gray-200 text-gray-800 py-2 px-6 rounded-lg hover:bg-gray-300 transition-colors">انصراف</button>
-          <button type="submit" className="bg-[var(--color-primary-600)] text-white py-2 px-6 rounded-lg hover:bg-[var(--color-primary-700)] transition-colors">ذخیره</button>
+          }} className="bg-gray-200 text-gray-800 py-2 px-6 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50">انصراف</button>
+          <button type="submit" disabled={isAnalyzing} className="bg-[var(--color-primary-600)] text-white py-2 px-6 rounded-lg hover:bg-[var(--color-primary-700)] transition-colors disabled:opacity-50">
+             {isAnalyzing ? 'در حال پردازش...' : 'ذخیره'}
+          </button>
         </div>
       </form>
     </Modal>

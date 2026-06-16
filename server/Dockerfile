@@ -34,9 +34,9 @@ USER nodejs
 # Expose port
 EXPOSE 3002
 
-# Health check using netcat (available in Alpine BusyBox)
+# Health check using wget (available in Alpine BusyBox)
 HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=5 \
-  CMD nc -z localhost 3002 || exit 1
+  CMD wget -q --spider http://127.0.0.1:3002/ || exit 1
 
 # Run migrations then seed then start server
 CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node dist/seed.js 2>/dev/null; npm start"]

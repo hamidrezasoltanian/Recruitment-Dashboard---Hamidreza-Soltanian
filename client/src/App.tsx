@@ -19,6 +19,7 @@ import KanbanControls from './components/kanban/KanbanControls';
 import CommunicationModal from './components/modals/CommunicationModal';
 import ResumeViewerModal from './components/modals/ResumeViewerModal';
 import BulkCommunicationModal from './components/modals/BulkCommunicationModal';
+import BulkUploadModal from './components/modals/BulkUploadModal';
 
 const App: React.FC = () => {
   const { user } = useAuth();
@@ -34,6 +35,7 @@ const App: React.FC = () => {
   const [candidateToViewId, setCandidateToViewId] = useState<string | null>(null);
 
   const [isSettingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [isBulkUploadModalOpen, setBulkUploadModalOpen] = useState(false);
   
   const [stageChangeInfo, setStageChangeInfo] = useState<StageChangeInfo | null>(null);
 
@@ -205,6 +207,7 @@ const App: React.FC = () => {
         <Header 
           onSettingsClick={() => setSettingsModalOpen(true)} 
           onAddCandidateClick={() => handleOpenAddModal()}
+          onBulkUploadClick={() => setBulkUploadModalOpen(true)}
           onOpenBulkCommModal={handleOpenBulkCommModal}
         />
         <Tabs activeView={activeView} setActiveView={handleViewChange} />
@@ -237,7 +240,7 @@ const App: React.FC = () => {
         onOpenCommunicationModal={handleOpenCommunicationModal}
         onViewResume={handleOpenResumeViewer}
       />
-      {user?.isAdmin && (
+      {user && (
         <SettingsModal 
             isOpen={isSettingsModalOpen}
             onClose={() => setSettingsModalOpen(false)}
@@ -267,6 +270,10 @@ const App: React.FC = () => {
         isOpen={bulkCommConfig.isOpen}
         onClose={() => setBulkCommConfig({ isOpen: false, candidates: [] })}
         candidates={bulkCommConfig.candidates}
+      />
+      <BulkUploadModal
+        isOpen={isBulkUploadModalOpen}
+        onClose={() => setBulkUploadModalOpen(false)}
       />
     </>
   );

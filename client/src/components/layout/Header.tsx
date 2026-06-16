@@ -13,6 +13,7 @@ declare const persianDate: any;
 interface HeaderProps {
     onSettingsClick: () => void;
     onAddCandidateClick: () => void;
+    onBulkUploadClick: () => void;
     onOpenBulkCommModal: (candidates: Candidate[]) => void;
 }
 
@@ -26,7 +27,7 @@ const IconBtn: React.FC<{ onClick: () => void; title: string; children: React.Re
   </button>
 );
 
-const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick, onOpenBulkCommModal }) => {
+const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick, onBulkUploadClick, onOpenBulkCommModal }) => {
   const { user, logout, users, restoreUsers } = useAuth();
   const { candidates, setCandidates } = useCandidates();
   const { addToast } = useToast();
@@ -146,6 +147,15 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick, o
             </svg>
             <span>افزودن</span>
           </button>
+          <button
+            onClick={onBulkUploadClick}
+            className="flex items-center gap-2 bg-white/20 text-white hover:bg-white/30 text-sm font-bold py-2 px-4 rounded-xl transition-all duration-200 shadow-sm"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+            </svg>
+            <span>آپلود گروهی</span>
+          </button>
         </div>
 
         {/* Center: Action icon buttons */}
@@ -178,7 +188,7 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick, o
               <span className="text-sm text-white/80 hidden md:block font-medium">{user.name}</span>
             </div>
           )}
-          {user?.isAdmin && (
+          {user && (
             <IconBtn onClick={onSettingsClick} title="تنظیمات">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />

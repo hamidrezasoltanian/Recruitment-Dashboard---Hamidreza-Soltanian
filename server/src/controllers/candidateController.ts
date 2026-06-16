@@ -5,8 +5,20 @@ import { ApiResponse, Candidate } from '../types';
 import { AuthRequest } from '../middleware/auth';
 import { execSync } from 'child_process';
 import fs from 'fs';
+import { emailService } from '../services/emailService';
 
 const prisma = new PrismaClient();
+
+const mapCandidate = (candidate: any) => {
+  if (!candidate) return candidate;
+  return {
+    ...candidate,
+    testResults: candidate.testResults?.map((tr: any) => ({
+      ...tr,
+      file: tr.originalName ? { name: tr.originalName, type: tr.mimeType } : undefined
+    }))
+  };
+};
 
 export const getAllCandidates = async (req: AuthRequest, res: Response) => {
   try {
@@ -84,7 +96,7 @@ export const getAllCandidates = async (req: AuthRequest, res: Response) => {
 
     res.json({
       success: true,
-      data: candidates
+      data: candidates.map(mapCandidate)
     });
   } catch (error) {
     console.error('Get candidates error:', error);
@@ -151,7 +163,7 @@ export const getCandidateById = async (req: AuthRequest, res: Response) => {
 
     res.json({
       success: true,
-      data: candidate
+      data: mapCandidate(candidate)
     });
   } catch (error) {
     console.error('Get candidate error:', error);
@@ -188,11 +200,39 @@ export const createCandidate = async (req: AuthRequest, res: Response) => {
       evaluation
     } = req.body;
 
+    const cleanName = name ? name.replace(/\s+/g, ' ').trim() : '';
+    const cleanEmail = email ? email.replace(/\s+/g, '').trim().toLowerCase() : '';
+    const cleanPhone = phone ? phone.replace(/\s+/g, '').trim() : '';
+
+    if (cleanEmail) {
+      const existingByEmail = await prisma.candidate.findFirst({
+        where: { email: cleanEmail }
+      });
+      if (existingByEmail) {
+        return res.status(400).json({
+          success: false,
+          error: `متقاضی با ایمیل ${cleanEmail} از قبل در سیستم وجود دارد.`
+        });
+      }
+    }
+
+    if (cleanPhone) {
+      const existingByPhone = await prisma.candidate.findFirst({
+        where: { phone: cleanPhone }
+      });
+      if (existingByPhone) {
+        return res.status(400).json({
+          success: false,
+          error: `متقاضی با شماره تلفن ${cleanPhone} از قبل در سیستم وجود دارد.`
+        });
+      }
+    }
+
     const candidate = await prisma.candidate.create({
       data: {
-        name,
-        email,
-        phone,
+        name: cleanName,
+        email: cleanEmail,
+        phone: cleanPhone,
         position,
         stage,
         source,
@@ -239,7 +279,7 @@ export const createCandidate = async (req: AuthRequest, res: Response) => {
 
     res.status(201).json({
       success: true,
-      data: candidate,
+      data: mapCandidate(candidate),
       message: 'متقاضی با موفقیت ایجاد شد'
     });
   } catch (error) {
@@ -278,16 +318,126 @@ export const updateCandidate = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // Process testResults if provided
+    if (updateData.testResults && Array.isArray(updateData.testResults)) {
+      for (const resItem of updateData.testResults) {
+        const existingResult = await prisma.testResult.findFirst({
+          where: {
+            candidateId: id,
+            testId: resItem.testId
+          }
+        });
+        
+        let shouldSendEmail = false;
+
+        if (existingResult) {
+          if (resItem.status === 'pending' && existingResult.status !== 'pending') {
+            shouldSendEmail = true;
+          }
+          await prisma.testResult.update({
+            where: { id: existingResult.id },
+            data: {
+              status: resItem.status,
+              score: resItem.score !== undefined ? resItem.score : undefined,
+              notes: resItem.notes !== undefined ? resItem.notes : undefined,
+              sentDate: resItem.sentDate ? new Date(resItem.sentDate) : undefined,
+              deadlineHours: resItem.deadlineHours !== undefined ? resItem.deadlineHours : undefined
+            }
+          });
+        } else {
+          if (resItem.status === 'pending') {
+            shouldSendEmail = true;
+          }
+          await prisma.testResult.create({
+            data: {
+              candidateId: id,
+              testId: resItem.testId,
+              status: resItem.status || 'not_sent',
+              score: resItem.score,
+              notes: resItem.notes,
+              sentDate: resItem.sentDate ? new Date(resItem.sentDate) : undefined,
+              deadlineHours: resItem.deadlineHours
+            }
+          });
+        }
+
+        if (shouldSendEmail) {
+          try {
+            const candidateObj = await prisma.candidate.findUnique({ where: { id } });
+            const testObj = await prisma.testLibraryItem.findUnique({ where: { id: resItem.testId } });
+            
+            if (candidateObj && candidateObj.email && testObj) {
+              const company = await prisma.companyProfile.findFirst() || { name: 'شرکت ما', website: '' };
+              
+              const subject = `دعوت به آزمون ${testObj.name} - ${candidateObj.name}`;
+              const htmlContent = `
+                <div dir="rtl" style="font-family: Tahoma, Arial, sans-serif; padding: 20px; line-height: 1.6; color: #333;">
+                  <h2>سلام ${candidateObj.name} عزیز،</h2>
+                  <p>امیدواریم حال شما عالی باشد.</p>
+                  <p>برای ادامه فرآیند ارزیابی موقعیت شغلی «<strong>${candidateObj.position}</strong>»، از شما دعوت می‌شود تا آزمون زیر را تکمیل نمایید:</p>
+                  <div style="background-color: #f5f5f5; border-right: 4px solid #007bff; padding: 15px; margin: 20px 0;">
+                    <strong>عنوان آزمون:</strong> ${testObj.name}<br/>
+                    <strong>لینک آزمون:</strong> <a href="${testObj.url}" target="_blank" style="color: #007bff; text-decoration: underline;">شروع آزمون</a>
+                  </div>
+                  <p>لطفاً پس از اتمام آزمون، پاسخ یا گزارش نهایی را از طریق بارگذاری فایل در بخش متقاضی یا ارتباط با کارشناس منابع انسانی برای ما ارسال کنید.</p>
+                  <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"/>
+                  <p style="font-size: 12px; color: #777;">با احترام،<br/>تیم استخدام ${company.name}</p>
+                </div>
+              `;
+              
+              await emailService.sendEmail({
+                to: candidateObj.email,
+                subject,
+                content: `دعوت به آزمون ${testObj.name}. لطفا وارد لینک زیر شوید:\n${testObj.url}`,
+                html: htmlContent
+              });
+              console.log(`Test email successfully sent to ${candidateObj.email} for test ${testObj.name}`);
+            }
+          } catch (emailErr) {
+            console.error('Failed to send test email:', emailErr);
+          }
+        }
+      }
+    }
+
     // Only update scalar fields - exclude relations and computed fields
     const { name, email, phone, position, source, stage, rating,
             interviewDate, interviewTime, interviewTimeChanged, hasResume, evaluation } = updateData;
 
+    const cleanName = name !== undefined ? name.replace(/\s+/g, ' ').trim() : undefined;
+    const cleanEmail = email !== undefined ? email.replace(/\s+/g, '').trim().toLowerCase() : undefined;
+    const cleanPhone = phone !== undefined ? phone.replace(/\s+/g, '').trim() : undefined;
+
+    if (cleanEmail) {
+      const existingByEmail = await prisma.candidate.findFirst({
+        where: { email: cleanEmail, id: { not: id } }
+      });
+      if (existingByEmail) {
+        return res.status(400).json({
+          success: false,
+          error: `متقاضی دیگری با ایمیل ${cleanEmail} از قبل وجود دارد.`
+        });
+      }
+    }
+
+    if (cleanPhone) {
+      const existingByPhone = await prisma.candidate.findFirst({
+        where: { phone: cleanPhone, id: { not: id } }
+      });
+      if (existingByPhone) {
+        return res.status(400).json({
+          success: false,
+          error: `متقاضی دیگری با شماره تلفن ${cleanPhone} از قبل وجود دارد.`
+        });
+      }
+    }
+
     const candidate = await prisma.candidate.update({
       where: { id },
       data: {
-        ...(name !== undefined && { name }),
-        ...(email !== undefined && { email }),
-        ...(phone !== undefined && { phone }),
+        ...(cleanName !== undefined && { name: cleanName }),
+        ...(cleanEmail !== undefined && { email: cleanEmail }),
+        ...(cleanPhone !== undefined && { phone: cleanPhone }),
         ...(position !== undefined && { position }),
         ...(source !== undefined && { source }),
         ...(stage !== undefined && { stage }),
@@ -351,7 +501,7 @@ export const updateCandidate = async (req: AuthRequest, res: Response) => {
 
     res.json({
       success: true,
-      data: candidate,
+      data: mapCandidate(candidate),
       message: 'اطلاعات متقاضی با موفقیت به‌روزرسانی شد'
     });
   } catch (error) {
@@ -457,7 +607,7 @@ export const updateCandidateStage = async (req: AuthRequest, res: Response) => {
 
     res.json({
       success: true,
-      data: candidate,
+      data: mapCandidate(candidate),
       message: `مرحله به ${newStage} تغییر کرد`
     });
   } catch (error) {
@@ -511,8 +661,10 @@ export const analyzeResume = async (req: AuthRequest, res: Response) => {
 
     // 2. Extract Text using pdftotext
     let rawText = '';
+    let rawLayoutText = '';
     try {
       rawText = execSync(`pdftotext "${resumeFile.path}" -`, { encoding: 'utf-8' });
+      rawLayoutText = execSync(`pdftotext -layout "${resumeFile.path}" -`, { encoding: 'utf-8' });
     } catch (err: any) {
       console.error('pdftotext error:', err);
       return res.status(500).json({
@@ -524,6 +676,148 @@ export const analyzeResume = async (req: AuthRequest, res: Response) => {
     // 3. Normalize Persian Text
     let text = rawText.normalize('NFKC');
     text = text.replace(/[\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '');
+
+    let layoutText = rawLayoutText.normalize('NFKC');
+    layoutText = layoutText.replace(/[\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '');
+    // Helper to clean Persian spaces
+    const cleanPersianSpaces = (str: string): string => {
+      let cleaned = str.replace(/\s+/g, ' ').trim();
+      const commonFixes: { [key: string]: string } = {
+        'مه رناز': 'مهرناز',
+        'کا ر': 'کار',
+        'کار شنا': 'کارشنا',
+        'رشناس': 'رشناس',
+        'توم ان': 'تومان',
+        'امو زشی': 'آموزشی',
+        'آمو زش': 'آموزش',
+        'مد ر': 'مدیر',
+        'می زان': 'میزان',
+        'ثب ت': 'ثبت',
+        'م بایل': 'موبایل',
+        'شنا سه': 'شناسه',
+        'کار ری': 'کاربری',
+        'دان شگاه': 'دانشگاه',
+        'آ کادم': 'آکادم',
+        'تکمی ل': 'تکمیل',
+        'ارز یابی': 'ارزیابی',
+        'سوا بق': 'سوابق',
+      };
+      for (const [wrong, right] of Object.entries(commonFixes)) {
+        const regex = new RegExp(wrong, 'g');
+        cleaned = cleaned.replace(regex, right);
+      }
+      return cleaned;
+    };
+
+    // Helper to fix Persian name spacing
+    const fixPersianNameSpacing = (nameStr: string): string => {
+      let cleaned = cleanPersianSpaces(nameStr);
+      let parts = cleaned.split(' ');
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (let i = 0; i < parts.length - 1; i++) {
+          const part1 = parts[i];
+          const part2 = parts[i + 1];
+          const isPart1Single = part1.length === 1;
+          const isPart2Single = part2.length === 1;
+          const nonConnecting = ['ا', 'د', 'ذ', 'ر', 'ز', 'ژ', 'و', 'آ', 'أ', 'إ', 'ؤ'];
+          const lastChar1 = part1.charAt(part1.length - 1);
+          const part1EndsWithConnecting = !nonConnecting.includes(lastChar1) && /[\u0600-\u06FF]/.test(lastChar1);
+          let shouldMerge = false;
+          if (isPart1Single || isPart2Single) {
+            shouldMerge = true;
+          } else if (part1.length <= 2 && part1EndsWithConnecting) {
+            shouldMerge = true;
+          }
+          if (shouldMerge) {
+            parts[i] = part1 + part2;
+            parts.splice(i + 1, 1);
+            changed = true;
+            break;
+          }
+        }
+      }
+      return parts.join(' ').replace(/\s+/g, ' ').trim();
+    };
+
+    // Helper to extract clean name from filename if possible
+    const getNameFromFilename = (filename: string): string => {
+      let cleanName = filename.replace(/\.[^/.]+$/, "");
+      cleanName = cleanName.replace(/[\s_\-]+/g, ' ').trim();
+      cleanName = cleanName.normalize('NFKC');
+      cleanName = cleanName.replace(/[\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '');
+
+      const stopWords = [
+        'resume', 'cv', 'pdf', 'file', 'job', 'applicant', 'candidate', 'senior', 'junior', 'intern', 'developer',
+        'react', 'node', 'frontend', 'backend', 'fullstack', 'python', 'java', 'go', 'engineer', 'manager', 'sales',
+        'رزومه', 'کارجو', 'کاندید', 'همکار', 'متقاضی', 'برنامه نویس', 'برنامه', 'نویس', 'طراح', 'فروش', 'مدیر',
+        'کارشناس', 'پشتیبان', 'طراحی', 'توسعه دهنده', 'توسعه‌دهنده', 'مهندس', 'ارشد', 'جونیور', 'کارآموز', 'جدید',
+        'توسعه', 'دهنده', 'پشتیبانی', 'طراح', 'بازاریاب', 'سایت', 'ایران', 'تهران', 'فارسی', 'انگلیسی', 'ارتباطات',
+        'بین الملل', 'مدیریت', 'بازاریابی', 'کارشناسی', 'ارشد', 'دکتری', 'دیپلم', 'لیسانس', 'فوق لیسانس'
+      ];
+
+      let parts = cleanName.split(' ');
+      parts = parts.filter(part => {
+        const p = part.toLowerCase().trim();
+        if (!p) return false;
+        if (stopWords.includes(p)) return false;
+        if (/^\d+$/.test(p)) return false;
+        return true;
+      });
+
+      if (parts.length === 0) return '';
+      const joined = parts.join(' ');
+      if (/[\u0600-\u06FF]/.test(joined)) {
+        return fixPersianNameSpacing(joined);
+      }
+      return joined.trim();
+    };
+
+
+    // Helper to check placeholders
+    const isPlaceholderOrEmpty = (str: string | null | undefined): boolean => {
+      if (!str) return true;
+      const s = str.trim().toLowerCase();
+      return (
+        s === '' ||
+        s === 'new candidate' ||
+        s === 'متقاضی جدید' ||
+        s === 'ثبت نشده' ||
+        s === 'بدون نام' ||
+        s === 'new' ||
+        s.length <= 2
+      );
+    };
+
+    // Extract Name, Email, Phone
+    const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+    const parsedEmail = emailMatch ? emailMatch[0].trim() : '';
+
+    const phoneMatch = text.match(/09\d{9}/) || text.match(/09\d{2}[-\s]*\d{3}[-\s]*\d{4}/);
+    const parsedPhone = phoneMatch ? phoneMatch[0].replace(/[-\s]/g, '') : '';
+
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    let parsedName = getNameFromFilename(resumeFile.originalName);
+    if (!parsedName) {
+      for (const line of lines) {
+        if (
+          line.length >= 3 &&
+          line.length <= 30 &&
+          !line.includes(':') &&
+          !line.includes('روز') &&
+          !line.includes('رسانی') &&
+          !line.includes('سوابق') &&
+          !line.includes('شناسه') &&
+          !line.includes('کاربری') &&
+          !line.includes('صفحه') &&
+          !/\d/.test(line)
+        ) {
+          parsedName = fixPersianNameSpacing(line);
+          break;
+        }
+      }
+    }
 
     // 4. Parse Job Hopping
     const durationRegex = /(\d+)\s*\)\s*(?:\d+)?\s*(سال|ماه)(?:\s*و\s*(\d+)?\s*ماه)?/g;
@@ -559,30 +853,62 @@ export const analyzeResume = async (req: AuthRequest, res: Response) => {
     }
 
     // 5. Parse Relevant Experience and Requested Salary
-    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-    let foundHeading = false;
-    let totalExperience = '';
-    let parsedSalaryRaw = '';
+    let parsedExperience = '';
+    let parsedSalary = '';
 
-    for (const line of lines) {
-      if (line.includes('می زان سابقه کاری') || line.includes('حقوق و سابقه')) {
-        foundHeading = true;
-      }
-      if (foundHeading) {
-        if (/^\s*\d+\s*(سال|ماه)\s*$/.test(line) && !totalExperience) {
-          totalExperience = line.trim();
+    const layoutLines = layoutText.split('\n');
+    for (const line of layoutLines) {
+      if (line.includes('می زان سابقه کاری') || line.includes('میزان سابقه کاری')) {
+        const expMatch = line.match(/(\d+)\s*(سال|ماه)/);
+        if (expMatch) {
+          parsedExperience = expMatch[0].trim();
         }
-        if ((line.includes('میلیون') || line.includes('توم ان') || line.includes('تومان') || line.includes('توافقی')) 
-            && !line.includes('تا') && !line.includes(')') && !parsedSalaryRaw) {
-          parsedSalaryRaw = line.trim();
+      }
+      if (line.includes('حقوق') && !line.includes('حقوق و سابقه')) {
+        const parts = line.split(/حقوق\s*:/);
+        if (parts.length > 1) {
+          const leftPart = parts[0].trim();
+          const salaryMatch = leftPart.match(/(\d+\s*-\s*\d+\s*میلیون\s*توم\s*ان)|(\d+\s*-\s*\d+\s*میلیون\s*تومان)|(توافقی)/);
+          if (salaryMatch) {
+            parsedSalary = cleanPersianSpaces(salaryMatch[0]);
+          } else {
+            parsedSalary = cleanPersianSpaces(leftPart.split(/\s{2,}/).pop() || '');
+          }
+        }
+      }
+    }
+
+    // Fallbacks if layout mode failed to extract
+    if (!parsedExperience) {
+      let foundHeading = false;
+      for (const line of lines) {
+        if (line.includes('می زان سابقه کاری') || line.includes('حقوق و سابقه')) {
+          foundHeading = true;
+        }
+        if (foundHeading && /^\s*\d+\s*(سال|ماه)\s*$/.test(line)) {
+          parsedExperience = cleanPersianSpaces(line);
+          break;
+        }
+      }
+    }
+
+    if (!parsedSalary) {
+      let foundHeading = false;
+      for (const line of lines) {
+        if (line.includes('می زان سابقه کاری') || line.includes('حقوق و سابقه')) {
+          foundHeading = true;
+        }
+        if (foundHeading && (line.includes('میلیون') || line.includes('تومان') || line.includes('توافقی')) && !line.includes('تا') && !line.includes(')')) {
+          parsedSalary = cleanPersianSpaces(line);
+          break;
         }
       }
     }
 
     let relevantExperience = 'exp_red';
-    if (totalExperience) {
-      const yearMatch = totalExperience.match(/(\d+)\s*سال/);
-      const monthMatch = totalExperience.match(/(\d+)\s*ماه/);
+    if (parsedExperience) {
+      const yearMatch = parsedExperience.match(/(\d+)\s*سال/);
+      const monthMatch = parsedExperience.match(/(\d+)\s*ماه/);
       let totalMonths = 0;
       if (yearMatch) {
         totalMonths += parseInt(yearMatch[1], 10) * 12;
@@ -600,11 +926,8 @@ export const analyzeResume = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    let requestedSalary = '';
-    if (parsedSalaryRaw) {
-      requestedSalary = parsedSalaryRaw;
-    } else {
-      // Fallback
+    let requestedSalary = parsedSalary;
+    if (!requestedSalary) {
       const salaryRegex = /حقوق\s*:\s*([\s\S]*?)(?:تومان|توم\s*ان|ریال)/;
       const salaryMatch = text.match(salaryRegex);
       if (salaryMatch) {
@@ -613,7 +936,7 @@ export const analyzeResume = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // 7. Update Candidate Evaluation Field
+    // 7. Update Candidate Evaluation Field and main fields (name, email, phone) if empty/placeholder
     let currentEval: any = {};
     if (candidate.evaluation) {
       try {
@@ -642,11 +965,26 @@ export const analyzeResume = async (req: AuthRequest, res: Response) => {
       answers: updatedAnswers
     };
 
+    const updateData: any = {
+      evaluation: JSON.stringify(updatedEval)
+    };
+
+    // Update candidate main fields if they are placeholders/empty
+    if (parsedName && isPlaceholderOrEmpty(candidate.name)) {
+      updateData.name = parsedName;
+      updatedEval.candidateName = parsedName; // Sync the evaluation candidate name too
+      updateData.evaluation = JSON.stringify(updatedEval);
+    }
+    if (parsedEmail && (isPlaceholderOrEmpty(candidate.email) || !candidate.email.includes('@'))) {
+      updateData.email = parsedEmail;
+    }
+    if (parsedPhone && (isPlaceholderOrEmpty(candidate.phone) || candidate.phone.length < 10)) {
+      updateData.phone = parsedPhone;
+    }
+
     const updatedCandidate = await prisma.candidate.update({
       where: { id },
-      data: {
-        evaluation: JSON.stringify(updatedEval)
-      },
+      data: updateData,
       include: {
         user: {
           select: {

@@ -27,9 +27,250 @@ interface CandidateDetailsModalProps {
   onViewResume: (file: File) => void;
 }
 
+interface CandidateTestItemProps {
+  candidate: any;
+  test: any;
+  result: any;
+  updateTestResult: (candidateId: string, testId: string, resultData: any) => Promise<void>;
+  addToast: (message: string, type: 'success' | 'error') => void;
+}
+
+const CandidateTestItem: React.FC<CandidateTestItemProps> = ({ candidate, test, result, updateTestResult, addToast }) => {
+  const [status, setStatus] = useState(result?.status || 'not_sent');
+  const [score, setScore] = useState(result?.score || '');
+  const [notes, setNotes] = useState(result?.notes || '');
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  useEffect(() => {
+    setStatus(result?.status || 'not_sent');
+    setScore(result?.score || '');
+    setNotes(result?.notes || '');
+  }, [result]);
+
+  useEffect(() => {
+    const loadPreview = async () => {
+      if (result?.file) {
+        try {
+          const fileBlob = await apiService.downloadTestFile(candidate.id, test.id);
+          if (fileBlob) {
+            setFilePreview(URL.createObjectURL(fileBlob));
+          }
+        } catch (e) {
+          console.error("Failed to load test file preview", e);
+        }
+      } else {
+        setFilePreview(null);
+      }
+    };
+    loadPreview();
+    return () => {
+      if (filePreview) URL.revokeObjectURL(filePreview);
+    };
+  }, [result?.file, candidate.id, test.id]);
+
+  const formatWhatsAppNumber = (phone: string): string => {
+    if (!phone) return '';
+    const cleaned = phone.replace(/[^0-9]/g, '');
+    if (cleaned.startsWith('0')) return '98' + cleaned.substring(1);
+    if (cleaned.startsWith('98')) return cleaned;
+    if (cleaned.length === 10) return '98' + cleaned;
+    return cleaned;
+  };
+
+  const handleSendTest = async (platform: 'email' | 'whatsapp' | 'direct') => {
+    try {
+      if (platform !== 'direct') {
+        const body = `سلام ${candidate.name} عزیز،\nلطفاً آزمون ${test.name} را از طریق لینک زیر تکمیل نمایید:\n${test.url}\n\nبا تشکر`;
+        
+        if (platform === 'email') {
+          window.open(`mailto:${candidate.email}?subject=ارسال آزمون ${test.name}&body=${encodeURIComponent(body)}`, '_blank');
+        } else if (platform === 'whatsapp') {
+          const whatsappNumber = formatWhatsAppNumber(candidate.phone || '');
+          if (whatsappNumber) {
+            const encodedMessage = encodeURIComponent(body);
+            const whatsappUrl1 = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
+            const whatsappUrl2 = `whatsapp://send?phone=${whatsappNumber}&text=${encodedMessage}`;
+            const whatsappUrl3 = `https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${encodedMessage}`;
+            
+            try {
+                window.location.href = whatsappUrl2;
+            } catch (e) {
+                window.open(whatsappUrl1, '_blank');
+            }
+            setTimeout(() => {
+                window.open(whatsappUrl3, '_blank');
+            }, 500);
+          } else {
+            addToast("شماره واتس‌اپ برای این متقاضی ثبت نشده یا نامعتبر است.", "error");
+            return;
+          }
+        }
+      }
+
+      await updateTestResult(candidate.id, test.id, {
+        status: 'pending',
+        sentDate: new Date().toISOString()
+      });
+      addToast(platform === 'direct' ? `وضعیت آزمون ${test.name} به "در انتظار نتیجه" تغییر یافت.` : `آزمون ${test.name} با موفقیت ارسال شد.`, 'success');
+    } catch (err: any) {
+      addToast(err.message || 'خطا در ارسال آزمون.', 'error');
+    }
+  };
+
+  const handleSaveResult = async () => {
+    try {
+      await updateTestResult(candidate.id, test.id, {
+        status,
+        score: score !== '' ? Number(score) : undefined,
+        notes
+      });
+      addToast(`نتایج آزمون ${test.name} با موفقیت ذخیره شد.`, 'success');
+    } catch (err: any) {
+      addToast(err.message || 'خطا در ذخیره نتایج آزمون.', 'error');
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIsUploading(true);
+      try {
+        await apiService.uploadTestFile(candidate.id, test.id, file);
+        await updateTestResult(candidate.id, test.id, {
+          file: { name: file.name, type: file.type },
+          status: 'review'
+        });
+        addToast(`فایل نتیجه با موفقیت آپلود و وضعیت به "نیاز به بررسی" تغییر یافت.`, 'success');
+      } catch (err: any) {
+        addToast('خطا در آپلود فایل آزمون: ' + (err.message || ''), 'error');
+      } finally {
+        setIsUploading(false);
+      }
+    }
+  };
+
+  const statusClasses: Record<string, string> = {
+    not_sent: 'bg-gray-100 text-gray-800 border-gray-300',
+    pending: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+    passed: 'bg-green-100 text-green-800 border-green-300',
+    failed: 'bg-red-100 text-red-800 border-red-300',
+    review: 'bg-blue-100 text-blue-800 border-blue-300',
+  };
+
+  const statusText: Record<string, string> = {
+    not_sent: 'ارسال نشده',
+    pending: 'در انتظار نتیجه',
+    passed: 'قبول',
+    failed: 'مردود',
+    review: 'نیاز به بررسی',
+  };
+
+  return (
+    <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 space-y-4 text-right font-sans" dir="rtl">
+      <div className="flex flex-wrap justify-between items-center gap-4">
+        <div>
+          <h4 className="font-bold text-lg text-gray-800">{test.name}</h4>
+          {test.url && (
+            <a href={test.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1 mt-1">
+              🔗 لینک آزمون: {test.url}
+            </a>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          <span className={`text-xs px-3 py-1.5 rounded-full font-bold border ${statusClasses[status]}`}>
+            {statusText[status]}
+          </span>
+          {status === 'not_sent' && (
+            <div className="flex flex-wrap gap-2">
+              <button 
+                onClick={() => handleSendTest('whatsapp')} 
+                className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition-colors shadow-sm flex items-center gap-1"
+              >
+                <WhatsappIcon className="w-4 h-4" />
+                <span>ارسال واتسپ</span>
+              </button>
+              <button 
+                onClick={() => handleSendTest('email')} 
+                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition-colors shadow-sm flex items-center gap-1"
+              >
+                <EmailIcon className="w-4 h-4" />
+                <span>ارسال ایمیل</span>
+              </button>
+              <button 
+                onClick={() => handleSendTest('direct')} 
+                className="bg-gray-600 hover:bg-gray-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition-colors shadow-sm"
+              >
+                فقط تغییر وضعیت
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {status !== 'not_sent' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end border-t pt-4 mt-2">
+          {/* Status Select */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">تغییر وضعیت</label>
+            <select value={status} onChange={e => setStatus(e.target.value)} className="w-full border rounded-lg p-2 text-sm bg-white border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <option value="pending">{statusText.pending}</option>
+              <option value="passed">{statusText.passed}</option>
+              <option value="failed">{statusText.failed}</option>
+              <option value="review">{statusText.review}</option>
+            </select>
+          </div>
+
+          {/* Score Input */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">نمره آزمون</label>
+            <input type="number" value={score} onChange={e => setScore(e.target.value)} placeholder="مثلا ۸۵" className="w-full border rounded-lg p-2 text-sm bg-white border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+          </div>
+
+          {/* File Upload/Download */}
+          <div className="md:col-span-2">
+            <label className="block text-xs font-semibold text-gray-600 mb-1">فایل پاسخ / گزارش نتیجه آزمون</label>
+            <div className="flex items-center gap-3">
+              {filePreview ? (
+                <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg p-1.5 w-full justify-between">
+                  <a href={filePreview} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline truncate max-w-[200px]" title={result?.file?.name}>
+                    📄 {result?.file?.name}
+                  </a>
+                  <label className="text-xs text-gray-500 hover:text-blue-600 cursor-pointer font-semibold">
+                    تغییر فایل
+                    <input type="file" onChange={handleFileChange} className="hidden" />
+                  </label>
+                </div>
+              ) : (
+                <div className="w-full">
+                  <input type="file" onChange={handleFileChange} disabled={isUploading} className="text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50 w-full" />
+                  {isUploading && <span className="text-[10px] text-blue-600 animate-pulse mt-1 block">در حال آپلود فایل...</span>}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Notes Input */}
+          <div className="md:col-span-3">
+            <label className="block text-xs font-semibold text-gray-600 mb-1">یادداشت ارزیابی آزمون</label>
+            <input type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="تحلیل پاسخ‌ها، رفتار متقاضی در تست و..." className="w-full border rounded-lg p-2 text-sm bg-white border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+          </div>
+
+          {/* Action button */}
+          <div className="flex justify-end">
+            <button onClick={handleSaveResult} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-6 rounded-lg transition-colors shadow-sm w-full">
+              ثبت نتایج
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, onClose, candidate, onEdit, onStageChangeRequest, onNavigateToTests, onOpenCommunicationModal, onViewResume }) => {
-  const { addComment, updateCandidate, addCustomHistoryEntry, deleteCandidate } = useCandidates();
-  const { companyProfile, stages } = useSettings();
+  const { addComment, updateCandidate, addCustomHistoryEntry, deleteCandidate, updateTestResult } = useCandidates();
+  const { companyProfile, stages, testLibrary } = useSettings();
   const { templates } = useTemplates();
   const { user } = useAuth();
   const { addToast } = useToast();
@@ -47,6 +288,19 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
     }
     return cleaned;
   };
+  const getJobCategory = (position: string = ''): 'tech' | 'sales' | 'product' | 'other' => {
+    const p = position.toLowerCase();
+    if (p.includes('react') || p.includes('developer') || p.includes('frontend') || p.includes('backend') || p.includes('it') || p.includes('tech') || p.includes('برنامه نویس') || p.includes('توسعه دهنده') || p.includes('فنی') || p.includes('نرم افزار') || p.includes('برنامه‌نویس') || p.includes('برنامه نویس')) {
+      return 'tech';
+    }
+    if (p.includes('sales') || p.includes('marketing') || p.includes('business') || p.includes('بازاریابی') || p.includes('فروش') || p.includes('مارکتینگ') || p.includes('مشتریان') || p.includes('مذاکره')) {
+      return 'sales';
+    }
+    if (p.includes('product') || p.includes('manager') || p.includes('designer') || p.includes('مدیر') || p.includes('طراحی') || p.includes('محصول') || p.includes('گرافیک') || p.includes('دیزاین')) {
+      return 'product';
+    }
+    return 'other';
+  };
   
   const [newComment, setNewComment] = useState('');
   const [isLoadingResume, setIsLoadingResume] = useState(false);
@@ -54,7 +308,7 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
   const [customHistoryEvent, setCustomHistoryEvent] = useState('');
   const [interviewDate, setInterviewDate] = useState('');
   const [interviewTime, setInterviewTime] = useState('');
-  const [activeTab, setActiveTab] = useState<'info' | 'evaluation'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'evaluation' | 'tests'>('info');
 
   // Evaluation Form State
   const [jobHopping, setJobHopping] = useState('');
@@ -76,6 +330,37 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
   const [referenceCheck, setReferenceCheck] = useState('');
   const [finalDecision, setFinalDecision] = useState('');
   const [finalNotes, setFinalNotes] = useState('');
+
+  // Dynamic Specialized Criteria depending on Job Position
+  const [selectedCategory, setSelectedCategory] = useState<'tech' | 'sales' | 'product' | 'other' | ''>('');
+
+  const [techKnowledge, setTechKnowledge] = useState(0);
+  const [techCodingQuality, setTechCodingQuality] = useState(0);
+  const [techSystemDesign, setTechSystemDesign] = useState(0);
+  const [techGitCollaboration, setTechGitCollaboration] = useState(0);
+  const [techProblemSolving, setTechProblemSolving] = useState('');
+  const [techTaskScore, setTechTaskScore] = useState('');
+
+  const [salesNegotiation, setSalesNegotiation] = useState(0);
+  const [salesMarketAnalysis, setSalesMarketAnalysis] = useState(0);
+  const [salesGoalOrientation, setSalesGoalOrientation] = useState(0);
+  const [salesCustomerEmpathy, setSalesCustomerEmpathy] = useState(0);
+  const [salesClosingAbility, setSalesClosingAbility] = useState(0);
+  const [salesScenarioPlay, setSalesScenarioPlay] = useState('');
+
+  const [productStrategy, setProductStrategy] = useState(0);
+  const [productDesignSense, setProductDesignSense] = useState(0);
+  const [productLeadership, setProductLeadership] = useState(0);
+  const [productDataAnalysis, setProductDataAnalysis] = useState(0);
+  const [productTechnicalUnderstanding, setProductTechnicalUnderstanding] = useState(0);
+  const [productCaseStudy, setProductCaseStudy] = useState('');
+
+  const [otherSkills, setOtherSkills] = useState(0);
+  const [otherLearningSpeed, setOtherLearningSpeed] = useState(0);
+  const [otherDetailOrientation, setOtherDetailOrientation] = useState(0);
+  const [otherWrittenCommunication, setOtherWrittenCommunication] = useState(0);
+  const [otherProblemHandling, setOtherProblemHandling] = useState(0);
+  const [otherTaskResult, setOtherTaskResult] = useState('');
 
   const parsedEvaluation = useMemo(() => {
     if (!candidate?.evaluation) return null;
@@ -106,6 +391,36 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
     setReferenceCheck('');
     setFinalDecision('');
     setFinalNotes('');
+
+    setSelectedCategory('');
+
+    setTechKnowledge(0);
+    setTechCodingQuality(0);
+    setTechSystemDesign(0);
+    setTechGitCollaboration(0);
+    setTechProblemSolving('');
+    setTechTaskScore('');
+
+    setSalesNegotiation(0);
+    setSalesMarketAnalysis(0);
+    setSalesGoalOrientation(0);
+    setSalesCustomerEmpathy(0);
+    setSalesClosingAbility(0);
+    setSalesScenarioPlay('');
+
+    setProductStrategy(0);
+    setProductDesignSense(0);
+    setProductLeadership(0);
+    setProductDataAnalysis(0);
+    setProductTechnicalUnderstanding(0);
+    setProductCaseStudy('');
+
+    setOtherSkills(0);
+    setOtherLearningSpeed(0);
+    setOtherDetailOrientation(0);
+    setOtherWrittenCommunication(0);
+    setOtherProblemHandling(0);
+    setOtherTaskResult('');
   };
 
   const emailReminderTemplate = useMemo(() => {
@@ -128,6 +443,8 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
           try {
             const parsed = JSON.parse(candidate.evaluation);
             const ans = parsed.answers || {};
+            setSelectedCategory(parsed.category || getJobCategory(candidate.position));
+
             setJobHopping(ans.jobHopping || '');
             setRelevantExperience(ans.relevantExperience || '');
             setResumeAccuracy(ans.resumeAccuracy || '');
@@ -147,11 +464,41 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
             setReferenceCheck(ans.referenceCheck || '');
             setFinalDecision(ans.finalDecision || '');
             setFinalNotes(ans.finalNotes || '');
+
+            setTechKnowledge(Number(ans.techKnowledge) || 0);
+            setTechCodingQuality(Number(ans.techCodingQuality) || 0);
+            setTechSystemDesign(Number(ans.techSystemDesign) || 0);
+            setTechGitCollaboration(Number(ans.techGitCollaboration) || 0);
+            setTechProblemSolving(ans.techProblemSolving || '');
+            setTechTaskScore(ans.techTaskScore || '');
+
+            setSalesNegotiation(Number(ans.salesNegotiation) || 0);
+            setSalesMarketAnalysis(Number(ans.salesMarketAnalysis) || 0);
+            setSalesGoalOrientation(Number(ans.salesGoalOrientation) || 0);
+            setSalesCustomerEmpathy(Number(ans.salesCustomerEmpathy) || 0);
+            setSalesClosingAbility(Number(ans.salesClosingAbility) || 0);
+            setSalesScenarioPlay(ans.salesScenarioPlay || '');
+
+            setProductStrategy(Number(ans.productStrategy) || 0);
+            setProductDesignSense(Number(ans.productDesignSense) || 0);
+            setProductLeadership(Number(ans.productLeadership) || 0);
+            setProductDataAnalysis(Number(ans.productDataAnalysis) || 0);
+            setProductTechnicalUnderstanding(Number(ans.productTechnicalUnderstanding) || 0);
+            setProductCaseStudy(ans.productCaseStudy || '');
+
+            setOtherSkills(Number(ans.otherSkills) || 0);
+            setOtherLearningSpeed(Number(ans.otherLearningSpeed) || 0);
+            setOtherDetailOrientation(Number(ans.otherDetailOrientation) || 0);
+            setOtherWrittenCommunication(Number(ans.otherWrittenCommunication) || 0);
+            setOtherProblemHandling(Number(ans.otherProblemHandling) || 0);
+            setOtherTaskResult(ans.otherTaskResult || '');
           } catch {
             resetEvaluationFields();
+            setSelectedCategory(getJobCategory(candidate.position));
           }
         } else {
           resetEvaluationFields();
+          setSelectedCategory(getJobCategory(candidate.position));
         }
     }
   }, [isOpen, candidate]);
@@ -165,6 +512,7 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
       evaluatorUsername: user.username,
       candidateName: candidate.name,
       updatedAt: new Date().toISOString(),
+      category: selectedCategory,
       answers: {
         jobHopping,
         relevantExperience,
@@ -185,6 +533,34 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
         referenceCheck,
         finalDecision,
         finalNotes,
+
+        techKnowledge,
+        techCodingQuality,
+        techSystemDesign,
+        techGitCollaboration,
+        techProblemSolving,
+        techTaskScore,
+
+        salesNegotiation,
+        salesMarketAnalysis,
+        salesGoalOrientation,
+        salesCustomerEmpathy,
+        salesClosingAbility,
+        salesScenarioPlay,
+
+        productStrategy,
+        productDesignSense,
+        productLeadership,
+        productDataAnalysis,
+        productTechnicalUnderstanding,
+        productCaseStudy,
+
+        otherSkills,
+        otherLearningSpeed,
+        otherDetailOrientation,
+        otherWrittenCommunication,
+        otherProblemHandling,
+        otherTaskResult,
       }
     };
 
@@ -425,6 +801,16 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
                 >
                   فرم ارزیابی اختصاصی متقاضی
                 </button>
+                <button
+                  onClick={() => setActiveTab('tests')}
+                  className={`pb-3 px-6 font-bold text-sm transition-colors border-b-2 ${
+                    activeTab === 'tests'
+                      ? 'border-blue-600 text-blue-600 font-bold'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  مدیریت آزمون‌ها
+                </button>
               </div>
 
               {activeTab === 'info' ? (
@@ -530,7 +916,7 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
                        </div>
                   </div>
                 </>
-              ) : (
+              ) : activeTab === 'evaluation' ? (
                 <div className="space-y-6">
                   {/* Banner */}
                   <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-xl flex flex-wrap justify-between items-center gap-4 text-sm">
@@ -791,10 +1177,180 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
                     </div>
                   </div>
 
-                  {/* SECTION 5: Summary */}
+                  {/* SECTION 5: Specialized Evaluation */}
+                  <div className="p-5 border border-gray-200 rounded-xl bg-white space-y-6">
+                    <div className="border-b pb-4 space-y-4">
+                      <div className="flex flex-wrap justify-between items-center gap-4">
+                        <h3 className="text-md font-bold text-gray-800 flex items-center gap-2">
+                          <span>بخش پنجم: ارزیابی تخصصی متناسب با موقعیت ({candidate.position})</span>
+                        </h3>
+                        <span className="text-xs px-2.5 py-1 rounded-full bg-blue-100 text-blue-800 font-bold">
+                          {selectedCategory === 'tech' ? '💻 فنی و مهندسی' :
+                           selectedCategory === 'sales' ? '📈 فروش و بازاریابی' :
+                           selectedCategory === 'product' ? '💡 محصول و مدیریت/طراحی' : '⚙️ عمومی و سایر'}
+                        </span>
+                      </div>
+                      
+                      {/* Interactive category template switcher */}
+                      <div className="flex flex-wrap gap-2 bg-gray-50 p-2 rounded-xl border border-gray-150">
+                        <span className="text-xs text-gray-500 self-center ml-2 font-medium">تغییر قالب ارزیابی:</span>
+                        {[
+                          { id: 'tech', label: 'فنی و مهندسی' },
+                          { id: 'sales', label: 'فروش و بازاریابی' },
+                          { id: 'product', label: 'محصول و مدیریت' },
+                          { id: 'other', label: 'عمومی و سایر' }
+                        ].map(cat => (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => setSelectedCategory(cat.id as any)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                              selectedCategory === cat.id
+                                ? 'bg-blue-600 text-white shadow-sm'
+                                : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                            }`}
+                          >
+                            {cat.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {selectedCategory === 'tech' && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">میزان دانش فنی و تسلط بر ابزارها/فریمورک‌ها:</label>
+                          <StarRating rating={techKnowledge} onRatingChange={setTechKnowledge} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">کیفیت کدنویسی، معماری نرم‌افزار و اصول طراحی:</label>
+                          <StarRating rating={techCodingQuality} onRatingChange={setTechCodingQuality} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">طراحی سیستم، پایگاه داده و زیرساخت (System Design):</label>
+                          <StarRating rating={techSystemDesign} onRatingChange={setTechSystemDesign} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">کار تیمی فنی و استفاده از ابزارهای Git/CI-CD:</label>
+                          <StarRating rating={techGitCollaboration} onRatingChange={setTechGitCollaboration} />
+                        </div>
+                        <div className="space-y-2 md:col-span-2">
+                          <span className="block text-sm font-semibold text-gray-700">سرعت و نحوه حل مسئله (Problem Solving):</span>
+                          <div className="flex gap-4 mt-1">
+                            {['ضعیف', 'متوسط و منطقی', 'عالی و سریع'].map(val => (
+                              <label key={val} className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700">
+                                <input type="radio" name="techProblemSolving" value={val} checked={techProblemSolving === val} onChange={e => setTechProblemSolving(e.target.value)} />
+                                <span>{val}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="space-y-2 md:col-span-2">
+                          <label className="block text-sm font-semibold text-gray-700">نمره یا تحلیل تسک فنی / چالش کدنویسی:</label>
+                          <input type="text" value={techTaskScore} onChange={e => setTechTaskScore(e.target.value)} placeholder="مثلاً: نمره ۸ از ۱۰، انجام با رعایت تمام اصول تمیزنویسی..." className="w-full border rounded-lg p-2.5 bg-white border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedCategory === 'sales' && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">مهارت مذاکره، پرزنت و متقاعدسازی مشتری:</label>
+                          <StarRating rating={salesNegotiation} onRatingChange={setSalesNegotiation} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">درک بازار، مشتری و توانایی تحلیل نیازها:</label>
+                          <StarRating rating={salesMarketAnalysis} onRatingChange={setSalesMarketAnalysis} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">هدف‌گرایی، پیگیری و روحیه تارگت‌محور:</label>
+                          <StarRating rating={salesGoalOrientation} onRatingChange={setSalesGoalOrientation} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">همدلی با مشتری، روابط عمومی و ارتباط موثر:</label>
+                          <StarRating rating={salesCustomerEmpathy} onRatingChange={setSalesCustomerEmpathy} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">توانایی نهایی‌سازی فروش و بستن قرارداد (Closing):</label>
+                          <StarRating rating={salesClosingAbility} onRatingChange={setSalesClosingAbility} />
+                        </div>
+                        <div className="space-y-2 md:col-span-2">
+                          <span className="block text-sm font-semibold text-gray-700">نتیجه سناریوی شبیه‌سازی شده فروش/پشتیبانی:</span>
+                          <div className="flex gap-4 mt-1">
+                            {['ضعیف', 'متوسط (نیاز به آموزش)', 'عالی و مسلط'].map(val => (
+                              <label key={val} className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700">
+                                <input type="radio" name="salesScenarioPlay" value={val} checked={salesScenarioPlay === val} onChange={e => setSalesScenarioPlay(e.target.value)} />
+                                <span>{val}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedCategory === 'product' && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">تفکر محصولی، استراتژی و اولویت‌بندی کارها:</label>
+                          <StarRating rating={productStrategy} onRatingChange={setProductStrategy} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">درک تجربه کاربری (UI/UX) و سلیقه طراحی:</label>
+                          <StarRating rating={productDesignSense} onRatingChange={setProductDesignSense} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">مهارت‌های ارتباطی، رهبری و هماهنگی تیمی:</label>
+                          <StarRating rating={productLeadership} onRatingChange={setProductLeadership} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">تحلیل داده‌ها، متریک‌های محصولی و تست A/B:</label>
+                          <StarRating rating={productDataAnalysis} onRatingChange={setProductDataAnalysis} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">درک فنی، معماری وب/موبایل و تعامل با توسعه‌دهندگان:</label>
+                          <StarRating rating={productTechnicalUnderstanding} onRatingChange={setProductTechnicalUnderstanding} />
+                        </div>
+                        <div className="space-y-2 md:col-span-2">
+                          <label className="block text-sm font-semibold text-gray-700">نتیجه بررسی مطالعه موردی (Case Study) یا پورتفولیو:</label>
+                          <textarea rows={3} value={productCaseStudy} onChange={e => setProductCaseStudy(e.target.value)} placeholder="نقاط قوت و ضعف تحلیل‌ها..." className="w-full border rounded-lg p-2.5 bg-white border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedCategory === 'other' && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">میزان مهارت‌های تخصصی و شایستگی شغلی:</label>
+                          <StarRating rating={otherSkills} onRatingChange={setOtherSkills} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">سرعت یادگیری مباحث و کار با نرم‌افزارهای تخصصی:</label>
+                          <StarRating rating={otherLearningSpeed} onRatingChange={setOtherLearningSpeed} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">دقت، نظم شخصی و توجه به جزئیات کاری:</label>
+                          <StarRating rating={otherDetailOrientation} onRatingChange={setOtherDetailOrientation} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">مهارت نگارش، مکاتبات اداری و مستندسازی:</label>
+                          <StarRating rating={otherWrittenCommunication} onRatingChange={setOtherWrittenCommunication} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">حل مسئله، مواجهه با چالش‌ها و مدیریت بحران:</label>
+                          <StarRating rating={otherProblemHandling} onRatingChange={setOtherProblemHandling} />
+                        </div>
+                        <div className="space-y-2 md:col-span-2">
+                          <label className="block text-sm font-semibold text-gray-700">نتیجه کار عملی، تست عملی یا مصاحبه تخصصی:</label>
+                          <input type="text" value={otherTaskResult} onChange={e => setOtherTaskResult(e.target.value)} placeholder="مثلا: انجام صحیح و به موقع کار عملی..." className="w-full border rounded-lg p-2.5 bg-white border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* SECTION 6: Summary */}
                   <div className="p-5 border border-gray-200 rounded-xl bg-white space-y-4">
                     <h3 className="text-md font-bold text-gray-800 border-b pb-2">
-                      <span>بخش پنجم: جمع‌بندی نهایی</span>
+                      <span>بخش ششم: جمع‌بندی نهایی</span>
                     </h3>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -839,6 +1395,33 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
                     <button onClick={handleSaveEvaluation} className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-6 rounded-lg text-sm shadow-md transition-all">
                       ثبت نهایی ارزیابی
                     </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="bg-purple-50 border border-purple-200 text-purple-800 p-4 rounded-xl text-sm text-right" dir="rtl">
+                    🎯 <strong>مدیریت آزمون‌های متقاضی:</strong> در این بخش می‌توانید آزمون‌های ارسال شده به متقاضی را مشاهده و نتایج آن‌ها را مدیریت و فایل پاسخ را آپلود کنید.
+                  </div>
+                  <div className="space-y-4">
+                    {testLibrary.length > 0 ? (
+                      testLibrary.map((testItem) => {
+                        const result = candidate.testResults?.find(r => r.testId === testItem.id);
+                        return (
+                          <CandidateTestItem
+                            key={testItem.id}
+                            candidate={candidate}
+                            test={testItem}
+                            result={result}
+                            updateTestResult={updateTestResult}
+                            addToast={addToast}
+                          />
+                        );
+                      })
+                    ) : (
+                      <div className="text-center p-8 bg-gray-50 border rounded-xl text-gray-500 text-sm">
+                        هیچ آزمونی در تنظیمات سامانه تعریف نشده است.
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

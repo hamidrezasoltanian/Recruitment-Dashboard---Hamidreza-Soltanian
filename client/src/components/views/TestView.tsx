@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useCandidates } from '../../contexts/CandidatesContext';
 import { useSettings } from '../../contexts/SettingsContext';
 import { TestResult, TestLibraryItem } from '../../types';
-import { dbService } from '../../services/dbService';
+import { apiService } from '../../services/apiService';
 import { useToast } from '../../contexts/ToastContext';
 import SelectCandidateModal from '../modals/SelectCandidateModal';
 import TestSelectionModal from '../modals/TestSelectionModal';
@@ -28,7 +28,7 @@ const TestResultGroup: React.FC<TestResultGroupProps> = ({ test, result, candida
         const loadPreview = async () => {
             if (result?.file) {
                 try {
-                    const fileBlob = await dbService.getTestFile(candidateId, test.id);
+                    const fileBlob = await apiService.downloadTestFile(candidateId, test.id);
                     if (fileBlob) {
                         setFilePreview(URL.createObjectURL(fileBlob));
                     }
@@ -70,7 +70,7 @@ const TestResultGroup: React.FC<TestResultGroupProps> = ({ test, result, candida
         const file = e.target.files?.[0];
         if (file) {
             try {
-                await dbService.saveTestFile(candidateId, test.id, file);
+                await apiService.uploadTestFile(candidateId, test.id, file);
                 await updateTestResult(candidateId, test.id, {
                     file: { name: file.name, type: file.type },
                     status: 'review' // Automatically set status to review on upload
@@ -78,8 +78,8 @@ const TestResultGroup: React.FC<TestResultGroupProps> = ({ test, result, candida
                 addToast(`فایل آپلود و وضعیت به "نیاز به بررسی" تغییر کرد.`, 'success');
                 if (filePreview) URL.revokeObjectURL(filePreview);
                 setFilePreview(URL.createObjectURL(file));
-            } catch (err) {
-                addToast('خطا در ذخیره فایل آزمون.', 'error');
+            } catch (err: any) {
+                addToast('خطا در ذخیره فایل آزمون: ' + (err.message || ''), 'error');
             }
         }
     };

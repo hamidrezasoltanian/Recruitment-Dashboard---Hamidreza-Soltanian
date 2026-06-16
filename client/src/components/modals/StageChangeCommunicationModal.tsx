@@ -40,37 +40,48 @@ const StageChangeCommunicationModal: React.FC<StageChangeCommunicationModalProps
     return cleaned;
   };
 
-  // States for non-interview stages
-  const [sendNotification, setSendNotification] = useState(true);
-  const [communicationType, setCommunicationType] = useState<'email' | 'whatsapp'>('email');
+  // States for template selection
+  const emailTemplates = useMemo(() => templates.filter(t => t.type === 'email'), [templates]);
+  const whatsappTemplates = useMemo(() => templates.filter(t => t.type === 'whatsapp'), [templates]);
 
-  // States for interview stages
+  const [selectedEmailTemplateId, setSelectedEmailTemplateId] = useState('');
+  const [selectedWhatsappTemplateId, setSelectedWhatsappTemplateId] = useState('');
   const [sendEmail, setSendEmail] = useState(true);
   const [sendWhatsapp, setSendWhatsapp] = useState(true);
 
-  const emailTemplate = useMemo(() => {
-    return templates.find(t => t.stageId === newStage.id && t.type === 'email');
-  }, [templates, newStage.id]);
+  // States for non-interview stages
+  const [sendNotification, setSendNotification] = useState(true);
+  const [communicationType, setCommunicationType] = useState<'email' | 'whatsapp'>('email');
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
 
-  const whatsappTemplate = useMemo(() => {
-    return templates.find(t => t.stageId === newStage.id && t.type === 'whatsapp');
-  }, [templates, newStage.id]);
-  
   const isInterviewStage = useMemo(() => newStage.id.startsWith('interview-'), [newStage.id]);
-  const hasAnyTemplate = useMemo(() => !!emailTemplate || !!whatsappTemplate, [emailTemplate, whatsappTemplate]);
 
   useEffect(() => {
     if (isOpen) {
-      if (isInterviewStage) {
-        setSendEmail(!!emailTemplate);
-        setSendWhatsapp(!!whatsappTemplate);
-      } else {
-        if (emailTemplate) setCommunicationType('email');
-        else if (whatsappTemplate) setCommunicationType('whatsapp');
-        setSendNotification(hasAnyTemplate);
-      }
+      // Find matching stage template or general/first email template
+      const defaultEmailTpl = templates.find(t => t.stageId === newStage.id && t.type === 'email') || 
+                             templates.find(t => !t.stageId && t.type === 'email') || 
+                             templates.find(t => t.type === 'email');
+      setSelectedEmailTemplateId(defaultEmailTpl?.id || '');
+
+      // Find matching stage template or general/first whatsapp template
+      const defaultWhatsappTpl = templates.find(t => t.stageId === newStage.id && t.type === 'whatsapp') || 
+                                templates.find(t => !t.stageId && t.type === 'whatsapp') || 
+                                templates.find(t => t.type === 'whatsapp');
+      setSelectedWhatsappTemplateId(defaultWhatsappTpl?.id || '');
+
+      // Set defaults for checkboxes
+      setSendEmail(!!templates.find(t => t.stageId === newStage.id && t.type === 'email'));
+      setSendWhatsapp(!!templates.find(t => t.stageId === newStage.id && t.type === 'whatsapp'));
+
+      // Standard stage defaults
+      const defaultStandardTpl = templates.find(t => t.stageId === newStage.id && t.type === communicationType) || 
+                                 templates.find(t => !t.stageId && t.type === communicationType) || 
+                                 templates.find(t => t.type === communicationType);
+      setSelectedTemplateId(defaultStandardTpl?.id || '');
+      setSendNotification(!!defaultStandardTpl);
     }
-  }, [isOpen, isInterviewStage, emailTemplate, whatsappTemplate, hasAnyTemplate]);
+  }, [isOpen, newStage.id, templates, communicationType]);
 
   const handleConfirm = () => {
     let notificationsSent = false;
@@ -78,6 +89,9 @@ const StageChangeCommunicationModal: React.FC<StageChangeCommunicationModalProps
     const { jobPositions, ...companyDetails } = companyProfile;
     
     if (isInterviewStage) {
+      const emailTemplate = templates.find(t => t.id === selectedEmailTemplateId);
+      const whatsappTemplate = templates.find(t => t.id === selectedWhatsappTemplateId);
+
       if (sendEmail && emailTemplate) {
         const message = templateService.replacePlaceholders(emailTemplate.content, candidate, { stageName: newStage.title, ...companyDetails });
         window.open(`mailto:${candidate.email}?subject=اطلاع رسانی فرآیند استخدام&body=${encodeURIComponent(message)}`, '_blank');
@@ -121,8 +135,8 @@ const StageChangeCommunicationModal: React.FC<StageChangeCommunicationModalProps
       }
       if (notificationsSent) addToast(`پیام‌های اطلاع‌رسانی برای ${candidate.name} آماده ارسال شدند.`, 'success');
 
-    } else if (sendNotification && hasAnyTemplate) {
-      const template = communicationType === 'email' ? emailTemplate : whatsappTemplate;
+    } else if (sendNotification) {
+      const template = templates.find(t => t.id === selectedTemplateId);
       if (!template) {
         addToast('قالب پیام یافت نشد.', 'error');
         return;
@@ -173,60 +187,118 @@ const StageChangeCommunicationModal: React.FC<StageChangeCommunicationModalProps
     onConfirm();
   };
 
-  const renderInterviewOptions = () => (
-    <div className="space-y-4 p-4 bg-gray-50 rounded-md border">
-        <p className="font-medium text-gray-800">ارسال پیام اطلاع رسانی به متقاضی:</p>
-        <div className="space-y-3">
-            {emailTemplate && (
-                <label className="flex items-center space-x-2 space-x-reverse cursor-pointer">
-                    <input type="checkbox" checked={sendEmail} onChange={e => setSendEmail(e.target.checked)} className="h-4 w-4 text-[var(--color-primary-600)] border-gray-300 rounded" />
-                    <span>ارسال ایمیل دعوت به مصاحبه</span>
-                </label>
-            )}
-            {whatsappTemplate && (
-                <label className="flex items-center space-x-2 space-x-reverse cursor-pointer">
-                    <input type="checkbox" checked={sendWhatsapp} onChange={e => setSendWhatsapp(e.target.checked)} className="h-4 w-4 text-[var(--color-primary-600)] border-gray-300 rounded" />
-                    <span>ارسال پیام واتسپ دعوت به مصاحبه</span>
-                </label>
-            )}
-            {!emailTemplate && !whatsappTemplate && (
-                 <p className="text-sm text-gray-500">قالبی برای ارسال ایمیل یا واتسپ برای این مرحله یافت نشد.</p>
-            )}
-        </div>
-    </div>
-  );
+  const renderInterviewOptions = () => {
+    return (
+      <div className="space-y-4 p-4 bg-gray-50 rounded-md border text-right font-sans" dir="rtl">
+          <p className="font-bold text-gray-800 mb-3">ارسال پیام اطلاع رسانی به متقاضی:</p>
+          <div className="space-y-4">
+              <div className="space-y-2">
+                  <label className="flex items-center space-x-2 space-x-reverse cursor-pointer">
+                      <input type="checkbox" checked={sendEmail} onChange={e => setSendEmail(e.target.checked)} className="h-4 w-4 text-[var(--color-primary-600)] border-gray-300 rounded" />
+                      <span className="font-bold text-sm text-gray-700">ارسال ایمیل دعوت به مصاحبه</span>
+                  </label>
+                  {sendEmail && (
+                      <select 
+                        value={selectedEmailTemplateId} 
+                        onChange={e => setSelectedEmailTemplateId(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 bg-white rounded-md shadow-sm py-2 px-3 text-sm focus:outline-none focus:ring-[var(--color-primary-500)]"
+                      >
+                          <option value="">-- بدون قالب (خالی) --</option>
+                          {emailTemplates.map(t => (
+                              <option key={t.id} value={t.id}>
+                                  {t.name} {t.stageId === newStage.id ? '⭐ (مخصوص این مرحله)' : ''}
+                              </option>
+                          ))}
+                      </select>
+                  )}
+              </div>
+
+              <div className="space-y-2">
+                  <label className="flex items-center space-x-2 space-x-reverse cursor-pointer">
+                      <input type="checkbox" checked={sendWhatsapp} onChange={e => setSendWhatsapp(e.target.checked)} className="h-4 w-4 text-[var(--color-primary-600)] border-gray-300 rounded" />
+                      <span className="font-bold text-sm text-gray-700">ارسال پیام واتسپ دعوت به مصاحبه</span>
+                  </label>
+                  {sendWhatsapp && (
+                      <select 
+                        value={selectedWhatsappTemplateId} 
+                        onChange={e => setSelectedWhatsappTemplateId(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 bg-white rounded-md shadow-sm py-2 px-3 text-sm focus:outline-none focus:ring-[var(--color-primary-500)]"
+                      >
+                          <option value="">-- بدون قالب (خالی) --</option>
+                          {whatsappTemplates.map(t => (
+                              <option key={t.id} value={t.id}>
+                                  {t.name} {t.stageId === newStage.id ? '⭐ (مخصوص این مرحله)' : ''}
+                              </option>
+                          ))}
+                      </select>
+                  )}
+              </div>
+          </div>
+      </div>
+    );
+  };
 
   const renderStandardOptions = () => {
-    const relevantTemplate = communicationType === 'email' ? emailTemplate : whatsappTemplate;
+    const relevantTemplate = templates.find(t => t.id === selectedTemplateId);
     // FIX: Destructure companyProfile to exclude 'jobPositions' which is not a string and causes a type error.
     const { jobPositions, ...companyDetails } = companyProfile;
     const message = relevantTemplate ? templateService.replacePlaceholders(relevantTemplate.content, candidate, { stageName: newStage.title, ...companyDetails }) : '';
     
-    return hasAnyTemplate ? (
-      <div className="space-y-4">
+    const currentTemplates = communicationType === 'email' ? emailTemplates : whatsappTemplates;
+
+    return (
+      <div className="space-y-4 text-right font-sans" dir="rtl">
         <div className="flex items-center">
           <input id="send-notification-checkbox" type="checkbox" checked={sendNotification} onChange={(e) => setSendNotification(e.target.checked)} className="h-4 w-4 text-[var(--color-primary-600)] border-gray-300 rounded" />
-          <label htmlFor="send-notification-checkbox" className="mr-2 block text-sm text-gray-900">ارسال پیام اطلاع‌رسانی به متقاضی</label>
+          <label htmlFor="send-notification-checkbox" className="mr-2 block text-sm font-semibold text-gray-900">ارسال پیام اطلاع‌رسانی به متقاضی</label>
         </div>
 
         {sendNotification && (
           <>
-            {emailTemplate && whatsappTemplate && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <span className="text-sm font-medium text-gray-700">روش ارسال:</span>
-                <div className="mt-2 inline-flex rounded-md shadow-sm">
-                  <button type="button" onClick={() => setCommunicationType('email')} className={`relative inline-flex items-center px-4 py-2 rounded-r-md border border-gray-300 text-sm font-medium transition-colors ${communicationType === 'email' ? 'bg-[var(--color-primary-600)] text-white z-10' : 'bg-white text-gray-700 hover:bg-gray-50'}`}><EmailIcon className="h-5 w-5" /></button>
-                  <button type="button" onClick={() => setCommunicationType('whatsapp')} className={`-ml-px relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium transition-colors ${communicationType === 'whatsapp' ? 'bg-[var(--color-primary-600)] text-white z-10' : 'bg-white text-gray-700 hover:bg-gray-50'}`}><WhatsappIcon className="h-5 w-5" /></button>
+                <div className="mt-2 inline-flex rounded-md shadow-sm w-full">
+                  <button 
+                    type="button" 
+                    onClick={() => setCommunicationType('email')} 
+                    className={`flex-1 relative inline-flex justify-center items-center px-4 py-2 rounded-r-md border border-gray-300 text-sm font-medium transition-colors ${communicationType === 'email' ? 'bg-[var(--color-primary-600)] text-white z-10' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                  >
+                    <EmailIcon className="h-5 w-5 ml-2" /> ایمیل
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => setCommunicationType('whatsapp')} 
+                    className={`flex-1 -ml-px relative inline-flex justify-center items-center px-4 py-2 rounded-l-md border border-gray-300 text-sm font-medium transition-colors ${communicationType === 'whatsapp' ? 'bg-[var(--color-primary-600)] text-white z-10' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                  >
+                    <WhatsappIcon className="h-5 w-5 ml-2" /> واتسپ
+                  </button>
                 </div>
               </div>
+
+              <div>
+                <span className="text-sm font-medium text-gray-700">انتخاب قالب:</span>
+                <select 
+                  value={selectedTemplateId} 
+                  onChange={e => setSelectedTemplateId(e.target.value)}
+                  className="mt-2 block w-full border border-gray-300 bg-white rounded-md shadow-sm py-2 px-3 text-sm focus:outline-none focus:ring-[var(--color-primary-500)]"
+                >
+                  <option value="" disabled>یک قالب انتخاب کنید...</option>
+                  {currentTemplates.map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} {t.stageId === newStage.id ? '⭐ (مخصوص این مرحله)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {relevantTemplate ? (
+              <textarea id="message-preview" rows={8} value={message} readOnly className="mt-2 block w-full border border-gray-200 bg-gray-50 rounded-md shadow-sm py-2 px-3 text-sm" />
+            ) : (
+              <p className="text-sm text-amber-600 mt-2">هیچ قالبی برای این روش ارسال وجود ندارد یا انتخاب نشده است. می‌توانید در تنظیمات قالب بسازید.</p>
             )}
-            {relevantTemplate && <textarea id="message-preview" rows={8} value={message} readOnly className="mt-1 block w-full border border-gray-200 bg-gray-50 rounded-md shadow-sm py-2 px-3 sm:text-sm" />}
           </>
         )}
-      </div>
-    ) : (
-      <div className="p-3 bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm rounded-md">
-        هیچ قالب پیامی (ایمیل یا واتسپ) برای مرحله "{newStage.title}" تعریف نشده است.
       </div>
     );
   };

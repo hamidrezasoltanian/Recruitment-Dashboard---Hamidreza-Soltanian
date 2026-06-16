@@ -113,8 +113,9 @@ const UserManagementPanel: React.FC = () => {
                 <h3 className="font-bold mb-4">{isAdding ? 'افزودن کاربر جدید' : `ویرایش کاربر: ${editingUser?.name}`}</h3>
                  <div className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">نام کاربری</label>
-                        <input type="text" value={username} onChange={e => setUsername(e.target.value)} disabled={!isAdding} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 disabled:bg-gray-200"/>
+                        <label className="block text-sm font-medium text-gray-700">نام کاربری (حروف انگلیسی)</label>
+                        <input type="text" value={username} onChange={e => setUsername(e.target.value)} disabled={!isAdding} placeholder="مثال: admin_user" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 disabled:bg-gray-200"/>
+                        {isAdding && <p className="text-xs text-gray-500 mt-1">فقط حروف انگلیسی، اعداد، خط تیره (-) و زیرخط (_)</p>}
                     </div>
                      <div>
                         <label className="block text-sm font-medium text-gray-700">نام کامل</label>
@@ -784,6 +785,7 @@ interface SettingsModalProps {
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     type Tab = 'appearance' | 'profile' | 'stages' | 'users' | 'sources' | 'templates' | 'apiKey' | 'tests';
     const [activeTab, setActiveTab] = useState<Tab>('appearance');
+    const { currentUser } = useAuth();
 
     const tabClasses = (tabName: Tab) => 
         `whitespace-nowrap py-2 px-4 font-medium text-sm rounded-t-lg transition-colors cursor-pointer ${
@@ -802,7 +804,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                         <button onClick={() => setActiveTab('stages')} className={tabClasses('stages')}>مراحل کانبان</button>
                         <button onClick={() => setActiveTab('tests')} className={tabClasses('tests')}>کتابخانه آزمون</button>
                         <button onClick={() => setActiveTab('templates')} className={tabClasses('templates')}>مدیریت قالب‌ها</button>
-                        <button onClick={() => setActiveTab('users')} className={tabClasses('users')}>مدیریت کاربران</button>
+                        {currentUser?.isAdmin && (
+                            <button onClick={() => setActiveTab('users')} className={tabClasses('users')}>مدیریت کاربران</button>
+                        )}
                         <button onClick={() => setActiveTab('sources')} className={tabClasses('sources')}>مدیریت منابع</button>
                         <button onClick={() => setActiveTab('apiKey')} className={tabClasses('apiKey')}>کلید API</button>
                     </nav>
@@ -811,7 +815,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                     {activeTab === 'appearance' && <AppearancePanel />}
                     {activeTab === 'profile' && <CompanyProfilePanel />}
                     {activeTab === 'stages' && <StageManagementPanel />}
-                    {activeTab === 'users' && <UserManagementPanel />}
+                    {activeTab === 'users' && currentUser?.isAdmin && <UserManagementPanel />}
                     {activeTab === 'sources' && <SourceManagementPanel />}
                     {activeTab === 'templates' && <TemplateManagementPanel />}
                     {activeTab === 'apiKey' && <ApiKeyPanel />}
