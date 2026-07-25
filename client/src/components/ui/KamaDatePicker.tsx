@@ -13,10 +13,31 @@ const KamaDatePicker: React.FC<KamaDatePickerProps> = ({ value, onChange }) => {
     const inputRef = useRef<HTMLInputElement>(null);
     const calendarRef = useRef<HTMLDivElement>(null);
 
-    // Sync selectedDate with value prop when it changes
+    const parseDate = (dateStr: string) => {
+        if (!dateStr) return new Date();
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+            return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        }
+        return new Date(dateStr);
+    };
+
+    const [viewDate, setViewDate] = useState<Date>(parseDate(value));
+
+    // Sync viewDate and selectedDate with value prop when it changes
     useEffect(() => {
         setSelectedDate(value || '');
+        if (value) {
+            setViewDate(parseDate(value));
+        }
     }, [value]);
+
+    // Set viewDate to today if no value on open
+    useEffect(() => {
+        if (isOpen && !value) {
+            setViewDate(new Date());
+        }
+    }, [isOpen, value]);
 
     // Convert Gregorian to Persian date using moment-jalaali
     const toPersianDate = (dateString: string | Date) => {
@@ -57,19 +78,49 @@ const KamaDatePicker: React.FC<KamaDatePickerProps> = ({ value, onChange }) => {
         return (jsDay + 1) % 7;
     };
 
+    const handlePrevMonth = () => {
+        const pDate = toPersianDate(viewDate);
+        let newMonth = pDate.month - 1;
+        let newYear = pDate.year;
+        if (newMonth === 0) {
+            newMonth = 12;
+            newYear -= 1;
+        }
+        const newGregorian = toGregorianDate(newYear, newMonth, 1);
+        setViewDate(newGregorian);
+    };
+
+    const handleNextMonth = () => {
+        const pDate = toPersianDate(viewDate);
+        let newMonth = pDate.month + 1;
+        let newYear = pDate.year;
+        if (newMonth === 13) {
+            newMonth = 1;
+            newYear += 1;
+        }
+        const newGregorian = toGregorianDate(newYear, newMonth, 1);
+        setViewDate(newGregorian);
+    };
+
     // Generate calendar days
     const generateCalendarDays = () => {
         const today = new Date();
-        const persianDate = selectedDate ? toPersianDate(selectedDate) : toPersianDate(today);
+        const persianDate = toPersianDate(viewDate);
         const todayPersian = toPersianDate(today);
+        const selectedPersian = selectedDate ? toPersianDate(selectedDate) : null;
         
         // Calculate Persian month days correctly
         let monthDays = 30;
         if (persianDate.month <= 6) {
             monthDays = 31;
         } else if (persianDate.month === 12) {
-            // Check if it's a leap year (simple check)
-            monthDays = 29;
+            // Check if it's a leap year
+            const m = moment(`${persianDate.year}/12/30`, 'jYYYY/jMM/jDD');
+            if (m.isValid()) {
+                monthDays = 30;
+            } else {
+                monthDays = 29;
+            }
         }
         
         // Get weekday of first day of month
@@ -87,7 +138,7 @@ const KamaDatePicker: React.FC<KamaDatePickerProps> = ({ value, onChange }) => {
             days.push({
                 day,
                 isToday: day === todayPersian.day && persianDate.month === todayPersian.month && persianDate.year === todayPersian.year,
-                isSelected: selectedDate && day === persianDate.day
+                isSelected: !!(selectedPersian && day === selectedPersian.day && persianDate.month === selectedPersian.month && persianDate.year === selectedPersian.year)
             });
         }
         
@@ -95,9 +146,8 @@ const KamaDatePicker: React.FC<KamaDatePickerProps> = ({ value, onChange }) => {
     };
 
     const handleDateSelect = (day: number) => {
-        const currentPersianDate = selectedDate ? toPersianDate(selectedDate) : toPersianDate(new Date());
-        const newPersianDate = { ...currentPersianDate, day };
-        const gregorianDate = toGregorianDate(newPersianDate.year, newPersianDate.month, newPersianDate.day);
+        const persianDate = toPersianDate(viewDate);
+        const gregorianDate = toGregorianDate(persianDate.year, persianDate.month, day);
         
         // Format as YYYY/MM/DD in local timezone to avoid timezone issues
         const year = gregorianDate.getFullYear();
@@ -134,7 +184,7 @@ const KamaDatePicker: React.FC<KamaDatePickerProps> = ({ value, onChange }) => {
         'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
     ];
 
-    const persianDate = selectedDate ? toPersianDate(selectedDate) : toPersianDate(new Date());
+    const persianDate = toPersianDate(viewDate);
 
     return (
         <div className="relative">
@@ -162,10 +212,26 @@ const KamaDatePicker: React.FC<KamaDatePickerProps> = ({ value, onChange }) => {
                     ref={calendarRef}
                     className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 p-4 min-w-[300px]"
                 >
-                    <div className="text-center mb-4">
-                        <h3 className="text-lg font-semibold text-gray-800">
+                    <div className="flex justify-between items-center mb-4">
+                        <button
+                            type="button"
+                            onClick={handleNextMonth}
+                            className="p-1.5 hover:bg-gray-100 rounded-full text-gray-600 focus:outline-none transition-colors"
+                            title="ماه بعد"
+                        >
+                            &larr;
+                        </button>
+                        <h3 className="text-sm font-semibold text-gray-800">
                             {persianMonths[persianDate.month - 1]} {persianDate.year}
                         </h3>
+                        <button
+                            type="button"
+                            onClick={handlePrevMonth}
+                            className="p-1.5 hover:bg-gray-100 rounded-full text-gray-600 focus:outline-none transition-colors"
+                            title="ماه قبل"
+                        >
+                            &rarr;
+                        </button>
                     </div>
                     
                     <div className="grid grid-cols-7 gap-1 mb-2">
@@ -183,6 +249,7 @@ const KamaDatePicker: React.FC<KamaDatePickerProps> = ({ value, onChange }) => {
                             ) : (
                                 <button
                                     key={day}
+                                    type="button"
                                     onClick={() => handleDateSelect(day)}
                                     className={`
                                         p-2 text-sm rounded hover:bg-blue-100 transition-colors
@@ -196,14 +263,16 @@ const KamaDatePicker: React.FC<KamaDatePickerProps> = ({ value, onChange }) => {
                         ))}
                     </div>
                     
-                    <div className="flex justify-between mt-4">
+                    <div className="flex justify-between mt-4 border-t pt-3">
                         <button
+                            type="button"
                             onClick={() => setIsOpen(false)}
                             className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
                         >
                             بستن
                         </button>
                         <button
+                            type="button"
                             onClick={() => {
                                 const today = new Date();
                                 const year = today.getFullYear();

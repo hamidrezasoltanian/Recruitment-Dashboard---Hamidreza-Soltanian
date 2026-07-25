@@ -126,13 +126,16 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick, o
 
   return (
     <header
-      className="sticky top-0 z-30 shadow-lg"
-      style={{ background: 'linear-gradient(135deg, var(--color-primary-800) 0%, var(--color-primary-600) 100%)' }}
+      className="sticky top-0 z-30 border-b border-white/10"
+      style={{
+        background: 'linear-gradient(120deg, #0f2744 0%, var(--color-primary-800) 40%, var(--color-primary-600) 100%)',
+        boxShadow: '0 4px 24px rgba(15, 39, 68, 0.25)',
+      }}
     >
       <div className="flex items-center justify-between px-4 py-3 gap-3">
         {/* Left: Logo + Add button */}
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center flex-shrink-0 backdrop-blur-sm">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
@@ -140,7 +143,7 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick, o
           <h1 className="text-base font-bold text-white hidden sm:block tracking-wide">داشبورد استخدام</h1>
           <button
             onClick={onAddCandidateClick}
-            className="flex items-center gap-2 bg-white text-[var(--color-primary-700)] hover:bg-blue-50 text-sm font-bold py-2 px-4 rounded-xl transition-all duration-200 shadow-sm"
+            className="flex items-center gap-2 bg-white text-[var(--color-primary-700)] hover:bg-sky-50 text-sm font-bold py-2 px-4 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
@@ -149,7 +152,7 @@ const Header: React.FC<HeaderProps> = ({ onSettingsClick, onAddCandidateClick, o
           </button>
           <button
             onClick={onBulkUploadClick}
-            className="flex items-center gap-2 bg-white/20 text-white hover:bg-white/30 text-sm font-bold py-2 px-4 rounded-xl transition-all duration-200 shadow-sm"
+            className="flex items-center gap-2 bg-white/15 border border-white/20 text-white hover:bg-white/25 text-sm font-bold py-2 px-4 rounded-xl transition-all duration-200"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />

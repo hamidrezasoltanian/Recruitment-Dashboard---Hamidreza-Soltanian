@@ -6,6 +6,10 @@ import { AuthRequest } from '../middleware/auth';
 import { execSync } from 'child_process';
 import fs from 'fs';
 import { emailService } from '../services/emailService';
+import {
+  cleanPersianSpaces,
+  resolveCandidateName,
+} from '../utils/persianName';
 
 const prisma = new PrismaClient();
 
@@ -197,6 +201,7 @@ export const createCandidate = async (req: AuthRequest, res: Response) => {
       interviewDate,
       interviewTime,
       interviewTimeChanged = false,
+      interviewer,
       evaluation
     } = req.body;
 
@@ -240,6 +245,7 @@ export const createCandidate = async (req: AuthRequest, res: Response) => {
         interviewDate,
         interviewTime,
         interviewTimeChanged,
+        interviewer,
         evaluation,
         userId,
         history: {
@@ -402,7 +408,7 @@ export const updateCandidate = async (req: AuthRequest, res: Response) => {
 
     // Only update scalar fields - exclude relations and computed fields
     const { name, email, phone, position, source, stage, rating,
-            interviewDate, interviewTime, interviewTimeChanged, hasResume, evaluation } = updateData;
+            interviewDate, interviewTime, interviewTimeChanged, interviewer, hasResume, evaluation } = updateData;
 
     const cleanName = name !== undefined ? name.replace(/\s+/g, ' ').trim() : undefined;
     const cleanEmail = email !== undefined ? email.replace(/\s+/g, '').trim().toLowerCase() : undefined;
@@ -445,6 +451,7 @@ export const updateCandidate = async (req: AuthRequest, res: Response) => {
         ...(interviewDate !== undefined && { interviewDate }),
         ...(interviewTime !== undefined && { interviewTime }),
         ...(interviewTimeChanged !== undefined && { interviewTimeChanged }),
+        ...(interviewer !== undefined && { interviewer }),
         ...(hasResume !== undefined && { hasResume }),
         ...(evaluation !== undefined && { evaluation }),
         updatedAt: new Date()
@@ -679,101 +686,6 @@ export const analyzeResume = async (req: AuthRequest, res: Response) => {
 
     let layoutText = rawLayoutText.normalize('NFKC');
     layoutText = layoutText.replace(/[\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '');
-    // Helper to clean Persian spaces
-    const cleanPersianSpaces = (str: string): string => {
-      let cleaned = str.replace(/\s+/g, ' ').trim();
-      const commonFixes: { [key: string]: string } = {
-        'مه رناز': 'مهرناز',
-        'کا ر': 'کار',
-        'کار شنا': 'کارشنا',
-        'رشناس': 'رشناس',
-        'توم ان': 'تومان',
-        'امو زشی': 'آموزشی',
-        'آمو زش': 'آموزش',
-        'مد ر': 'مدیر',
-        'می زان': 'میزان',
-        'ثب ت': 'ثبت',
-        'م بایل': 'موبایل',
-        'شنا سه': 'شناسه',
-        'کار ری': 'کاربری',
-        'دان شگاه': 'دانشگاه',
-        'آ کادم': 'آکادم',
-        'تکمی ل': 'تکمیل',
-        'ارز یابی': 'ارزیابی',
-        'سوا بق': 'سوابق',
-      };
-      for (const [wrong, right] of Object.entries(commonFixes)) {
-        const regex = new RegExp(wrong, 'g');
-        cleaned = cleaned.replace(regex, right);
-      }
-      return cleaned;
-    };
-
-    // Helper to fix Persian name spacing
-    const fixPersianNameSpacing = (nameStr: string): string => {
-      let cleaned = cleanPersianSpaces(nameStr);
-      let parts = cleaned.split(' ');
-      let changed = true;
-      while (changed) {
-        changed = false;
-        for (let i = 0; i < parts.length - 1; i++) {
-          const part1 = parts[i];
-          const part2 = parts[i + 1];
-          const isPart1Single = part1.length === 1;
-          const isPart2Single = part2.length === 1;
-          const nonConnecting = ['ا', 'د', 'ذ', 'ر', 'ز', 'ژ', 'و', 'آ', 'أ', 'إ', 'ؤ'];
-          const lastChar1 = part1.charAt(part1.length - 1);
-          const part1EndsWithConnecting = !nonConnecting.includes(lastChar1) && /[\u0600-\u06FF]/.test(lastChar1);
-          let shouldMerge = false;
-          if (isPart1Single || isPart2Single) {
-            shouldMerge = true;
-          } else if (part1.length <= 2 && part1EndsWithConnecting) {
-            shouldMerge = true;
-          }
-          if (shouldMerge) {
-            parts[i] = part1 + part2;
-            parts.splice(i + 1, 1);
-            changed = true;
-            break;
-          }
-        }
-      }
-      return parts.join(' ').replace(/\s+/g, ' ').trim();
-    };
-
-    // Helper to extract clean name from filename if possible
-    const getNameFromFilename = (filename: string): string => {
-      let cleanName = filename.replace(/\.[^/.]+$/, "");
-      cleanName = cleanName.replace(/[\s_\-]+/g, ' ').trim();
-      cleanName = cleanName.normalize('NFKC');
-      cleanName = cleanName.replace(/[\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '');
-
-      const stopWords = [
-        'resume', 'cv', 'pdf', 'file', 'job', 'applicant', 'candidate', 'senior', 'junior', 'intern', 'developer',
-        'react', 'node', 'frontend', 'backend', 'fullstack', 'python', 'java', 'go', 'engineer', 'manager', 'sales',
-        'رزومه', 'کارجو', 'کاندید', 'همکار', 'متقاضی', 'برنامه نویس', 'برنامه', 'نویس', 'طراح', 'فروش', 'مدیر',
-        'کارشناس', 'پشتیبان', 'طراحی', 'توسعه دهنده', 'توسعه‌دهنده', 'مهندس', 'ارشد', 'جونیور', 'کارآموز', 'جدید',
-        'توسعه', 'دهنده', 'پشتیبانی', 'طراح', 'بازاریاب', 'سایت', 'ایران', 'تهران', 'فارسی', 'انگلیسی', 'ارتباطات',
-        'بین الملل', 'مدیریت', 'بازاریابی', 'کارشناسی', 'ارشد', 'دکتری', 'دیپلم', 'لیسانس', 'فوق لیسانس'
-      ];
-
-      let parts = cleanName.split(' ');
-      parts = parts.filter(part => {
-        const p = part.toLowerCase().trim();
-        if (!p) return false;
-        if (stopWords.includes(p)) return false;
-        if (/^\d+$/.test(p)) return false;
-        return true;
-      });
-
-      if (parts.length === 0) return '';
-      const joined = parts.join(' ');
-      if (/[\u0600-\u06FF]/.test(joined)) {
-        return fixPersianNameSpacing(joined);
-      }
-      return joined.trim();
-    };
-
 
     // Helper to check placeholders
     const isPlaceholderOrEmpty = (str: string | null | undefined): boolean => {
@@ -798,26 +710,7 @@ export const analyzeResume = async (req: AuthRequest, res: Response) => {
     const parsedPhone = phoneMatch ? phoneMatch[0].replace(/[-\s]/g, '') : '';
 
     const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-    let parsedName = getNameFromFilename(resumeFile.originalName);
-    if (!parsedName) {
-      for (const line of lines) {
-        if (
-          line.length >= 3 &&
-          line.length <= 30 &&
-          !line.includes(':') &&
-          !line.includes('روز') &&
-          !line.includes('رسانی') &&
-          !line.includes('سوابق') &&
-          !line.includes('شناسه') &&
-          !line.includes('کاربری') &&
-          !line.includes('صفحه') &&
-          !/\d/.test(line)
-        ) {
-          parsedName = fixPersianNameSpacing(line);
-          break;
-        }
-      }
-    }
+    const parsedName = resolveCandidateName(resumeFile.originalName, text);
 
     // 4. Parse Job Hopping
     const durationRegex = /(\d+)\s*\)\s*(?:\d+)?\s*(سال|ماه)(?:\s*و\s*(\d+)?\s*ماه)?/g;
@@ -1074,7 +967,14 @@ export const validateCreateCandidate = [
   body('rating')
     .optional()
     .isInt({ min: 0, max: 5 })
-    .withMessage('امتیاز باید بین 0 تا 5 باشد')
+    .withMessage('امتیاز باید بین 0 تا 5 باشد'),
+  body('interviewer')
+    .custom((value, { req }) => {
+      if (req.body.interviewDate && !value) {
+        throw new Error('انتخاب مصاحبه‌کننده برای تعیین زمان مصاحبه الزامی است');
+      }
+      return true;
+    })
 ];
 
 export const validateUpdateCandidate = [
@@ -1089,7 +989,14 @@ export const validateUpdateCandidate = [
   body('rating')
     .optional()
     .isInt({ min: 0, max: 5 })
-    .withMessage('امتیاز باید بین 0 تا 5 باشد')
+    .withMessage('امتیاز باید بین 0 تا 5 باشد'),
+  body('interviewer')
+    .custom((value, { req }) => {
+      if (req.body.interviewDate && !value) {
+        throw new Error('انتخاب مصاحبه‌کننده برای تعیین زمان مصاحبه الزامی است');
+      }
+      return true;
+    })
 ];
 
 export const validateUpdateStage = [

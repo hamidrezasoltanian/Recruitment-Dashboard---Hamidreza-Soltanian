@@ -59,7 +59,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   useEffect(() => {
-    if (user?.isAdmin) {
+    if (user) {
       refreshUsers();
     } else {
       setUsers({});

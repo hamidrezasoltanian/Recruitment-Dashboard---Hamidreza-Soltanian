@@ -107,21 +107,24 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ candidate, onViewDetails, onEdi
   return (
     <div
       ref={setNodeRef}
-      style={style}
       {...attributes}
       {...listeners}
       onClick={handleCardClick}
-      className={`bg-white rounded-xl shadow-sm border border-gray-100 p-3 mb-3 touch-none cursor-pointer
-        transition-all duration-200 hover:shadow-md hover:-translate-y-0.5
-        ${isDragging ? 'opacity-40 shadow-xl scale-95' : ''}`}
+      className={`bg-white rounded-xl border border-slate-100/90 p-3.5 mb-3 touch-none cursor-pointer
+        transition-all duration-200 hover:-translate-y-0.5
+        ${isDragging ? 'opacity-40 scale-95' : ''}`}
+      style={{
+        ...style,
+        boxShadow: isDragging ? 'var(--shadow-lift)' : 'var(--shadow-soft)',
+      }}
     >
       {/* Avatar + Name row */}
-      <div className="flex items-center gap-2.5 mb-2">
-        <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${avatarColor} flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}>
+      <div className="flex items-center gap-2.5 mb-2.5">
+        <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${avatarColor} flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm`}>
           {initials}
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-gray-800 text-sm truncate">{candidate.name}</h3>
+          <h3 className="font-bold text-slate-800 text-sm truncate">{candidate.name}</h3>
           <p className="text-xs font-medium text-[var(--color-primary-600)] truncate">{candidate.position || 'بدون موقعیت'}</p>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
@@ -153,12 +156,12 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ candidate, onViewDetails, onEdi
       </div>
 
       {/* Contact row */}
-      <div className="flex items-center justify-between text-xs text-gray-500 bg-gray-50 rounded-lg px-2.5 py-1.5 mb-2">
+      <div className="flex items-center justify-between text-xs text-slate-500 bg-slate-50/90 rounded-lg px-2.5 py-1.5 mb-2.5 border border-slate-100">
         <a href={`mailto:${candidate.email}`} data-action="email" className="hover:text-[var(--color-primary-600)] truncate max-w-[140px]">
           {candidate.email}
         </a>
         {candidate.phone && (
-          <a href={`https://wa.me/${whatsappNumber}`} target="_blank" rel="noopener noreferrer" data-action="whatsapp" className="text-green-500 hover:text-green-600 flex-shrink-0 mr-2">
+          <a href={`https://wa.me/${whatsappNumber}`} target="_blank" rel="noopener noreferrer" data-action="whatsapp" className="text-emerald-500 hover:text-emerald-600 flex-shrink-0 mr-2">
             <WhatsappIcon className="w-4 h-4" />
           </a>
         )}
@@ -185,17 +188,30 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ candidate, onViewDetails, onEdi
         </div>
       )}
 
-      {/* Bottom: Rating + Interview date */}
+      {/* Bottom: Rating + Interview date + Interviewer */}
       <div className="flex items-center justify-between">
         {candidate.rating > 0
           ? <StarRating rating={candidate.rating} readOnly />
           : <span />
         }
-        {formattedInterviewDate && (
-          <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full flex-shrink-0">
-            📅 {formattedInterviewDate}
-          </span>
-        )}
+        <div className="flex flex-col items-end gap-1">
+          {formattedInterviewDate && (
+            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-lg flex-shrink-0 inline-flex items-center gap-1">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              {formattedInterviewDate}
+            </span>
+          )}
+          {candidate.interviewer && (
+            <span className="text-[11px] font-medium text-slate-600 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-lg flex-shrink-0 inline-flex items-center gap-1">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              {candidate.interviewer}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );

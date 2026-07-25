@@ -5,118 +5,15 @@ import fs from 'fs';
 import { execSync } from 'child_process';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth';
+import {
+  cleanPersianSpaces,
+  decodeUtf8Filename,
+  fixPersianNameSpacing,
+  resolveCandidateName,
+} from '../utils/persianName';
 
 const prisma = new PrismaClient();
 const router = express.Router();
-
-// Helper to clean Persian spaces
-const cleanPersianSpaces = (str: string): string => {
-  let cleaned = str.replace(/\s+/g, ' ').trim();
-  const commonFixes: { [key: string]: string } = {
-    'مه رناز': 'مهرناز',
-    'کا ر': 'کار',
-    'کار شنا': 'کارشنا',
-    'رشناس': 'رشناس',
-    'توم ان': 'تومان',
-    'امو زشی': 'آموزشی',
-    'آمو زش': 'آموزش',
-    'مد ر': 'مدیر',
-    'می زان': 'میزان',
-    'ثب ت': 'ثبت',
-    'م بایل': 'موبایل',
-    'شنا سه': 'شناسه',
-    'کار ری': 'کاربری',
-    'دان شگاه': 'دانشگاه',
-    'آ کادم': 'آکادم',
-    'تکمی ل': 'تکمیل',
-    'ارز یابی': 'ارزیابی',
-    'سوا بق': 'سوابق',
-  };
-  for (const [wrong, right] of Object.entries(commonFixes)) {
-    const regex = new RegExp(wrong, 'g');
-    cleaned = cleaned.replace(regex, right);
-  }
-  return cleaned;
-};
-
-// Helper to fix Persian name spacing
-const fixPersianNameSpacing = (nameStr: string): string => {
-  // 1. Check if the string is heavily spaced out (average word length is small)
-  const rawParts = nameStr.trim().split(/\s+/);
-  if (rawParts.length > 2) {
-    const avgLen = rawParts.reduce((sum, p) => sum + p.length, 0) / rawParts.length;
-    if (avgLen < 1.8) {
-      // It's a spaced-out string. Try to split by larger spaces (2 or more spaces)
-      const segments = nameStr.trim().split(/\s{2,}/);
-      if (segments.length > 1) {
-        // Merge characters inside each segment and join them with a single space
-        return segments.map(seg => seg.replace(/\s+/g, '')).join(' ').trim();
-      }
-    }
-  }
-
-  let cleaned = cleanPersianSpaces(nameStr);
-  let parts = cleaned.split(' ');
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (let i = 0; i < parts.length - 1; i++) {
-      const part1 = parts[i];
-      const part2 = parts[i + 1];
-      const isPart1Single = part1.length === 1;
-      const isPart2Single = part2.length === 1;
-      const nonConnecting = ['ا', 'د', 'ذ', 'ر', 'ز', 'ژ', 'و', 'آ', 'أ', 'إ', 'ؤ'];
-      const lastChar1 = part1.charAt(part1.length - 1);
-      const part1EndsWithConnecting = !nonConnecting.includes(lastChar1) && /[\u0600-\u06FF]/.test(lastChar1);
-      let shouldMerge = false;
-      if (isPart1Single || isPart2Single) {
-        shouldMerge = true;
-      } else if (part1.length <= 2 && part1EndsWithConnecting) {
-        shouldMerge = true;
-      }
-      if (shouldMerge) {
-        parts[i] = part1 + part2;
-        parts.splice(i + 1, 1);
-        changed = true;
-        break;
-      }
-    }
-  }
-  return parts.join(' ').replace(/\s+/g, ' ').trim();
-};
-
-// Helper to extract clean name from filename if possible
-const getNameFromFilename = (filename: string): string => {
-  let cleanName = filename.replace(/\.[^/.]+$/, "");
-  cleanName = cleanName.replace(/[\s_\-]+/g, ' ').trim();
-  cleanName = cleanName.normalize('NFKC');
-  cleanName = cleanName.replace(/[\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '');
-
-  const stopWords = [
-    'resume', 'cv', 'pdf', 'file', 'job', 'applicant', 'candidate', 'senior', 'junior', 'intern', 'developer',
-    'react', 'node', 'frontend', 'backend', 'fullstack', 'python', 'java', 'go', 'engineer', 'manager', 'sales',
-    'رزومه', 'کارجو', 'کاندید', 'همکار', 'متقاضی', 'برنامه نویس', 'برنامه', 'نویس', 'طراح', 'فروش', 'مدیر',
-    'کارشناس', 'پشتیبان', 'طراحی', 'توسعه دهنده', 'توسعه‌دهنده', 'مهندس', 'ارشد', 'جونیور', 'کارآموز', 'جدید',
-    'توسعه', 'دهنده', 'پشتیبانی', 'طراح', 'بازاریاب', 'سایت', 'ایران', 'تهران', 'فارسی', 'انگلیسی', 'ارتباطات',
-    'بین الملل', 'مدیریت', 'بازاریابی', 'کارشناسی', 'ارشد', 'دکتری', 'دیپلم', 'لیسانس', 'فوق لیسانس'
-  ];
-
-  let parts = cleanName.split(' ');
-  parts = parts.filter(part => {
-    const p = part.toLowerCase().trim();
-    if (!p) return false;
-    if (stopWords.includes(p)) return false;
-    if (/^\d+$/.test(p)) return false;
-    return true;
-  });
-
-  if (parts.length === 0) return '';
-  const joined = parts.join(' ');
-  if (/[\u0600-\u06FF]/.test(joined)) {
-    return fixPersianNameSpacing(joined);
-  }
-  return joined.trim();
-};
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -200,7 +97,7 @@ router.post('/resume/:candidateId', upload.single('resume'), async (req, res) =>
     const resumeFile = await prisma.resumeFile.create({
       data: {
         filename: file.filename,
-        originalName: file.originalname,
+        originalName: decodeUtf8Filename(file.originalname),
         mimeType: file.mimetype,
         size: file.size,
         path: file.path,
@@ -354,7 +251,7 @@ router.post('/test/:candidateId/:testId', upload.single('testFile'), async (req,
     const testFile = await prisma.testFile.create({
       data: {
         filename: file.filename,
-        originalName: file.originalname,
+        originalName: decodeUtf8Filename(file.originalname),
         mimeType: file.mimetype,
         size: file.size,
         path: file.path,
@@ -373,7 +270,7 @@ router.post('/test/:candidateId/:testId', upload.single('testFile'), async (req,
         where: { id: existingResult.id },
         data: {
           filename: file.filename,
-          originalName: file.originalname,
+          originalName: decodeUtf8Filename(file.originalname),
           mimeType: file.mimetype,
           size: file.size,
           path: file.path,
@@ -386,7 +283,7 @@ router.post('/test/:candidateId/:testId', upload.single('testFile'), async (req,
           candidateId,
           testId,
           filename: file.filename,
-          originalName: file.originalname,
+          originalName: decodeUtf8Filename(file.originalname),
           mimeType: file.mimetype,
           size: file.size,
           path: file.path,
@@ -579,26 +476,8 @@ router.post('/analyze-temp', upload.single('resume'), async (req, res) => {
     const parsedPhone = phoneMatch ? phoneMatch[0].replace(/[-\s]/g, '') : '';
 
     const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-    let parsedName = getNameFromFilename(file.originalname);
-    if (!parsedName) {
-      for (const line of lines) {
-        if (
-          line.length >= 3 &&
-          line.length <= 30 &&
-          !line.includes(':') &&
-          !line.includes('روز') &&
-          !line.includes('رسانی') &&
-          !line.includes('سوابق') &&
-          !line.includes('شناسه') &&
-          !line.includes('کاربری') &&
-          !line.includes('صفحه') &&
-          !/\d/.test(line)
-        ) {
-          parsedName = fixPersianNameSpacing(line);
-          break;
-        }
-      }
-    }
+    const originalName = decodeUtf8Filename(file.originalname);
+    const parsedName = resolveCandidateName(originalName, text);
 
     // 4. Parse Job Hopping
     const durationRegex = /(\d+)\s*\)\s*(?:\d+)?\s*(سال|ماه)(?:\s*و\s*(\d+)?\s*ماه)?/g;
@@ -751,29 +630,9 @@ function parseResumeData(text: string, layoutText: string, defaultName: string) 
   const phoneMatch = normText.match(/09\d{9}/) || normText.match(/09\d{2}[-\s]*\d{3}[-\s]*\d{4}/);
   const phone = phoneMatch ? phoneMatch[0].replace(/[-\s]/g, '') : '';
 
-  const lines = normText.split('\n').map(l => l.trim()).filter(Boolean);
-  let name = getNameFromFilename(defaultName);
+  let name = resolveCandidateName(decodeUtf8Filename(defaultName), normText);
   if (!name) {
-    for (const line of lines) {
-      if (
-        line.length >= 3 &&
-        line.length <= 30 &&
-        !line.includes(':') &&
-        !line.includes('روز') &&
-        !line.includes('رسانی') &&
-        !line.includes('سوابق') &&
-        !line.includes('شناسه') &&
-        !line.includes('کاربری') &&
-        !line.includes('صفحه') &&
-        !/\d/.test(line)
-      ) {
-        name = fixPersianNameSpacing(line);
-        break;
-      }
-    }
-  }
-  if (!name) {
-    name = fixPersianNameSpacing(defaultName);
+    name = fixPersianNameSpacing(decodeUtf8Filename(defaultName));
   }
 
   // Job Hopping
@@ -893,14 +752,15 @@ router.post('/bulk-upload-resumes', upload.array('resumes'), async (req, res) =>
           console.error('pdftotext error during bulk:', err);
           if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
           errors.push({
-            filename: file.originalname,
+            filename: decodeUtf8Filename(file.originalname),
             error: 'خطا در استخراج متن فایل PDF'
           });
           continue;
         }
 
         // 2. Parse text
-        const defaultName = path.basename(file.originalname, path.extname(file.originalname));
+        const decodedOriginal = decodeUtf8Filename(file.originalname);
+        const defaultName = path.basename(decodedOriginal, path.extname(decodedOriginal));
         const parsed = parseResumeData(rawText, rawLayoutText, defaultName);
 
         const cleanName = parsed.name ? parsed.name.replace(/\s+/g, ' ').trim() : '';
@@ -934,7 +794,7 @@ router.post('/bulk-upload-resumes', upload.array('resumes'), async (req, res) =>
         if (isDuplicate) {
           if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
           skippedCandidates.push({
-            filename: file.originalname,
+            filename: decodeUtf8Filename(file.originalname),
             name: cleanName,
             reason: duplicateReason
           });
@@ -1018,7 +878,7 @@ router.post('/bulk-upload-resumes', upload.array('resumes'), async (req, res) =>
         await prisma.resumeFile.create({
           data: {
             filename: file.filename,
-            originalName: file.originalname,
+            originalName: decodeUtf8Filename(file.originalname),
             mimeType: file.mimetype,
             size: file.size,
             path: file.path,
@@ -1038,7 +898,7 @@ router.post('/bulk-upload-resumes', upload.array('resumes'), async (req, res) =>
         console.error('Error importing single resume:', err);
         if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
         errors.push({
-          filename: file.originalname,
+          filename: decodeUtf8Filename(file.originalname),
           error: err.message || 'خطای غیرمنتظره در ثبت متقاضی'
         });
       }

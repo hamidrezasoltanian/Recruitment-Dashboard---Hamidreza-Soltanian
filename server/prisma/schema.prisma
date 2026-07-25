@@ -42,6 +42,7 @@ model Candidate {
   interviewDate     String?
   interviewTime     String?
   interviewTimeChanged Boolean @default(false)
+  interviewer       String?
   hasResume         Boolean  @default(false)
   evaluation        String?
   

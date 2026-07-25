@@ -26,7 +26,7 @@ const getStageStyle = (title: string) => {
     return { bar: 'bg-emerald-400', badge: 'bg-emerald-100 text-emerald-700', dropBg: 'bg-emerald-50/70', headerText: 'text-emerald-800' };
   if (title.includes('رد') || title.includes('rejected'))
     return { bar: 'bg-red-400', badge: 'bg-red-100 text-red-700', dropBg: 'bg-red-50/70', headerText: 'text-red-800' };
-  return { bar: 'bg-gray-400', badge: 'bg-gray-100 text-gray-600', dropBg: 'bg-gray-50/70', headerText: 'text-gray-700' };
+  return { bar: 'bg-slate-400', badge: 'bg-slate-100 text-slate-600', dropBg: 'bg-slate-50/70', headerText: 'text-slate-700' };
 };
 
 const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, candidates, onViewDetails, onEdit }) => {
@@ -35,20 +35,21 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, candidates, onVi
 
   return (
     <div className="w-[300px] flex-shrink-0">
-      <div className={`rounded-2xl shadow-sm border border-white/60 overflow-hidden flex flex-col h-full transition-shadow duration-200 ${isOver ? 'shadow-md ring-2 ring-[var(--color-primary-300)]' : ''}`}
-           style={{ background: '#f8fafc' }}>
-        {/* Colored top bar */}
+      <div
+        className={`rounded-2xl overflow-hidden flex flex-col h-full transition-all duration-200 border border-slate-200/80 ${
+          isOver ? 'ring-2 ring-[var(--color-primary-300)] shadow-md' : ''
+        }`}
+        style={{ background: 'var(--surface-muted)', boxShadow: 'var(--shadow-soft)' }}
+      >
         <div className={`h-1.5 w-full ${style.bar}`} />
 
-        {/* Column header */}
-        <div className="flex justify-between items-center px-4 py-3 bg-white border-b border-gray-100">
+        <div className="flex justify-between items-center px-4 py-3 bg-white/90 border-b border-slate-100">
           <h2 className={`font-extrabold text-sm ${style.headerText}`}>{title}</h2>
-          <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${style.badge}`}>
+          <span className={`text-xs font-bold px-2.5 py-0.5 rounded-lg ${style.badge}`}>
             {candidates.length}
           </span>
         </div>
 
-        {/* Cards area */}
         <div
           ref={setNodeRef}
           className={`kanban-cards flex-grow overflow-y-auto p-3 space-y-0 min-h-[200px] transition-colors duration-200 ${isOver ? style.dropBg : ''}`}
@@ -57,7 +58,10 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, candidates, onVi
             <KanbanCard key={candidate.id} candidate={candidate} onViewDetails={onViewDetails} onEdit={onEdit} />
           ))}
           {candidates.length === 0 && (
-            <div className="flex items-center justify-center h-24 text-gray-300 text-xs">
+            <div className="flex flex-col items-center justify-center h-28 text-slate-300 text-xs gap-2 border border-dashed border-slate-200 rounded-xl mx-0.5">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+              </svg>
               بکشید و رها کنید
             </div>
           )}

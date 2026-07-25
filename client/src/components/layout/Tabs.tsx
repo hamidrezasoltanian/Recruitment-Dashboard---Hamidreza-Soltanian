@@ -38,25 +38,22 @@ const Tabs: React.FC<TabsProps> = ({ activeView, setActiveView }) => {
   ];
 
   return (
-    <div className="bg-white border-b border-gray-200 px-4 md:px-6 shadow-sm">
-      <nav className="flex gap-1 -mb-px" aria-label="Tabs">
+    <div className="bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 md:px-6 sticky top-[57px] z-20">
+      <nav className="flex gap-1.5 py-2" aria-label="Tabs">
         {tabs.map((tab) => {
           const isActive = activeView === tab.id;
           return (
             <button
               key={tab.id}
               onClick={() => setActiveView(tab.id)}
-              className={`relative flex items-center gap-2 whitespace-nowrap py-3.5 px-4 text-sm font-semibold transition-all duration-200 rounded-t-lg
+              className={`relative flex items-center gap-2 whitespace-nowrap py-2.5 px-4 text-sm font-semibold transition-all duration-200 rounded-xl
                 ${isActive
-                  ? 'text-[var(--color-primary-600)] bg-[var(--color-primary-50)]'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                  ? 'text-[var(--color-primary-700)] bg-[var(--color-primary-50)] shadow-sm ring-1 ring-[var(--color-primary-100)]'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
                 }`}
             >
               {TAB_ICONS[tab.id]}
               {tab.label}
-              {isActive && (
-                <span className="absolute bottom-0 right-0 left-0 h-0.5 bg-[var(--color-primary-500)] rounded-full" />
-              )}
             </button>
           );
         })}

@@ -15,14 +15,15 @@ interface StatCardProps {
 }
 
 const StatCard: React.FC<StatCardProps> = ({ icon, label, value, gradient, accent }) => (
-    <div className={`${gradient} rounded-2xl p-5 text-white shadow-lg relative overflow-hidden`}>
+    <div className={`${gradient} rounded-2xl p-5 text-white relative overflow-hidden transition-transform duration-200 hover:-translate-y-0.5`}
+         style={{ boxShadow: 'var(--shadow-lift)' }}>
         <div className="absolute -top-6 -left-6 w-28 h-28 rounded-full bg-white/10 pointer-events-none" />
         <div className="absolute -bottom-4 -right-4 w-20 h-20 rounded-full bg-white/10 pointer-events-none" />
-        <div className={`${accent} w-10 h-10 rounded-xl flex items-center justify-center mb-3`}>
+        <div className={`${accent} w-10 h-10 rounded-xl flex items-center justify-center mb-3 backdrop-blur-sm`}>
             {icon}
         </div>
         <p className="text-3xl font-black tracking-tight">{value}</p>
-        <p className="text-sm font-medium text-white/80 mt-1">{label}</p>
+        <p className="text-sm font-medium text-white/85 mt-1">{label}</p>
     </div>
 );
 
@@ -76,19 +77,19 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ candidates }) => {
     if (candidates.length === 0) return null;
 
     return (
-        <div className="mb-8">
+        <div className="mb-8 fade-in">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <StatCard
                     label="متقاضیان فعال"
                     value={stats.activeCount}
-                    gradient="bg-gradient-to-br from-blue-500 to-blue-700"
+                    gradient="bg-gradient-to-br from-sky-500 to-blue-700"
                     accent="bg-white/25"
                     icon={<UserIcon className="h-5 w-5 text-white" />}
                 />
                 <StatCard
                     label="جدید در این هفته"
                     value={stats.newThisWeek}
-                    gradient="bg-gradient-to-br from-emerald-400 to-emerald-600"
+                    gradient="bg-gradient-to-br from-teal-400 to-emerald-600"
                     accent="bg-white/25"
                     icon={<SparklesIcon className="h-5 w-5 text-white" />}
                 />
@@ -102,23 +103,23 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ candidates }) => {
                 <StatCard
                     label="استخدام شده"
                     value={stats.offersExtended}
-                    gradient="bg-gradient-to-br from-violet-500 to-purple-700"
+                    gradient="bg-gradient-to-br from-slate-600 to-slate-800"
                     accent="bg-white/25"
                     icon={<BriefcaseIcon className="h-5 w-5 text-white" />}
                 />
             </div>
 
             {stats.sourceData.length > 0 && (
-                <div className="bg-white rounded-2xl shadow-sm p-5 border border-gray-100">
-                    <h3 className="text-base font-bold text-gray-800 mb-5 flex items-center gap-2">
+                <div className="app-surface p-5">
+                    <h3 className="text-base font-bold text-slate-800 mb-5 flex items-center gap-2">
                         <span className="w-1 h-5 rounded-full bg-[var(--color-primary-500)] inline-block"></span>
                         متقاضیان بر اساس منبع
                     </h3>
-                    <div className="space-y-3">
+                    <div className="space-y-3.5">
                         {stats.sourceData.map((source) => (
                             <div key={source.name} className="flex items-center gap-3">
-                                <p className="w-28 text-sm font-medium text-gray-600 truncate flex-shrink-0">{source.name}</p>
-                                <div className="flex-1 bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                                <p className="w-28 text-sm font-medium text-slate-600 truncate flex-shrink-0">{source.name}</p>
+                                <div className="flex-1 bg-slate-100 rounded-full h-2.5 overflow-hidden">
                                     <div
                                         className="h-2.5 rounded-full transition-all duration-700"
                                         style={{
@@ -127,7 +128,7 @@ const DashboardSummary: React.FC<DashboardSummaryProps> = ({ candidates }) => {
                                         }}
                                     />
                                 </div>
-                                <span className="w-8 text-left text-sm font-bold text-gray-700 flex-shrink-0">{source.count}</span>
+                                <span className="w-8 text-left text-sm font-bold text-slate-700 flex-shrink-0">{source.count}</span>
                             </div>
                         ))}
                     </div>

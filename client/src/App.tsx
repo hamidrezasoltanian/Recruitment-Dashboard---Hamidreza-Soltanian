@@ -218,7 +218,7 @@ const App: React.FC = () => {
       </div>
 
       {/* Version Display */}
-      <div className="fixed bottom-2 left-2 text-xs text-gray-400 font-mono z-50">
+      <div className="fixed bottom-2 left-2 text-[10px] text-slate-400/80 font-mono z-50 bg-white/60 backdrop-blur-sm px-2 py-0.5 rounded-md border border-slate-200/60">
         v{appVersion}
       </div>
 

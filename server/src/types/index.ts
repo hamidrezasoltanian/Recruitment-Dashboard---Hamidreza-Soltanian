@@ -25,6 +25,7 @@ export interface Candidate {
   interviewDate?: string;
   interviewTime?: string;
   interviewTimeChanged: boolean;
+  interviewer?: string;
   hasResume: boolean;
   userId: string;
   user: User;

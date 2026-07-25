@@ -23,8 +23,8 @@ router.post('/register', validateRegister, register);
 router.get('/profile', authenticateToken, getProfile);
 router.post('/change-password', authenticateToken, validateChangePassword, changePassword);
 
-// User management (Admin only)
-router.get('/users', authenticateToken, requireAdmin, getAllUsers);
+// User management (Admin only operations, but listing users is allowed for all authenticated users)
+router.get('/users', authenticateToken, getAllUsers);
 router.put('/users/:username', authenticateToken, requireAdmin, updateUser);
 router.delete('/users/:username', authenticateToken, requireAdmin, deleteUser);
 

@@ -13,6 +13,8 @@ import ProcessTimeline from '../ui/ProcessTimeline';
 import { useTemplates } from '../../contexts/TemplateContext';
 import { templateService } from '../../services/templateService';
 import { EmailIcon, WhatsappIcon } from '../ui/Icons';
+import EvaluationForm from '../evaluation/EvaluationForm';
+import { EvaluationAnswers } from '../../utils/evaluationUtils';
 
 declare const persianDate: any;
 
@@ -40,7 +42,9 @@ const CandidateTestItem: React.FC<CandidateTestItemProps> = ({ candidate, test, 
   const [score, setScore] = useState(result?.score || '');
   const [notes, setNotes] = useState(result?.notes || '');
   const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<{ name: string; type: string; size: number } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
 
   useEffect(() => {
     setStatus(result?.status || 'not_sent');
@@ -54,13 +58,16 @@ const CandidateTestItem: React.FC<CandidateTestItemProps> = ({ candidate, test, 
         try {
           const fileBlob = await apiService.downloadTestFile(candidate.id, test.id);
           if (fileBlob) {
-            setFilePreview(URL.createObjectURL(fileBlob));
+            const url = URL.createObjectURL(fileBlob);
+            setFilePreview(url);
+            setUploadedFile({ name: result.file.name, type: result.file.type || '', size: fileBlob.size });
           }
         } catch (e) {
           console.error("Failed to load test file preview", e);
         }
       } else {
         setFilePreview(null);
+        setUploadedFile(null);
       }
     };
     loadPreview();
@@ -68,6 +75,12 @@ const CandidateTestItem: React.FC<CandidateTestItemProps> = ({ candidate, test, 
       if (filePreview) URL.revokeObjectURL(filePreview);
     };
   }, [result?.file, candidate.id, test.id]);
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
   const formatWhatsAppNumber = (phone: string): string => {
     if (!phone) return '';
@@ -141,6 +154,10 @@ const CandidateTestItem: React.FC<CandidateTestItemProps> = ({ candidate, test, 
           file: { name: file.name, type: file.type },
           status: 'review'
         });
+        // Immediately show local preview without waiting for re-fetch
+        const localUrl = URL.createObjectURL(file);
+        setFilePreview(localUrl);
+        setUploadedFile({ name: file.name, type: file.type, size: file.size });
         addToast(`فایل نتیجه با موفقیت آپلود و وضعیت به "نیاز به بررسی" تغییر یافت.`, 'success');
       } catch (err: any) {
         addToast('خطا در آپلود فایل آزمون: ' + (err.message || ''), 'error');
@@ -230,25 +247,104 @@ const CandidateTestItem: React.FC<CandidateTestItemProps> = ({ candidate, test, 
           {/* File Upload/Download */}
           <div className="md:col-span-2">
             <label className="block text-xs font-semibold text-gray-600 mb-1">فایل پاسخ / گزارش نتیجه آزمون</label>
-            <div className="flex items-center gap-3">
-              {filePreview ? (
-                <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg p-1.5 w-full justify-between">
-                  <a href={filePreview} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline truncate max-w-[200px]" title={result?.file?.name}>
-                    📄 {result?.file?.name}
-                  </a>
-                  <label className="text-xs text-gray-500 hover:text-blue-600 cursor-pointer font-semibold">
-                    تغییر فایل
+            {filePreview && uploadedFile ? (
+              <div className="space-y-2">
+                {/* File preview card */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3 flex items-center gap-3 shadow-sm">
+                  {/* Icon or Image thumbnail */}
+                  {uploadedFile.type.startsWith('image/') ? (
+                    <img
+                      src={filePreview}
+                      alt={uploadedFile.name}
+                      className="w-14 h-14 object-cover rounded-lg border border-blue-200 shadow-sm flex-shrink-0"
+                    />
+                  ) : uploadedFile.type === 'application/pdf' ? (
+                    <div
+                      onClick={() => setShowPdfPreview(!showPdfPreview)}
+                      className="w-14 h-14 bg-red-100 border border-red-200 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-red-200 transition-colors flex-shrink-0"
+                      title="کلیک کنید برای پیش‌نمایش PDF"
+                    >
+                      <span className="text-2xl">📄</span>
+                      <span className="text-[9px] font-bold text-red-700">PDF</span>
+                    </div>
+                  ) : (
+                    <div className="w-14 h-14 bg-gray-100 border border-gray-200 rounded-lg flex flex-col items-center justify-center flex-shrink-0">
+                      <span className="text-2xl">📎</span>
+                    </div>
+                  )}
+
+                  {/* File info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-gray-800 truncate" title={uploadedFile.name}>{uploadedFile.name}</p>
+                    <p className="text-[10px] text-gray-500 mt-0.5">{formatFileSize(uploadedFile.size)}</p>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <a
+                        href={filePreview}
+                        download={uploadedFile.name}
+                        className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-md hover:bg-blue-700 transition-colors font-semibold"
+                      >
+                        ⬇ دانلود
+                      </a>
+                      {uploadedFile.type === 'application/pdf' && (
+                        <button
+                          onClick={() => setShowPdfPreview(!showPdfPreview)}
+                          className="text-[10px] bg-red-500 text-white px-2 py-0.5 rounded-md hover:bg-red-600 transition-colors font-semibold"
+                        >
+                          {showPdfPreview ? '✕ بستن' : '👁 مشاهده'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Change file */}
+                  <label className="text-[10px] text-gray-400 hover:text-blue-600 cursor-pointer font-semibold flex-shrink-0 border border-dashed border-gray-300 hover:border-blue-400 px-2 py-1 rounded-lg transition-colors">
+                    تغییر
                     <input type="file" onChange={handleFileChange} className="hidden" />
                   </label>
                 </div>
-              ) : (
-                <div className="w-full">
-                  <input type="file" onChange={handleFileChange} disabled={isUploading} className="text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50 w-full" />
-                  {isUploading && <span className="text-[10px] text-blue-600 animate-pulse mt-1 block">در حال آپلود فایل...</span>}
-                </div>
-              )}
-            </div>
+
+                {/* PDF inline preview */}
+                {showPdfPreview && uploadedFile.type === 'application/pdf' && (
+                  <div className="rounded-xl overflow-hidden border border-blue-200 shadow-md">
+                    <iframe
+                      src={filePreview}
+                      className="w-full"
+                      style={{ height: '320px' }}
+                      title="پیش‌نمایش فایل PDF"
+                    />
+                  </div>
+                )}
+
+                {/* Image full preview */}
+                {uploadedFile.type.startsWith('image/') && (
+                  <div className="rounded-xl overflow-hidden border border-blue-200 shadow-md">
+                    <img src={filePreview} alt={uploadedFile.name} className="w-full object-contain max-h-64" />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="w-full">
+                <label className={`flex flex-col items-center justify-center w-full h-20 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${isUploading ? 'border-blue-300 bg-blue-50' : 'border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50'}`}>
+                  <div className="flex flex-col items-center justify-center gap-1">
+                    {isUploading ? (
+                      <>
+                        <span className="text-xl animate-bounce">⬆️</span>
+                        <span className="text-[11px] text-blue-600 font-semibold animate-pulse">در حال آپلود فایل...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-xl">📁</span>
+                        <span className="text-[11px] text-gray-500 font-semibold">فایل را اینجا بکشید یا کلیک کنید</span>
+                        <span className="text-[10px] text-gray-400">PDF، تصویر یا هر فرمت دیگر</span>
+                      </>
+                    )}
+                  </div>
+                  <input type="file" onChange={handleFileChange} disabled={isUploading} className="hidden" />
+                </label>
+              </div>
+            )}
           </div>
+
 
           {/* Notes Input */}
           <div className="md:col-span-3">
@@ -272,7 +368,7 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
   const { addComment, updateCandidate, addCustomHistoryEntry, deleteCandidate, updateTestResult } = useCandidates();
   const { companyProfile, stages, testLibrary } = useSettings();
   const { templates } = useTemplates();
-  const { user } = useAuth();
+  const { user, users } = useAuth();
   const { addToast } = useToast();
 
   // Helper function to format phone number for WhatsApp
@@ -288,19 +384,6 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
     }
     return cleaned;
   };
-  const getJobCategory = (position: string = ''): 'tech' | 'sales' | 'product' | 'other' => {
-    const p = position.toLowerCase();
-    if (p.includes('react') || p.includes('developer') || p.includes('frontend') || p.includes('backend') || p.includes('it') || p.includes('tech') || p.includes('برنامه نویس') || p.includes('توسعه دهنده') || p.includes('فنی') || p.includes('نرم افزار') || p.includes('برنامه‌نویس') || p.includes('برنامه نویس')) {
-      return 'tech';
-    }
-    if (p.includes('sales') || p.includes('marketing') || p.includes('business') || p.includes('بازاریابی') || p.includes('فروش') || p.includes('مارکتینگ') || p.includes('مشتریان') || p.includes('مذاکره')) {
-      return 'sales';
-    }
-    if (p.includes('product') || p.includes('manager') || p.includes('designer') || p.includes('مدیر') || p.includes('طراحی') || p.includes('محصول') || p.includes('گرافیک') || p.includes('دیزاین')) {
-      return 'product';
-    }
-    return 'other';
-  };
   
   const [newComment, setNewComment] = useState('');
   const [isLoadingResume, setIsLoadingResume] = useState(false);
@@ -308,120 +391,9 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
   const [customHistoryEvent, setCustomHistoryEvent] = useState('');
   const [interviewDate, setInterviewDate] = useState('');
   const [interviewTime, setInterviewTime] = useState('');
+  const [interviewer, setInterviewer] = useState('');
   const [activeTab, setActiveTab] = useState<'info' | 'evaluation' | 'tests'>('info');
 
-  // Evaluation Form State
-  const [jobHopping, setJobHopping] = useState('');
-  const [relevantExperience, setRelevantExperience] = useState('');
-  const [resumeAccuracy, setResumeAccuracy] = useState('');
-  const [phoneEnergy, setPhoneEnergy] = useState(0);
-  const [phoneRoutine, setPhoneRoutine] = useState('');
-  const [phoneScenario, setPhoneScenario] = useState('');
-  const [requestedSalary, setRequestedSalary] = useState('');
-  const [phoneResult, setPhoneResult] = useState('');
-  const [discDominant, setDiscDominant] = useState<string[]>([]);
-  const [supportFit, setSupportFit] = useState('');
-  const [starHonesty, setStarHonesty] = useState(0);
-  const [starHonestyExample, setStarHonestyExample] = useState('');
-  const [starStress, setStarStress] = useState(0);
-  const [starTeamwork, setStarTeamwork] = useState(0);
-  const [rolePlayAccuracy, setRolePlayAccuracy] = useState('');
-  const [rolePlaySpeed, setRolePlaySpeed] = useState('');
-  const [referenceCheck, setReferenceCheck] = useState('');
-  const [finalDecision, setFinalDecision] = useState('');
-  const [finalNotes, setFinalNotes] = useState('');
-
-  // Dynamic Specialized Criteria depending on Job Position
-  const [selectedCategory, setSelectedCategory] = useState<'tech' | 'sales' | 'product' | 'other' | ''>('');
-
-  const [techKnowledge, setTechKnowledge] = useState(0);
-  const [techCodingQuality, setTechCodingQuality] = useState(0);
-  const [techSystemDesign, setTechSystemDesign] = useState(0);
-  const [techGitCollaboration, setTechGitCollaboration] = useState(0);
-  const [techProblemSolving, setTechProblemSolving] = useState('');
-  const [techTaskScore, setTechTaskScore] = useState('');
-
-  const [salesNegotiation, setSalesNegotiation] = useState(0);
-  const [salesMarketAnalysis, setSalesMarketAnalysis] = useState(0);
-  const [salesGoalOrientation, setSalesGoalOrientation] = useState(0);
-  const [salesCustomerEmpathy, setSalesCustomerEmpathy] = useState(0);
-  const [salesClosingAbility, setSalesClosingAbility] = useState(0);
-  const [salesScenarioPlay, setSalesScenarioPlay] = useState('');
-
-  const [productStrategy, setProductStrategy] = useState(0);
-  const [productDesignSense, setProductDesignSense] = useState(0);
-  const [productLeadership, setProductLeadership] = useState(0);
-  const [productDataAnalysis, setProductDataAnalysis] = useState(0);
-  const [productTechnicalUnderstanding, setProductTechnicalUnderstanding] = useState(0);
-  const [productCaseStudy, setProductCaseStudy] = useState('');
-
-  const [otherSkills, setOtherSkills] = useState(0);
-  const [otherLearningSpeed, setOtherLearningSpeed] = useState(0);
-  const [otherDetailOrientation, setOtherDetailOrientation] = useState(0);
-  const [otherWrittenCommunication, setOtherWrittenCommunication] = useState(0);
-  const [otherProblemHandling, setOtherProblemHandling] = useState(0);
-  const [otherTaskResult, setOtherTaskResult] = useState('');
-
-  const parsedEvaluation = useMemo(() => {
-    if (!candidate?.evaluation) return null;
-    try {
-      return JSON.parse(candidate.evaluation);
-    } catch {
-      return null;
-    }
-  }, [candidate?.evaluation]);
-
-  const resetEvaluationFields = () => {
-    setJobHopping('');
-    setRelevantExperience('');
-    setResumeAccuracy('');
-    setPhoneEnergy(0);
-    setPhoneRoutine('');
-    setPhoneScenario('');
-    setRequestedSalary('');
-    setPhoneResult('');
-    setDiscDominant([]);
-    setSupportFit('');
-    setStarHonesty(0);
-    setStarHonestyExample('');
-    setStarStress(0);
-    setStarTeamwork(0);
-    setRolePlayAccuracy('');
-    setRolePlaySpeed('');
-    setReferenceCheck('');
-    setFinalDecision('');
-    setFinalNotes('');
-
-    setSelectedCategory('');
-
-    setTechKnowledge(0);
-    setTechCodingQuality(0);
-    setTechSystemDesign(0);
-    setTechGitCollaboration(0);
-    setTechProblemSolving('');
-    setTechTaskScore('');
-
-    setSalesNegotiation(0);
-    setSalesMarketAnalysis(0);
-    setSalesGoalOrientation(0);
-    setSalesCustomerEmpathy(0);
-    setSalesClosingAbility(0);
-    setSalesScenarioPlay('');
-
-    setProductStrategy(0);
-    setProductDesignSense(0);
-    setProductLeadership(0);
-    setProductDataAnalysis(0);
-    setProductTechnicalUnderstanding(0);
-    setProductCaseStudy('');
-
-    setOtherSkills(0);
-    setOtherLearningSpeed(0);
-    setOtherDetailOrientation(0);
-    setOtherWrittenCommunication(0);
-    setOtherProblemHandling(0);
-    setOtherTaskResult('');
-  };
 
   const emailReminderTemplate = useMemo(() => {
     return templates.find(t => t.id === 'tpl_email_invite_reminder');
@@ -436,169 +408,56 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
         setCustomHistoryEvent('');
         setInterviewDate(candidate.interviewDate || '');
         setInterviewTime(candidate.interviewTime || '');
+        setInterviewer(candidate.interviewer || '');
         setActiveTab('info');
-
-        // Populate evaluation
-        if (candidate.evaluation) {
-          try {
-            const parsed = JSON.parse(candidate.evaluation);
-            const ans = parsed.answers || {};
-            setSelectedCategory(parsed.category || getJobCategory(candidate.position));
-
-            setJobHopping(ans.jobHopping || '');
-            setRelevantExperience(ans.relevantExperience || '');
-            setResumeAccuracy(ans.resumeAccuracy || '');
-            setPhoneEnergy(Number(ans.phoneEnergy) || 0);
-            setPhoneRoutine(ans.phoneRoutine || '');
-            setPhoneScenario(ans.phoneScenario || '');
-            setRequestedSalary(ans.requestedSalary || '');
-            setPhoneResult(ans.phoneResult || '');
-            setDiscDominant(ans.discDominant || []);
-            setSupportFit(ans.supportFit || '');
-            setStarHonesty(Number(ans.starHonesty) || 0);
-            setStarHonestyExample(ans.starHonestyExample || '');
-            setStarStress(Number(ans.starStress) || 0);
-            setStarTeamwork(Number(ans.starTeamwork) || 0);
-            setRolePlayAccuracy(ans.rolePlayAccuracy || '');
-            setRolePlaySpeed(ans.rolePlaySpeed || '');
-            setReferenceCheck(ans.referenceCheck || '');
-            setFinalDecision(ans.finalDecision || '');
-            setFinalNotes(ans.finalNotes || '');
-
-            setTechKnowledge(Number(ans.techKnowledge) || 0);
-            setTechCodingQuality(Number(ans.techCodingQuality) || 0);
-            setTechSystemDesign(Number(ans.techSystemDesign) || 0);
-            setTechGitCollaboration(Number(ans.techGitCollaboration) || 0);
-            setTechProblemSolving(ans.techProblemSolving || '');
-            setTechTaskScore(ans.techTaskScore || '');
-
-            setSalesNegotiation(Number(ans.salesNegotiation) || 0);
-            setSalesMarketAnalysis(Number(ans.salesMarketAnalysis) || 0);
-            setSalesGoalOrientation(Number(ans.salesGoalOrientation) || 0);
-            setSalesCustomerEmpathy(Number(ans.salesCustomerEmpathy) || 0);
-            setSalesClosingAbility(Number(ans.salesClosingAbility) || 0);
-            setSalesScenarioPlay(ans.salesScenarioPlay || '');
-
-            setProductStrategy(Number(ans.productStrategy) || 0);
-            setProductDesignSense(Number(ans.productDesignSense) || 0);
-            setProductLeadership(Number(ans.productLeadership) || 0);
-            setProductDataAnalysis(Number(ans.productDataAnalysis) || 0);
-            setProductTechnicalUnderstanding(Number(ans.productTechnicalUnderstanding) || 0);
-            setProductCaseStudy(ans.productCaseStudy || '');
-
-            setOtherSkills(Number(ans.otherSkills) || 0);
-            setOtherLearningSpeed(Number(ans.otherLearningSpeed) || 0);
-            setOtherDetailOrientation(Number(ans.otherDetailOrientation) || 0);
-            setOtherWrittenCommunication(Number(ans.otherWrittenCommunication) || 0);
-            setOtherProblemHandling(Number(ans.otherProblemHandling) || 0);
-            setOtherTaskResult(ans.otherTaskResult || '');
-          } catch {
-            resetEvaluationFields();
-            setSelectedCategory(getJobCategory(candidate.position));
-          }
-        } else {
-          resetEvaluationFields();
-          setSelectedCategory(getJobCategory(candidate.position));
-        }
     }
   }, [isOpen, candidate]);
 
   if (!candidate) return null;
 
-  const handleSaveEvaluation = async () => {
-    if (!candidate || !user) return;
-    const evaluationData = {
-      evaluatorName: user.name,
-      evaluatorUsername: user.username,
-      candidateName: candidate.name,
-      updatedAt: new Date().toISOString(),
-      category: selectedCategory,
-      answers: {
-        jobHopping,
-        relevantExperience,
-        resumeAccuracy,
-        phoneEnergy,
-        phoneRoutine,
-        phoneScenario,
-        requestedSalary,
-        phoneResult,
-        discDominant,
-        supportFit,
-        starHonesty,
-        starHonestyExample,
-        starStress,
-        starTeamwork,
-        rolePlayAccuracy,
-        rolePlaySpeed,
-        referenceCheck,
-        finalDecision,
-        finalNotes,
 
-        techKnowledge,
-        techCodingQuality,
-        techSystemDesign,
-        techGitCollaboration,
-        techProblemSolving,
-        techTaskScore,
-
-        salesNegotiation,
-        salesMarketAnalysis,
-        salesGoalOrientation,
-        salesCustomerEmpathy,
-        salesClosingAbility,
-        salesScenarioPlay,
-
-        productStrategy,
-        productDesignSense,
-        productLeadership,
-        productDataAnalysis,
-        productTechnicalUnderstanding,
-        productCaseStudy,
-
-        otherSkills,
-        otherLearningSpeed,
-        otherDetailOrientation,
-        otherWrittenCommunication,
-        otherProblemHandling,
-        otherTaskResult,
-      }
-    };
-
+  const handleSaveEvaluationFromForm = async ({ evaluationJson, historyNote }: { evaluationJson: string; historyNote: string }) => {
+    if (!candidate) return;
     try {
       await updateCandidate({
         ...candidate,
-        evaluation: JSON.stringify(evaluationData)
+        evaluation: evaluationJson
       });
       addToast('ارزیابی متقاضی با موفقیت ذخیره شد.', 'success');
-      addCustomHistoryEntry(candidate.id, `ارزیابی متقاضی ثبت/ویرایش شد (توسط ${user.name})`);
+      addCustomHistoryEntry(candidate.id, historyNote);
     } catch {
       addToast('خطا در ذخیره ارزیابی.', 'error');
+      throw new Error('save failed');
     }
   };
 
-  const handleAnalyzeResume = async () => {
-    if (!candidate) return;
+  const handleAnalyzeResumeForForm = async (): Promise<Partial<EvaluationAnswers> | null> => {
+    if (!candidate) return null;
     setIsAnalyzing(true);
     try {
       const updated = await apiService.analyzeResume(candidate.id);
       addToast('رزومه با موفقیت آنالیز شد و فیلدهای اولیه پر شدند.', 'success');
-      
+      let partial: Partial<EvaluationAnswers> | null = null;
       if (updated.evaluation) {
         const parsed = JSON.parse(updated.evaluation);
         const ans = parsed.answers || {};
-        setJobHopping(ans.jobHopping || '');
-        setRelevantExperience(ans.relevantExperience || '');
-        setResumeAccuracy(ans.resumeAccuracy || '');
-        setRequestedSalary(ans.requestedSalary || '');
+        partial = {
+          jobHopping: ans.jobHopping || '',
+          relevantExperience: ans.relevantExperience || '',
+          resumeAccuracy: ans.resumeAccuracy || '',
+          requestedSalary: ans.requestedSalary || '',
+        };
       }
-      
       onEdit(updated);
+      return partial;
     } catch (err: any) {
       addToast(err.message || 'خطا در آنالیز رزومه.', 'error');
+      return null;
     } finally {
       setIsAnalyzing(false);
     }
   };
+
 
   const handleAddComment = () => {
     if (newComment.trim() && user) {
@@ -632,14 +491,19 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
         addToast('لطفا تاریخ را انتخاب کنید.', 'error');
         return;
       }
-      updateCandidate({ ...candidate, interviewDate, interviewTime });
+      if (!interviewer) {
+        addToast('لطفا مصاحبه‌کننده را انتخاب کنید.', 'error');
+        return;
+      }
+      updateCandidate({ ...candidate, interviewDate, interviewTime, interviewer });
       addToast('تاریخ مصاحبه ثبت/ویرایش شد.', 'success');
   };
   
   const handleRemoveInterview = () => {
-      updateCandidate({ ...candidate, interviewDate: undefined, interviewTime: undefined });
+      updateCandidate({ ...candidate, interviewDate: undefined, interviewTime: undefined, interviewer: undefined });
       setInterviewDate('');
       setInterviewTime('');
+      setInterviewer('');
       addToast('تاریخ مصاحبه حذف شد.', 'success');
   };
   
@@ -838,7 +702,7 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
                   {/* Interview Management */}
                   <div className="p-6 bg-white rounded-xl border border-gray-200 space-y-4">
                       <h4 className="text-lg font-bold text-gray-800 mb-4">مدیریت مصاحبه</h4>
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                           <div>
                                <label className="block text-sm font-medium text-gray-700 mb-1">تاریخ مصاحبه</label>
                                <KamaDatePicker value={interviewDate} onChange={setInterviewDate} />
@@ -846,6 +710,21 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
                           <div>
                                <label className="block text-sm font-medium text-gray-700 mb-1">ساعت مصاحبه</label>
                                <input type="time" value={interviewTime} onChange={e => setInterviewTime(e.target.value)} className="w-full border rounded-lg shadow-sm p-3 text-gray-800 bg-white focus:ring-2 focus:ring-[var(--color-primary-500)] focus:border-[var(--color-primary-500)] border-gray-300"/>
+                          </div>
+                          <div>
+                               <label className="block text-sm font-medium text-gray-700 mb-1">
+                                   مصاحبه‌کننده <span className="text-red-500">*</span>
+                               </label>
+                               <select 
+                                   value={interviewer} 
+                                   onChange={e => setInterviewer(e.target.value)} 
+                                   className="w-full border rounded-lg shadow-sm p-3 text-gray-800 bg-white focus:ring-2 focus:ring-[var(--color-primary-500)] focus:border-[var(--color-primary-500)] border-gray-300"
+                               >
+                                   <option value="">-- انتخاب مصاحبه‌کننده --</option>
+                                   {Object.values(users).map(u => (
+                                       <option key={u.username} value={u.username}>{u.name}</option>
+                                   ))}
+                               </select>
                           </div>
                       </div>
                       <div className="space-y-2 pt-2">
@@ -917,486 +796,15 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
                   </div>
                 </>
               ) : activeTab === 'evaluation' ? (
-                <div className="space-y-6">
-                  {/* Banner */}
-                  <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-xl flex flex-wrap justify-between items-center gap-4 text-sm">
-                    <div>
-                      👤 <strong>متقاضی مصاحبه:</strong> <span className="text-blue-900 font-semibold">{candidate.name}</span> ({candidate.position})
-                    </div>
-                    <div>
-                      📝 <strong>کاربر ثبت‌کننده ارزیابی:</strong> <span className="text-blue-900 font-semibold">{user?.name}</span>
-                    </div>
-                    {parsedEvaluation && (
-                      <div className="text-xs text-gray-500">
-                        آخرین ویرایش: توسط {parsedEvaluation.evaluatorName} در {formatTimestamp(parsedEvaluation.updatedAt)}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* SECTION 1: Pre-Screening */}
-                  <div className="p-5 border border-gray-200 rounded-xl bg-white space-y-4">
-                    <h3 className="text-md font-bold text-gray-800 border-b pb-2 flex items-center justify-between">
-                      <span>بخش اول: ارزیابی اولیه رزومه (Pre-Screening)</span>
-                      {candidate.hasResume && (
-                        <button
-                          onClick={handleAnalyzeResume}
-                          disabled={isAnalyzing}
-                          className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs shadow-md transition-all disabled:opacity-50"
-                        >
-                          {isAnalyzing ? (
-                            <>
-                              <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                              </svg>
-                              <span>در حال آنالیز...</span>
-                            </>
-                          ) : (
-                            <>
-                              <span>⚡ آنالیز هوشمند رزومه (جاب‌ویژن)</span>
-                            </>
-                          )}
-                        </button>
-                      )}
-                    </h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Job Hopping */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-gray-700">وضعیت ثبات شغلی (Job Hopping):</label>
-                        <div className="space-y-2">
-                          {[
-                            { value: 'hopping_red', label: 'جابجایی‌های مکرر (کمتر از ۱ سال در ۳ شرکت اخیر) 🔴 (رد خودکار)' },
-                            { value: 'hopping_yellow', label: 'ثبات متوسط (۱ تا ۳ سال ماندگاری) 🟡' },
-                            { value: 'hopping_green', label: 'ثبات بالا (بیش از ۳ سال ماندگاری) 🟢' }
-                          ].map(opt => (
-                            <label key={opt.value} className="flex items-start gap-3 cursor-pointer text-sm font-medium text-gray-700">
-                              <input type="radio" name="jobHopping" value={opt.value} checked={jobHopping === opt.value} onChange={e => setJobHopping(e.target.value)} className="mt-1" />
-                              <span>{opt.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Relevant Experience */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-gray-700">سابقه کار مرتبط در امور مشتریان B2B یا کار با سیستم:</label>
-                        <select value={relevantExperience} onChange={e => setRelevantExperience(e.target.value)} className="w-full border rounded-lg p-2.5 text-sm bg-white border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                          <option value="">-- انتخاب کنید --</option>
-                          <option value="exp_red">بدون سابقه مرتبط / فقط فروش میدانی 🔴</option>
-                          <option value="exp_yellow">۱ تا ۳ سال 🟡</option>
-                          <option value="exp_green">بیشتر از ۳ سال 🟢</option>
-                        </select>
-                      </div>
-
-                      {/* Resume Accuracy */}
-                      <div className="space-y-2 md:col-span-2">
-                        <label className="block text-sm font-semibold text-gray-700">دقت ظاهری رزومه (نداشتن غلط املایی و نظم):</label>
-                        <div className="flex gap-6">
-                          {['ضعیف', 'متوسط', 'عالی'].map(val => (
-                            <label key={val} className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700">
-                              <input type="radio" name="resumeAccuracy" value={val} checked={resumeAccuracy === val} onChange={e => setResumeAccuracy(e.target.value)} />
-                              <span>{val}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* SECTION 2: Phone Interview */}
-                  <div className="p-5 border border-gray-200 rounded-xl bg-white space-y-4">
-                    <h3 className="text-md font-bold text-gray-800 border-b pb-2">
-                      <span>بخش دوم: ارزیابی مصاحبه تلفنی (Phone Interview)</span>
-                    </h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Phone Voice / Energy */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-gray-700">انرژی، فن بیان و لحن صدا پشت تلفن:</label>
-                        <StarRating rating={phoneEnergy} onRatingChange={setPhoneEnergy} />
-                      </div>
-
-                      {/* Requested Salary */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-gray-700">میزان حقوق درخواستی کاندیدا (تومان):</label>
-                        <input type="text" value={requestedSalary} onChange={e => setRequestedSalary(e.target.value)} placeholder="مثلا ۵,۰۰۰,۰۰۰" className="w-full border rounded-lg p-2.5 bg-white border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                      </div>
-
-                      {/* Phone Routine */}
-                      <div className="space-y-2 md:col-span-2">
-                        <label className="block text-sm font-semibold text-gray-700">شرح روتین کاری گذشته (آیا به کار با سیستم و پیگیری اشاره کرد؟):</label>
-                        <textarea rows={3} value={phoneRoutine} onChange={e => setPhoneRoutine(e.target.value)} className="w-full border rounded-lg p-2.5 text-sm bg-white border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="توضیحات..." />
-                      </div>
-
-                      {/* Phone Scenario */}
-                      <div className="space-y-2 md:col-span-2">
-                        <label className="block text-sm font-semibold text-gray-700">واکنش به سناریوی فرضی مشتری عصبانی بابت تاخیر ارسال کالا:</label>
-                        <div className="space-y-2">
-                          {[
-                            { value: 'scen_red', label: 'تدافعی، استرسی یا حق‌به‌جانب 🔴' },
-                            { value: 'scen_yellow', label: 'متوسط (تلاش برای آرام کردن اما بدون راهکار) 🟡' },
-                            { value: 'scen_green', label: 'حرفه‌ای، صبور و راه‌حل‌محور 🟢' }
-                          ].map(opt => (
-                            <label key={opt.value} className="flex items-start gap-3 cursor-pointer text-sm font-medium text-gray-700">
-                              <input type="radio" name="phoneScenario" value={opt.value} checked={phoneScenario === opt.value} onChange={e => setPhoneScenario(e.target.value)} className="mt-1" />
-                              <span>{opt.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Phone Result */}
-                      <div className="space-y-2 md:col-span-2">
-                        <label className="block text-sm font-semibold text-gray-700">نتیجه مصاحبه تلفنی:</label>
-                        <div className="flex flex-wrap gap-6">
-                          {[
-                            { value: 'reject', label: 'رد 🔴' },
-                            { value: 'invite_test', label: 'دعوت به مصاحبه حضوری و ارسال تست 🟢' }
-                          ].map(opt => (
-                            <label key={opt.value} className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700">
-                              <input type="radio" name="phoneResult" value={opt.value} checked={phoneResult === opt.value} onChange={e => setPhoneResult(e.target.value)} />
-                              <span>{opt.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* SECTION 3: DISC Analysis */}
-                  <div className="p-5 border border-gray-200 rounded-xl bg-white space-y-4">
-                    <h3 className="text-md font-bold text-gray-800 border-b pb-2">
-                      <span>بخش سوم: تحلیل رفتارشناسی (DISC)</span>
-                    </h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* DISC Type */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-gray-700 font-medium">تیپ شخصیتی غالب تست DISC:</label>
-                        <div className="flex gap-4">
-                          {['D', 'I', 'S', 'C'].map(type => {
-                            const isChecked = discDominant.includes(type);
-                            return (
-                              <label key={type} className="flex items-center gap-2 cursor-pointer text-sm font-bold text-gray-800 bg-gray-50 px-3 py-1.5 border rounded-lg">
-                                <input 
-                                  type="checkbox" 
-                                  checked={isChecked} 
-                                  onChange={() => {
-                                    if (isChecked) {
-                                      setDiscDominant(prev => prev.filter(t => t !== type));
-                                    } else {
-                                      setDiscDominant(prev => [...prev, type]);
-                                    }
-                                  }} 
-                                />
-                                <span>{type}</span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Support Job Fit */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-gray-700">میزان انطباق با نقش پشتیبانی (نیاز به دقت و صبر):</label>
-                        <select value={supportFit} onChange={e => setSupportFit(e.target.value)} className="w-full border rounded-lg p-2.5 text-sm bg-white border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                          <option value="">-- انتخاب کنید --</option>
-                          <option value="fit_green">انطباق بالا (ترکیب S و C) 🟢</option>
-                          <option value="fit_yellow">انطباق متوسط 🟡</option>
-                          <option value="fit_red">پرریسک (D یا I بسیار بالا) 🔴</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* SECTION 4: STAR Method & Role-Play */}
-                  <div className="p-5 border border-gray-200 rounded-xl bg-white space-y-4">
-                    <h3 className="text-md font-bold text-gray-800 border-b pb-2">
-                      <span>بخش چهارم: ارزیابی حضوری (STAR Method & Role-Play)</span>
-                    </h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Star Honesty */}
-                      <div className="space-y-2 md:col-span-2">
-                        <label className="block text-sm font-semibold text-gray-700">سنجش صداقت و دقت (مثال از خطای کاری گذشته):</label>
-                        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-                          <StarRating rating={starHonesty} onRatingChange={setStarHonesty} />
-                          <input 
-                            type="text" 
-                            value={starHonestyExample} 
-                            onChange={e => setStarHonestyExample(e.target.value)} 
-                            placeholder="مثال ذکر شده..." 
-                            className="flex-grow border rounded-lg p-2 bg-white border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Star Stress */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-gray-700">سنجش مدیریت استرس در فشردگی کارها:</label>
-                        <StarRating rating={starStress} onRatingChange={setStarStress} />
-                      </div>
-
-                      {/* Star Teamwork */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-gray-700">سنجش کار تیمی (حل تعارض با ویزیتورها و تیم فروش):</label>
-                        <StarRating rating={starTeamwork} onRatingChange={setStarTeamwork} />
-                      </div>
-
-                      {/* Role Play Details */}
-                      <div className="space-y-2 md:col-span-2 border-t pt-4">
-                        <label className="block text-sm font-bold text-gray-800 mb-2">نتیجه تست عملی (رول‌پلی بررسی کاتالوگ و ثبت سفارش):</label>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="space-y-2">
-                            <span className="block text-sm font-semibold text-gray-700">دقت در ثبت جزئیات فنی:</span>
-                            <div className="flex gap-4">
-                              {['ضعیف', 'دارای خطای جزئی', 'بدون نقص'].map(val => (
-                                <label key={val} className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700">
-                                  <input type="radio" name="rolePlayAccuracy" value={val} checked={rolePlayAccuracy === val} onChange={e => setRolePlayAccuracy(e.target.value)} />
-                                  <span>{val}</span>
-                                </label>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <span className="block text-sm font-semibold text-gray-700">سرعت انتقال اطلاعات به سیستم:</span>
-                            <div className="flex gap-4">
-                              {['کند', 'متوسط', 'سریع'].map(val => (
-                                <label key={val} className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700">
-                                  <input type="radio" name="rolePlaySpeed" value={val} checked={rolePlaySpeed === val} onChange={e => setRolePlaySpeed(e.target.value)} />
-                                  <span>{val}</span>
-                                </label>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* SECTION 5: Specialized Evaluation */}
-                  <div className="p-5 border border-gray-200 rounded-xl bg-white space-y-6">
-                    <div className="border-b pb-4 space-y-4">
-                      <div className="flex flex-wrap justify-between items-center gap-4">
-                        <h3 className="text-md font-bold text-gray-800 flex items-center gap-2">
-                          <span>بخش پنجم: ارزیابی تخصصی متناسب با موقعیت ({candidate.position})</span>
-                        </h3>
-                        <span className="text-xs px-2.5 py-1 rounded-full bg-blue-100 text-blue-800 font-bold">
-                          {selectedCategory === 'tech' ? '💻 فنی و مهندسی' :
-                           selectedCategory === 'sales' ? '📈 فروش و بازاریابی' :
-                           selectedCategory === 'product' ? '💡 محصول و مدیریت/طراحی' : '⚙️ عمومی و سایر'}
-                        </span>
-                      </div>
-                      
-                      {/* Interactive category template switcher */}
-                      <div className="flex flex-wrap gap-2 bg-gray-50 p-2 rounded-xl border border-gray-150">
-                        <span className="text-xs text-gray-500 self-center ml-2 font-medium">تغییر قالب ارزیابی:</span>
-                        {[
-                          { id: 'tech', label: 'فنی و مهندسی' },
-                          { id: 'sales', label: 'فروش و بازاریابی' },
-                          { id: 'product', label: 'محصول و مدیریت' },
-                          { id: 'other', label: 'عمومی و سایر' }
-                        ].map(cat => (
-                          <button
-                            key={cat.id}
-                            type="button"
-                            onClick={() => setSelectedCategory(cat.id as any)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                              selectedCategory === cat.id
-                                ? 'bg-blue-600 text-white shadow-sm'
-                                : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
-                            }`}
-                          >
-                            {cat.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {selectedCategory === 'tech' && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-gray-700">میزان دانش فنی و تسلط بر ابزارها/فریمورک‌ها:</label>
-                          <StarRating rating={techKnowledge} onRatingChange={setTechKnowledge} />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-gray-700">کیفیت کدنویسی، معماری نرم‌افزار و اصول طراحی:</label>
-                          <StarRating rating={techCodingQuality} onRatingChange={setTechCodingQuality} />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-gray-700">طراحی سیستم، پایگاه داده و زیرساخت (System Design):</label>
-                          <StarRating rating={techSystemDesign} onRatingChange={setTechSystemDesign} />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-gray-700">کار تیمی فنی و استفاده از ابزارهای Git/CI-CD:</label>
-                          <StarRating rating={techGitCollaboration} onRatingChange={setTechGitCollaboration} />
-                        </div>
-                        <div className="space-y-2 md:col-span-2">
-                          <span className="block text-sm font-semibold text-gray-700">سرعت و نحوه حل مسئله (Problem Solving):</span>
-                          <div className="flex gap-4 mt-1">
-                            {['ضعیف', 'متوسط و منطقی', 'عالی و سریع'].map(val => (
-                              <label key={val} className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700">
-                                <input type="radio" name="techProblemSolving" value={val} checked={techProblemSolving === val} onChange={e => setTechProblemSolving(e.target.value)} />
-                                <span>{val}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="space-y-2 md:col-span-2">
-                          <label className="block text-sm font-semibold text-gray-700">نمره یا تحلیل تسک فنی / چالش کدنویسی:</label>
-                          <input type="text" value={techTaskScore} onChange={e => setTechTaskScore(e.target.value)} placeholder="مثلاً: نمره ۸ از ۱۰، انجام با رعایت تمام اصول تمیزنویسی..." className="w-full border rounded-lg p-2.5 bg-white border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                        </div>
-                      </div>
-                    )}
-
-                    {selectedCategory === 'sales' && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-gray-700">مهارت مذاکره، پرزنت و متقاعدسازی مشتری:</label>
-                          <StarRating rating={salesNegotiation} onRatingChange={setSalesNegotiation} />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-gray-700">درک بازار، مشتری و توانایی تحلیل نیازها:</label>
-                          <StarRating rating={salesMarketAnalysis} onRatingChange={setSalesMarketAnalysis} />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-gray-700">هدف‌گرایی، پیگیری و روحیه تارگت‌محور:</label>
-                          <StarRating rating={salesGoalOrientation} onRatingChange={setSalesGoalOrientation} />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-gray-700">همدلی با مشتری، روابط عمومی و ارتباط موثر:</label>
-                          <StarRating rating={salesCustomerEmpathy} onRatingChange={setSalesCustomerEmpathy} />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-gray-700">توانایی نهایی‌سازی فروش و بستن قرارداد (Closing):</label>
-                          <StarRating rating={salesClosingAbility} onRatingChange={setSalesClosingAbility} />
-                        </div>
-                        <div className="space-y-2 md:col-span-2">
-                          <span className="block text-sm font-semibold text-gray-700">نتیجه سناریوی شبیه‌سازی شده فروش/پشتیبانی:</span>
-                          <div className="flex gap-4 mt-1">
-                            {['ضعیف', 'متوسط (نیاز به آموزش)', 'عالی و مسلط'].map(val => (
-                              <label key={val} className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700">
-                                <input type="radio" name="salesScenarioPlay" value={val} checked={salesScenarioPlay === val} onChange={e => setSalesScenarioPlay(e.target.value)} />
-                                <span>{val}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {selectedCategory === 'product' && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-gray-700">تفکر محصولی، استراتژی و اولویت‌بندی کارها:</label>
-                          <StarRating rating={productStrategy} onRatingChange={setProductStrategy} />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-gray-700">درک تجربه کاربری (UI/UX) و سلیقه طراحی:</label>
-                          <StarRating rating={productDesignSense} onRatingChange={setProductDesignSense} />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-gray-700">مهارت‌های ارتباطی، رهبری و هماهنگی تیمی:</label>
-                          <StarRating rating={productLeadership} onRatingChange={setProductLeadership} />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-gray-700">تحلیل داده‌ها، متریک‌های محصولی و تست A/B:</label>
-                          <StarRating rating={productDataAnalysis} onRatingChange={setProductDataAnalysis} />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-gray-700">درک فنی، معماری وب/موبایل و تعامل با توسعه‌دهندگان:</label>
-                          <StarRating rating={productTechnicalUnderstanding} onRatingChange={setProductTechnicalUnderstanding} />
-                        </div>
-                        <div className="space-y-2 md:col-span-2">
-                          <label className="block text-sm font-semibold text-gray-700">نتیجه بررسی مطالعه موردی (Case Study) یا پورتفولیو:</label>
-                          <textarea rows={3} value={productCaseStudy} onChange={e => setProductCaseStudy(e.target.value)} placeholder="نقاط قوت و ضعف تحلیل‌ها..." className="w-full border rounded-lg p-2.5 bg-white border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                        </div>
-                      </div>
-                    )}
-
-                    {selectedCategory === 'other' && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-gray-700">میزان مهارت‌های تخصصی و شایستگی شغلی:</label>
-                          <StarRating rating={otherSkills} onRatingChange={setOtherSkills} />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-gray-700">سرعت یادگیری مباحث و کار با نرم‌افزارهای تخصصی:</label>
-                          <StarRating rating={otherLearningSpeed} onRatingChange={setOtherLearningSpeed} />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-gray-700">دقت، نظم شخصی و توجه به جزئیات کاری:</label>
-                          <StarRating rating={otherDetailOrientation} onRatingChange={setOtherDetailOrientation} />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-gray-700">مهارت نگارش، مکاتبات اداری و مستندسازی:</label>
-                          <StarRating rating={otherWrittenCommunication} onRatingChange={setOtherWrittenCommunication} />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-gray-700">حل مسئله، مواجهه با چالش‌ها و مدیریت بحران:</label>
-                          <StarRating rating={otherProblemHandling} onRatingChange={setOtherProblemHandling} />
-                        </div>
-                        <div className="space-y-2 md:col-span-2">
-                          <label className="block text-sm font-semibold text-gray-700">نتیجه کار عملی، تست عملی یا مصاحبه تخصصی:</label>
-                          <input type="text" value={otherTaskResult} onChange={e => setOtherTaskResult(e.target.value)} placeholder="مثلا: انجام صحیح و به موقع کار عملی..." className="w-full border rounded-lg p-2.5 bg-white border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* SECTION 6: Summary */}
-                  <div className="p-5 border border-gray-200 rounded-xl bg-white space-y-4">
-                    <h3 className="text-md font-bold text-gray-800 border-b pb-2">
-                      <span>بخش ششم: جمع‌بندی نهایی</span>
-                    </h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Reference Check */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-gray-700">استعلام از محل کار قبلی (Reference Check) انجام شد؟</label>
-                        <div className="space-y-2">
-                          {[
-                            { value: 'yes_confirmed', label: 'بله، تایید شد' },
-                            { value: 'no_check', label: 'خیر' },
-                            { value: 'negative_feedback', label: 'انجام شد اما نظرات منفی بود' }
-                          ].map(opt => (
-                            <label key={opt.value} className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700">
-                              <input type="radio" name="referenceCheck" value={opt.value} checked={referenceCheck === opt.value} onChange={e => setReferenceCheck(e.target.value)} />
-                              <span>{opt.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Final Decision */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-semibold text-gray-700">تصمیم نهایی تیم مصاحبه‌کننده:</label>
-                        <select value={finalDecision} onChange={e => setFinalDecision(e.target.value)} className="w-full border rounded-lg p-2.5 text-sm bg-white border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                          <option value="">-- انتخاب کنید --</option>
-                          <option value="offer">استخدام قطعی (Offer)</option>
-                          <option value="standby">لیست ذخیره (Standby)</option>
-                          <option value="reject">رد قطعی (Reject)</option>
-                        </select>
-                      </div>
-
-                      {/* Final Notes */}
-                      <div className="space-y-2 md:col-span-2">
-                        <label className="block text-sm font-semibold text-gray-700">یادداشت و تحلیل نهایی مدیر ارزیاب:</label>
-                        <textarea rows={4} value={finalNotes} onChange={e => setFinalNotes(e.target.value)} className="w-full border rounded-lg p-2.5 text-sm bg-white border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="تحلیل نهایی خود را بنویسید..." />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex justify-end pt-4 border-t gap-3">
-                    <button onClick={handleSaveEvaluation} className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-6 rounded-lg text-sm shadow-md transition-all">
-                      ثبت نهایی ارزیابی
-                    </button>
-                  </div>
-                </div>
+                <EvaluationForm
+                  candidate={candidate}
+                  user={user}
+                  testLibrary={testLibrary}
+                  formatTimestamp={formatTimestamp}
+                  onSave={handleSaveEvaluationFromForm}
+                  onAnalyzeResume={handleAnalyzeResumeForForm}
+                  isAnalyzing={isAnalyzing}
+                />
               ) : (
                 <div className="space-y-6">
                   <div className="bg-purple-50 border border-purple-200 text-purple-800 p-4 rounded-xl text-sm text-right" dir="rtl">

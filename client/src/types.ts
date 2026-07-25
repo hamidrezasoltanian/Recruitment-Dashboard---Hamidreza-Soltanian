@@ -67,6 +67,7 @@ export interface Candidate {
   interviewDate?: string; // Format: YYYY/MM/DD
   interviewTime?: string; // Format: HH:MM
   interviewTimeChanged?: boolean; // New field
+  interviewer?: string; // Username/Name of the interviewer
   history: HistoryEntry[];
   comments: Comment[];
   hasResume?: boolean;
