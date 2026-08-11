@@ -37,3 +37,6 @@ Thumbs.db
 # Temp
 *.tmp
 *.temp
+
+# Local Prisma engine binaries for offline Docker builds
+server/prisma-engines/

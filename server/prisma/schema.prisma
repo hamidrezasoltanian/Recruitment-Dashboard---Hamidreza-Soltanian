@@ -54,6 +54,7 @@ model Candidate {
   testResults       TestResult[]
   resumeFiles       ResumeFile[]
   testFiles         TestFile[]
+  interviewAnswers  InterviewQuestionAnswer[]
 
   @@map("candidates")
 }
@@ -183,16 +184,82 @@ model CompanyProfile {
 }
 
 model JobPosition {
-  id               String   @id @default(cuid())
-  title            String
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                       String   @id @default(cuid())
+  title                    String
+  interviewDurationMinutes Int?
+  scoreGuide               String?  // JSON: {"1":"...","2":"...","3":"...","4":"..."}
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
   
   // Relations
   companyProfileId String
   companyProfile   CompanyProfile @relation(fields: [companyProfileId], references: [id], onDelete: Cascade)
+  sections         InterviewSection[]
+  criteria         EvaluationCriterion[]
 
   @@map("job_positions")
+}
+
+model InterviewSection {
+  id              String   @id @default(cuid())
+  title           String
+  durationMinutes Int      @default(5)
+  order           Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  jobPositionId String
+  jobPosition   JobPosition @relation(fields: [jobPositionId], references: [id], onDelete: Cascade)
+  questions     InterviewScriptQuestion[]
+
+  @@map("interview_sections")
+}
+
+model InterviewScriptQuestion {
+  id        String   @id @default(cuid())
+  text      String
+  maxScore  Int      @default(4)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sectionId String
+  section   InterviewSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  answers   InterviewQuestionAnswer[]
+
+  @@map("interview_script_questions")
+}
+
+model InterviewQuestionAnswer {
+  id        String   @id @default(cuid())
+  score     Int?
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  questionId  String
+  question    InterviewScriptQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  userId      String?
+
+  @@unique([candidateId, questionId])
+  @@map("interview_question_answers")
+}
+
+model EvaluationCriterion {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  maxScore    Int      @default(4)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  jobPositionId String
+  jobPosition   JobPosition @relation(fields: [jobPositionId], references: [id], onDelete: Cascade)
+
+  @@map("evaluation_criteria")
 }
 
 model TestLibraryItem {

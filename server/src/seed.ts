@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { DEFAULT_TEMPLATES } from './data/defaultTemplates';
+import { seedInterviewPlansForPositions } from './data/interviewPlanService';
 
 const prisma = new PrismaClient();
 
@@ -80,6 +81,10 @@ async function main() {
     });
     console.log('✅ Company profile created:', company.name);
   }
+
+  // Apply default interview plans for known positions (when empty)
+  const appliedPlans = await seedInterviewPlansForPositions(prisma, { force: false });
+  console.log(`✅ Interview plans seeded/applied: ${appliedPlans}`);
 
   // Create test library items
   const tests = [

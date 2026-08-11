@@ -6,7 +6,12 @@ import {
   KanbanStage, 
   Template, 
   CompanyProfile, 
-  TestLibraryItem, 
+  TestLibraryItem,
+  InterviewSection,
+  InterviewScriptQuestion,
+  EvaluationCriterion,
+  CandidateInterviewEvaluation,
+  JobPosition,
   ApiResponse 
 } from '../types';
 
@@ -320,6 +325,120 @@ class ApiService {
 
   async deleteJobPosition(id: string): Promise<void> {
     await this.request(`/settings/job-positions/${id}`, { method: 'DELETE' });
+  }
+
+  async updateJobPositionMeta(
+    id: string,
+    data: Partial<{ title: string; interviewDurationMinutes: number; scoreGuide: Record<string, string> | string }>
+  ): Promise<JobPosition> {
+    const response = await this.request<JobPosition>(`/settings/job-positions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return response.data!;
+  }
+
+  async applyDefaultInterviewPlan(jobPositionId: string): Promise<JobPosition> {
+    const response = await this.request<JobPosition>(`/settings/job-positions/${jobPositionId}/apply-default-plan`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+    return response.data!;
+  }
+
+  async seedDefaultInterviewPlans(force = true): Promise<{ applied: number; profile: CompanyProfile }> {
+    const response = await this.request<{ applied: number; profile: CompanyProfile }>('/settings/interview-plans/seed-defaults', {
+      method: 'POST',
+      body: JSON.stringify({ force }),
+    });
+    return response.data!;
+  }
+
+  async addInterviewSection(
+    jobPositionId: string,
+    data: { title: string; durationMinutes?: number }
+  ): Promise<InterviewSection> {
+    const response = await this.request<InterviewSection>(`/settings/job-positions/${jobPositionId}/sections`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return response.data!;
+  }
+
+  async updateInterviewSection(
+    id: string,
+    data: Partial<{ title: string; durationMinutes: number; order: number }>
+  ): Promise<InterviewSection> {
+    const response = await this.request<InterviewSection>(`/settings/interview-sections/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return response.data!;
+  }
+
+  async deleteInterviewSection(id: string): Promise<void> {
+    await this.request(`/settings/interview-sections/${id}`, { method: 'DELETE' });
+  }
+
+  async addScriptQuestion(sectionId: string, text: string): Promise<InterviewScriptQuestion> {
+    const response = await this.request<InterviewScriptQuestion>(`/settings/interview-sections/${sectionId}/questions`, {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    });
+    return response.data!;
+  }
+
+  async updateScriptQuestion(id: string, text: string): Promise<InterviewScriptQuestion> {
+    const response = await this.request<InterviewScriptQuestion>(`/settings/interview-script-questions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ text }),
+    });
+    return response.data!;
+  }
+
+  async deleteScriptQuestion(id: string): Promise<void> {
+    await this.request(`/settings/interview-script-questions/${id}`, { method: 'DELETE' });
+  }
+
+  async addEvaluationCriterion(
+    jobPositionId: string,
+    data: { title: string; description?: string; maxScore?: number }
+  ): Promise<EvaluationCriterion> {
+    const response = await this.request<EvaluationCriterion>(`/settings/job-positions/${jobPositionId}/criteria`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return response.data!;
+  }
+
+  async updateEvaluationCriterion(
+    id: string,
+    data: Partial<{ title: string; description: string; maxScore: number; order: number }>
+  ): Promise<EvaluationCriterion> {
+    const response = await this.request<EvaluationCriterion>(`/settings/evaluation-criteria/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return response.data!;
+  }
+
+  async deleteEvaluationCriterion(id: string): Promise<void> {
+    await this.request(`/settings/evaluation-criteria/${id}`, { method: 'DELETE' });
+  }
+
+  async getCandidateInterviewEvaluation(candidateId: string): Promise<CandidateInterviewEvaluation> {
+    const response = await this.request<CandidateInterviewEvaluation>(`/candidates/${candidateId}/interview-evaluation`);
+    return response.data!;
+  }
+
+  async saveCandidateInterviewEvaluation(
+    candidateId: string,
+    answers: Array<{ questionId: string; score: number | null; comment: string }>
+  ): Promise<void> {
+    await this.request(`/candidates/${candidateId}/interview-evaluation`, {
+      method: 'PUT',
+      body: JSON.stringify({ answers }),
+    });
   }
 
   async getSources(): Promise<any[]> {

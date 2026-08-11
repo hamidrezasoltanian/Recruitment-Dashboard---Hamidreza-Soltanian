@@ -44,7 +44,11 @@ const App: React.FC = () => {
     candidate: Candidate | null;
   }>({ isOpen: false, candidate: null });
   
-  const [resumeViewerState, setResumeViewerState] = useState<{isOpen: boolean, file: File | null}>({ isOpen: false, file: null });
+  const [resumeViewerState, setResumeViewerState] = useState<{
+    isOpen: boolean;
+    file: File | null;
+    candidate: Candidate | null;
+  }>({ isOpen: false, file: null, candidate: null });
 
   const [bulkCommConfig, setBulkCommConfig] = useState<{ isOpen: boolean; candidates: Candidate[] }>({ isOpen: false, candidates: [] });
 
@@ -149,9 +153,13 @@ const App: React.FC = () => {
     setDetailsModalOpen(false);
   };
   
-  const handleOpenResumeViewer = (file: File) => {
+  const handleOpenResumeViewer = (file: File, candidate?: Candidate) => {
     setDetailsModalOpen(false); // Close details modal
-    setResumeViewerState({ isOpen: true, file: file });
+    setResumeViewerState({
+      isOpen: true,
+      file,
+      candidate: candidate || candidateToView || null,
+    });
   };
 
   const handleViewChange = (view: View) => {
@@ -263,8 +271,9 @@ const App: React.FC = () => {
       )}
       <ResumeViewerModal
         isOpen={resumeViewerState.isOpen}
-        onClose={() => setResumeViewerState({ isOpen: false, file: null })}
+        onClose={() => setResumeViewerState({ isOpen: false, file: null, candidate: null })}
         file={resumeViewerState.file}
+        candidate={resumeViewerState.candidate}
       />
       <BulkCommunicationModal
         isOpen={bulkCommConfig.isOpen}

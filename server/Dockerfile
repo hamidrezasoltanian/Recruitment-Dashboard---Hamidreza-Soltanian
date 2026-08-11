@@ -10,11 +10,15 @@ RUN apk add --no-cache python3 make g++ openssl poppler-utils
 # Copy package files
 COPY package*.json ./
 COPY prisma ./prisma/
+COPY prisma-engines ./prisma-engines/
 
 # Install ALL dependencies (dev included, so prisma CLI is available at runtime)
 RUN npm install --legacy-peer-deps
 
-# Generate Prisma client
+# Generate Prisma client using pre-downloaded engines (avoids CDN DNS issues in build)
+ENV PRISMA_QUERY_ENGINE_LIBRARY=/app/prisma-engines/libquery_engine.so.node \
+    PRISMA_SCHEMA_ENGINE_BINARY=/app/prisma-engines/schema-engine \
+    PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1
 RUN npx prisma generate
 
 # Copy source code
@@ -40,4 +44,3 @@ HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=5 \
 
 # Run migrations then seed then start server
 CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node dist/seed.js 2>/dev/null; npm start"]
-

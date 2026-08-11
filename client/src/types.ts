@@ -100,9 +100,49 @@ export interface Template {
   stageId?: StageId; // For stage change notifications
 }
 
+export interface InterviewScriptQuestion {
+  id: string;
+  text: string;
+  maxScore: number;
+  order: number;
+  sectionId: string;
+  score?: number | null;
+  comment?: string;
+}
+
+export interface InterviewSection {
+  id: string;
+  title: string;
+  durationMinutes: number;
+  order: number;
+  jobPositionId: string;
+  questions?: InterviewScriptQuestion[];
+}
+
+export interface EvaluationCriterion {
+  id: string;
+  title: string;
+  description?: string | null;
+  maxScore: number;
+  order: number;
+  jobPositionId: string;
+}
+
+export interface CandidateInterviewEvaluation {
+  positionId: string | null;
+  positionTitle: string;
+  interviewDurationMinutes: number | null;
+  scoreGuide: Record<string, string>;
+  sections: InterviewSection[];
+}
+
 export interface JobPosition {
   id: string;
   title: string;
+  interviewDurationMinutes?: number | null;
+  scoreGuide?: string | null;
+  sections?: InterviewSection[];
+  criteria?: EvaluationCriterion[];
 }
 
 export interface CompanyProfile {

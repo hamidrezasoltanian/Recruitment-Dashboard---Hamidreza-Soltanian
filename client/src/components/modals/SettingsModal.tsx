@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../ui/Modal';
 import { useAuth } from '../../contexts/AuthContext';
 import { JobPosition, KanbanStage, Template, TestLibraryItem, UserWithPassword } from '../../types';
+import { apiService } from '../../services/apiService';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useTemplates } from '../../contexts/TemplateContext';
@@ -470,10 +471,26 @@ const TemplateManagementPanel: React.FC = () => {
 
 
 const CompanyProfilePanel: React.FC = () => {
-    const { companyProfile, updateCompanyDetails, addJobPosition, updateJobPosition, deleteJobPosition } = useSettings();
+    const {
+        companyProfile,
+        updateCompanyDetails,
+        addJobPosition,
+        updateJobPosition,
+        deleteJobPosition,
+        refreshCompanyProfile,
+    } = useSettings();
+    const { addToast } = useToast();
     const [details, setDetails] = useState(companyProfile);
     const [newJobTitle, setNewJobTitle] = useState('');
     const [editingJob, setEditingJob] = useState<JobPosition | null>(null);
+    const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
+    const [jobTab, setJobTab] = useState<'script' | 'criteria'>('script');
+    const [busy, setBusy] = useState(false);
+
+    const [newSectionTitle, setNewSectionTitle] = useState('');
+    const [newSectionMinutes, setNewSectionMinutes] = useState(5);
+    const [newQuestionBySection, setNewQuestionBySection] = useState<Record<string, string>>({});
+    const [newCriterionTitle, setNewCriterionTitle] = useState('');
 
     useEffect(() => {
         setDetails(companyProfile);
@@ -482,14 +499,15 @@ const CompanyProfilePanel: React.FC = () => {
     const handleDetailChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setDetails(prev => ({...prev, [e.target.name]: e.target.value}));
     }
-    
+
     const handleSaveDetails = () => {
         const {name, website, address} = details;
         updateCompanyDetails({name, website, address});
     }
 
     const handleAddJob = () => {
-        addJobPosition(newJobTitle);
+        if (!newJobTitle.trim()) return;
+        addJobPosition(newJobTitle.trim());
         setNewJobTitle('');
     }
 
@@ -500,9 +518,26 @@ const CompanyProfilePanel: React.FC = () => {
         }
     }
 
+    const withBusy = async (fn: () => Promise<void>, successMsg?: string) => {
+        setBusy(true);
+        try {
+            await fn();
+            await refreshCompanyProfile();
+            if (successMsg) addToast(successMsg, 'success');
+        } catch {
+            addToast('عملیات ناموفق بود.', 'error');
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const parseGuide = (raw?: string | null): Record<string, string> => {
+        if (!raw) return {};
+        try { return JSON.parse(raw); } catch { return {}; }
+    };
+
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Company Details */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="space-y-4">
                 <h3 className="text-lg font-bold text-gray-800">اطلاعات شرکت</h3>
                 <div>
@@ -519,18 +554,46 @@ const CompanyProfilePanel: React.FC = () => {
                 </div>
             </div>
 
-            {/* Job Positions */}
             <div>
-                 <h3 className="text-lg font-bold text-gray-800 mb-4">موقعیت‌های شغلی</h3>
-                 <div className="space-y-2 mb-4">
-                    {companyProfile.jobPositions.map(job => (
-                        <div key={job.id} className="flex justify-between items-center bg-gray-100 p-2 rounded-md">
+                 <div className="flex items-start justify-between gap-3 mb-4">
+                   <div>
+                     <h3 className="text-lg font-bold text-gray-800">موقعیت‌های شغلی و سناریوی مصاحبه</h3>
+                     <p className="text-sm text-gray-500 mt-1">برای هر پوزیشن، بخش‌های مصاحبه و معیارهای امتیازدهی جداگانه تعریف می‌شود.</p>
+                   </div>
+                   <button
+                     type="button"
+                     disabled={busy}
+                     onClick={() => withBusy(async () => { await apiService.seedDefaultInterviewPlans(true); }, 'سناریوهای پیش‌فرض برای پوزیشن‌ها اعمال شد.')}
+                     className="text-xs whitespace-nowrap bg-slate-800 text-white px-3 py-2 rounded-lg hover:bg-slate-900 disabled:opacity-50"
+                   >
+                     اعمال سناریوهای پیش‌فرض
+                   </button>
+                 </div>
+                 <div className="space-y-3 mb-4">
+                    {companyProfile.jobPositions.map(job => {
+                        const sections = job.sections || [];
+                        const criteria = job.criteria || [];
+                        const isExpanded = expandedJobId === job.id;
+                        const guide = parseGuide(job.scoreGuide);
+                        return (
+                        <div key={job.id} className="bg-gray-100 rounded-md overflow-hidden">
+                            <div className="flex justify-between items-center p-2 gap-2">
                            {editingJob?.id === job.id ? (
                                <input type="text" value={editingJob.title} onChange={e => setEditingJob({...editingJob, title: e.target.value})} className="flex-grow border-gray-300 rounded-md py-1 px-2 text-sm"/>
                            ) : (
-                               <span>{job.title}</span>
+                               <button
+                                 type="button"
+                                 onClick={() => { setExpandedJobId(isExpanded ? null : job.id); setJobTab('script'); }}
+                                 className="flex-grow text-right flex items-center gap-2 min-w-0"
+                               >
+                                 <span className="text-slate-500 text-xs">{isExpanded ? '▼' : '◀'}</span>
+                                 <span className="truncate font-medium">{job.title}</span>
+                                 <span className="text-xs text-slate-500 flex-shrink-0">
+                                   {job.interviewDurationMinutes ? `${job.interviewDurationMinutes}د` : '—'} · {sections.length} بخش · {criteria.length} معیار
+                                 </span>
+                               </button>
                            )}
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 flex-shrink-0">
                                {editingJob?.id === job.id ? (
                                   <button onClick={handleSaveJobEdit} className="text-green-600 hover:text-green-800">ذخیره</button>
                                ) : (
@@ -538,8 +601,167 @@ const CompanyProfilePanel: React.FC = () => {
                                )}
                                 <button onClick={() => deleteJobPosition(job.id)} className="text-red-500 hover:text-red-700">حذف</button>
                             </div>
+                            </div>
+
+                            {isExpanded && (
+                              <div className="bg-white border-t border-gray-200 p-3 space-y-3">
+                                <div className="flex flex-wrap gap-2 items-center justify-between">
+                                  <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
+                                    <button type="button" onClick={() => setJobTab('script')} className={`px-3 py-1.5 text-sm rounded-md ${jobTab==='script' ? 'bg-white shadow text-slate-900' : 'text-slate-600'}`}>سناریو مصاحبه</button>
+                                    <button type="button" onClick={() => setJobTab('criteria')} className={`px-3 py-1.5 text-sm rounded-md ${jobTab==='criteria' ? 'bg-white shadow text-slate-900' : 'text-slate-600'}`}>معیار امتیازدهی</button>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    disabled={busy}
+                                    onClick={() => withBusy(async () => { await apiService.applyDefaultInterviewPlan(job.id); }, 'سناریوی این پوزیشن بازنشانی شد.')}
+                                    className="text-xs text-[var(--color-primary-700)] hover:underline disabled:opacity-50"
+                                  >
+                                    بازنشانی سناریوی پیش‌فرض
+                                  </button>
+                                </div>
+
+                                {jobTab === 'script' && (
+                                  <div className="space-y-3">
+                                    <div className="flex items-center gap-2 text-sm">
+                                      <label className="text-slate-600">مدت کل (دقیقه)</label>
+                                      <input
+                                        type="number"
+                                        min={10}
+                                        max={180}
+                                        defaultValue={job.interviewDurationMinutes || 60}
+                                        onBlur={(e) => withBusy(async () => {
+                                          await apiService.updateJobPositionMeta(job.id, { interviewDurationMinutes: Number(e.target.value) || 60 });
+                                        })}
+                                        className="w-20 border border-gray-300 rounded-md py-1 px-2"
+                                      />
+                                    </div>
+
+                                    {sections.map((section) => (
+                                      <div key={section.id} className="border border-slate-200 rounded-lg p-2.5 space-y-2">
+                                        <div className="flex justify-between gap-2 items-start">
+                                          <div>
+                                            <p className="font-semibold text-sm text-slate-800">{section.title}</p>
+                                            <p className="text-xs text-slate-500">{section.durationMinutes} دقیقه</p>
+                                          </div>
+                                          <button
+                                            type="button"
+                                            className="text-red-500 text-xs"
+                                            onClick={() => withBusy(async () => { await apiService.deleteInterviewSection(section.id); })}
+                                          >حذف بخش</button>
+                                        </div>
+                                        <ul className="space-y-1.5">
+                                          {(section.questions || []).map((q, qi) => (
+                                            <li key={q.id} className="flex gap-2 items-start text-sm text-slate-700">
+                                              <span className="text-slate-400">{qi + 1}.</span>
+                                              <span className="flex-1">{q.text}</span>
+                                              <button
+                                                type="button"
+                                                className="text-red-500 text-xs flex-shrink-0"
+                                                onClick={() => withBusy(async () => { await apiService.deleteScriptQuestion(q.id); })}
+                                              >حذف</button>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                        <div className="flex gap-2">
+                                          <input
+                                            value={newQuestionBySection[section.id] || ''}
+                                            onChange={(e) => setNewQuestionBySection(prev => ({ ...prev, [section.id]: e.target.value }))}
+                                            placeholder="سوال جدید این بخش..."
+                                            className="flex-1 border border-gray-300 rounded-md py-1.5 px-2 text-sm"
+                                          />
+                                          <button
+                                            type="button"
+                                            disabled={busy || !(newQuestionBySection[section.id] || '').trim()}
+                                            onClick={() => withBusy(async () => {
+                                              await apiService.addScriptQuestion(section.id, (newQuestionBySection[section.id] || '').trim());
+                                              setNewQuestionBySection(prev => ({ ...prev, [section.id]: '' }));
+                                            })}
+                                            className="bg-[var(--color-primary-600)] text-white px-3 py-1.5 rounded-md text-sm disabled:opacity-50"
+                                          >افزودن</button>
+                                        </div>
+                                      </div>
+                                    ))}
+
+                                    <div className="border border-dashed border-slate-300 rounded-lg p-2.5 space-y-2">
+                                      <p className="text-sm font-medium text-slate-700">بخش جدید</p>
+                                      <input
+                                        value={newSectionTitle}
+                                        onChange={(e) => setNewSectionTitle(e.target.value)}
+                                        placeholder="عنوان بخش (مثلاً عملیات مالی)"
+                                        className="w-full border border-gray-300 rounded-md py-1.5 px-2 text-sm"
+                                      />
+                                      <div className="flex items-center gap-2">
+                                        <input
+                                          type="number"
+                                          min={1}
+                                          max={60}
+                                          value={newSectionMinutes}
+                                          onChange={(e) => setNewSectionMinutes(Number(e.target.value) || 5)}
+                                          className="w-20 border border-gray-300 rounded-md py-1.5 px-2 text-sm"
+                                        />
+                                        <span className="text-xs text-slate-500">دقیقه</span>
+                                        <button
+                                          type="button"
+                                          disabled={busy || !newSectionTitle.trim()}
+                                          onClick={() => withBusy(async () => {
+                                            await apiService.addInterviewSection(job.id, { title: newSectionTitle.trim(), durationMinutes: newSectionMinutes });
+                                            setNewSectionTitle('');
+                                            setNewSectionMinutes(5);
+                                          })}
+                                          className="bg-slate-800 text-white px-3 py-1.5 rounded-md text-sm disabled:opacity-50"
+                                        >افزودن بخش</button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {jobTab === 'criteria' && (
+                                  <div className="space-y-3">
+                                    {Object.keys(guide).length > 0 && (
+                                      <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-600 space-y-1">
+                                        <p className="font-semibold text-slate-700">راهنمای نمره</p>
+                                        {Object.entries(guide).sort((a,b) => Number(a[0]) - Number(b[0])).map(([k,v]) => (
+                                          <p key={k}><span className="font-bold">{k}:</span> {v}</p>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {criteria.map((c, idx) => (
+                                      <div key={c.id} className="border border-slate-200 rounded-lg p-2.5 flex justify-between gap-2">
+                                        <div>
+                                          <p className="text-sm font-medium text-slate-800">{idx + 1}. {c.title}</p>
+                                          <p className="text-xs text-slate-500">سقف امتیاز: {c.maxScore}</p>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          className="text-red-500 text-xs"
+                                          onClick={() => withBusy(async () => { await apiService.deleteEvaluationCriterion(c.id); })}
+                                        >حذف</button>
+                                      </div>
+                                    ))}
+                                    <div className="flex gap-2">
+                                      <input
+                                        value={newCriterionTitle}
+                                        onChange={(e) => setNewCriterionTitle(e.target.value)}
+                                        placeholder="معیار جدید (مثلاً عملیات مالی و کنترل)"
+                                        className="flex-1 border border-gray-300 rounded-md py-1.5 px-2 text-sm"
+                                      />
+                                      <button
+                                        type="button"
+                                        disabled={busy || !newCriterionTitle.trim()}
+                                        onClick={() => withBusy(async () => {
+                                          await apiService.addEvaluationCriterion(job.id, { title: newCriterionTitle.trim(), maxScore: 4 });
+                                          setNewCriterionTitle('');
+                                        })}
+                                        className="bg-[var(--color-primary-600)] text-white px-3 py-1.5 rounded-md text-sm disabled:opacity-50"
+                                      >افزودن معیار</button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                         </div>
-                    ))}
+                        );
+                    })}
                  </div>
                  <div className="flex gap-2">
                      <input type="text" value={newJobTitle} onChange={e => setNewJobTitle(e.target.value)} placeholder="افزودن موقعیت جدید..." className="flex-grow border border-gray-300 rounded-md shadow-sm py-2 px-3 sm:text-sm" />

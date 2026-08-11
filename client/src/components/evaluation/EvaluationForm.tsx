@@ -10,9 +10,12 @@ import {
   buildPrintHtml,
   computeEvaluationProgress,
   computeEvaluationScore,
+  detectJobCategory,
+  getCategoryLabel,
   getExperienceLabel,
   getPhoneScenarioLabel,
   getPhoneScenarioOptions,
+  getRoleFitLabel,
   getRolePlayLabel,
   getTeamworkLabel,
   mergeAnswers,
@@ -37,14 +40,37 @@ const fieldClass =
 const labelClass = 'block text-sm font-semibold text-slate-700';
 const sectionClass = 'p-5 border border-slate-200 rounded-2xl bg-white space-y-4 shadow-sm';
 
-const DOC_ITEMS: { key: keyof DocsChecklist; label: string }[] = [
+const DOC_ITEMS: { key: keyof DocsChecklist; label: string; forAccounting?: boolean }[] = [
   { key: 'nationalId', label: 'کارت ملی / شناسنامه' },
   { key: 'resumeVerified', label: 'تأیید اصالت رزومه' },
-  { key: 'portfolio', label: 'نمونه کار / پورتفولیو' },
   { key: 'certificates', label: 'مدارک تحصیلی / گواهینامه' },
   { key: 'insurance', label: 'سوابق بیمه' },
-  { key: 'military', label: 'وضعیت نظام وظیفه' },
+  { key: 'military', label: 'وضعیت نظام وظیفه (در صورت لزوم)' },
+  { key: 'portfolio', label: 'نمونه کار / پورتفولیو', forAccounting: false },
 ];
+
+const PolicyRadios: React.FC<{
+  name: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+}> = ({ name, value, onChange, options }) => (
+  <div className="space-y-2">
+    {options.map((opt) => (
+      <label key={opt.value} className="flex items-start gap-3 cursor-pointer text-sm font-medium text-slate-700">
+        <input
+          type="radio"
+          name={name}
+          value={opt.value}
+          checked={value === opt.value}
+          onChange={(e) => onChange(e.target.value)}
+          className="mt-1"
+        />
+        <span>{opt.label}</span>
+      </label>
+    ))}
+  </div>
+);
 
 const EvaluationForm: React.FC<EvaluationFormProps> = ({
   candidate,
@@ -55,14 +81,6 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
   onAnalyzeResume,
   isAnalyzing,
 }) => {
-  const getJobCategory = (position: string = ''): JobCategory => {
-    const p = position.toLowerCase();
-    if (/react|developer|frontend|backend|\bit\b|tech|برنامه.?نویس|توسعه.?دهنده|فنی|نرم.?افزار/.test(p)) return 'tech';
-    if (/sales|marketing|business|بازاریابی|فروش|مارکتینگ|مشتریان|مذاکره/.test(p)) return 'sales';
-    if (/product|manager|designer|مدیر|طراحی|محصول|گرافیک|دیزاین/.test(p)) return 'product';
-    return 'other';
-  };
-
   const [answers, setAnswers] = useState<EvaluationAnswers>(EMPTY_ANSWERS);
   const [selectedCategory, setSelectedCategory] = useState<JobCategory>('other');
   const [history, setHistory] = useState<EvaluationHistoryEntry[]>([]);
@@ -82,28 +100,37 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
 
   useEffect(() => {
     if (!candidate) return;
+    const detected = detectJobCategory(candidate.position);
     if (candidate.evaluation) {
       try {
         const parsed = JSON.parse(candidate.evaluation);
         setAnswers(mergeAnswers(parsed.answers));
-        setSelectedCategory((parsed.category as JobCategory) || getJobCategory(candidate.position));
+        const savedCat = parsed.category as JobCategory | undefined;
+        // migrate old categories; prefer detected for known roles
+        const nextCat =
+          detected !== 'other'
+            ? detected
+            : savedCat === 'sales' || savedCat === 'tech' || savedCat === 'product' || savedCat === 'accounting' || savedCat === 'sales_support'
+              ? savedCat
+              : detected;
+        setSelectedCategory(nextCat);
         setHistory(Array.isArray(parsed.history) ? parsed.history : []);
         setMeta({ evaluatorName: parsed.evaluatorName, updatedAt: parsed.updatedAt });
       } catch {
         setAnswers(EMPTY_ANSWERS);
-        setSelectedCategory(getJobCategory(candidate.position));
+        setSelectedCategory(detected);
         setHistory([]);
         setMeta({});
       }
     } else {
       setAnswers(EMPTY_ANSWERS);
-      setSelectedCategory(getJobCategory(candidate.position));
+      setSelectedCategory(detected);
       setHistory([]);
       setMeta({});
     }
   }, [candidate?.id, candidate?.evaluation, candidate?.position]);
 
-  const { score } = useMemo(
+  const { score, filled, hardFlags } = useMemo(
     () => computeEvaluationScore(answers, selectedCategory),
     [answers, selectedCategory]
   );
@@ -114,6 +141,20 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
 
   const scenarioOptions = getPhoneScenarioOptions(selectedCategory);
   const activeTests = (candidate.testResults || []).filter((t: any) => t.status && t.status !== 'not_sent');
+  const hasDiscTest = useMemo(() => {
+    const discTests = testLibrary.filter((t) => /disc/i.test(t.name));
+    if (discTests.length === 0) return false;
+    return discTests.some((t) => {
+      const result = candidate.testResults?.find((r) => r.testId === t.id);
+      return result && result.status && result.status !== 'not_sent';
+    });
+  }, [testLibrary, candidate.testResults]);
+  const visibleDocs = DOC_ITEMS.filter((d) => {
+    if (d.key === 'portfolio' && (selectedCategory === 'accounting' || selectedCategory === 'sales_support')) {
+      return false;
+    }
+    return true;
+  });
 
   const handleSave = async () => {
     if (!user) return;
@@ -135,12 +176,12 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
         updatedAt: entry.updatedAt,
         category: selectedCategory,
         totalScore: score,
-        answers,
+        answers: { ...answers, supportFit: answers.roleFit },
         history: nextHistory,
       };
       await onSave({
         evaluationJson: JSON.stringify(evaluationData),
-        historyNote: `ارزیابی متقاضی ثبت/ویرایش شد (توسط ${user.name}) — امتیاز ${score}`,
+        historyNote: `ارزیابی عمومی ثبت/ویرایش شد (توسط ${user.name}) — امتیاز عمومی ${score}`,
       });
       setHistory(nextHistory);
       setMeta({ evaluatorName: user.name, updatedAt: entry.updatedAt });
@@ -157,20 +198,12 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
   };
 
   const handlePrint = () => {
-    const categoryLabel =
-      selectedCategory === 'tech'
-        ? 'فنی'
-        : selectedCategory === 'sales'
-          ? 'فروش'
-          : selectedCategory === 'product'
-            ? 'محصول'
-            : 'عمومی';
     const html = buildPrintHtml({
       candidateName: candidate.name,
       position: candidate.position,
       evaluatorName: user?.name || '—',
       updatedAt: new Date().toLocaleString('fa-IR'),
-      category: categoryLabel,
+      category: getCategoryLabel(selectedCategory),
       score,
       answers,
     });
@@ -183,15 +216,17 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Header banner + score + progress */}
       <div className="bg-gradient-to-l from-sky-50 to-blue-50 border border-sky-100 text-slate-800 p-4 rounded-2xl space-y-4">
         <div className="flex flex-wrap justify-between items-center gap-3 text-sm">
           <div>
             <strong>متقاضی:</strong> <span className="font-semibold text-slate-900">{candidate.name}</span>
             <span className="text-slate-500"> ({candidate.position})</span>
+            <span className="mr-2 text-xs px-2 py-0.5 rounded-md bg-white border border-sky-100 text-sky-800 font-bold">
+              {getCategoryLabel(selectedCategory)}
+            </span>
           </div>
           <div>
-            <strong>ارزیاب فعلی:</strong> <span className="font-semibold">{user?.name}</span>
+            <strong>ارزیاب:</strong> <span className="font-semibold">{user?.name}</span>
           </div>
           {meta.updatedAt && (
             <div className="text-xs text-slate-500">
@@ -202,12 +237,12 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
 
         <div className="flex flex-wrap items-center gap-4">
           <div className={`px-4 py-2 rounded-xl border font-black text-lg ${scoreColor(score)}`}>
-            امتیاز کل: {score}
+            امتیاز عمومی: {score}
             <span className="text-xs font-semibold opacity-70 mr-1"> / ۱۰۰</span>
           </div>
           <div className="flex-1 min-w-[200px]">
             <div className="flex justify-between text-xs font-semibold text-slate-600 mb-1">
-              <span>پیشرفت تکمیل فرم</span>
+              <span>پیشرفت فرم عمومی</span>
               <span>
                 {progress.done} از {progress.sections.length} بخش · {progress.percent}%
               </span>
@@ -230,19 +265,37 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
                 </span>
               ))}
             </div>
+            {filled > 0 && (
+              <p className="text-[11px] text-slate-500 mt-2">
+                تمرکز این فرم روی باید/نباید سازمان و ردفلگ‌هاست؛ ارزیابی تخصصی در تب مصاحبه تخصصی است.
+              </p>
+            )}
+            {hardFlags.length > 0 && (
+              <div className="mt-2 text-xs text-red-700 bg-red-50 border border-red-100 rounded-lg px-2.5 py-2 space-y-0.5">
+                <p className="font-bold">ردفلگ سازمانی فعال ({hardFlags.length}):</p>
+                {hardFlags.map((f) => (
+                  <p key={f}>• {f}</p>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* SECTION 1 */}
+      <div className="bg-indigo-50 border border-indigo-100 text-indigo-900 rounded-xl p-4 text-sm leading-7">
+        این فرم برای غربالگری عمومی، <strong>باید و نبایدهای سازمان</strong> و تشخیص ردفلگ است.
+        جزئیات تخصصی هر شغل را در تب <strong className="mx-1">«مصاحبه تخصصی»</strong> ثبت کنید.
+      </div>
+
+      {/* 1 Resume */}
       <div className={sectionClass}>
         <h3 className="text-md font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center justify-between gap-3">
-          <span>بخش اول: ارزیابی اولیه رزومه</span>
+          <span>۱. ارزیابی اولیه رزومه</span>
           {candidate.hasResume && (
             <button
               onClick={handleAnalyze}
               disabled={isAnalyzing}
-              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs shadow-md transition-all disabled:opacity-50"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs shadow-md transition-all disabled:opacity-50"
             >
               {isAnalyzing ? 'در حال آنالیز...' : 'آنالیز هوشمند رزومه'}
             </button>
@@ -250,12 +303,12 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <label className={labelClass}>وضعیت ثبات شغلی (Job Hopping):</label>
+            <label className={labelClass}>ثبات شغلی:</label>
             <div className="space-y-2">
               {[
-                { value: 'hopping_red', label: 'جابجایی‌های مکرر (کمتر از ۱ سال در ۳ شرکت اخیر) 🔴' },
-                { value: 'hopping_yellow', label: 'ثبات متوسط (۱ تا ۳ سال ماندگاری) 🟡' },
-                { value: 'hopping_green', label: 'ثبات بالا (بیش از ۳ سال ماندگاری) 🟢' },
+                { value: 'hopping_red', label: 'جابجایی مکرر (کمتر از ۱ سال در چند شغل اخیر)' },
+                { value: 'hopping_yellow', label: 'ثبات متوسط (حدود ۱ تا ۳ سال)' },
+                { value: 'hopping_green', label: 'ثبات بالا (بیش از ۳ سال ماندگاری)' },
               ].map((opt) => (
                 <label key={opt.value} className="flex items-start gap-3 cursor-pointer text-sm font-medium text-slate-700">
                   <input type="radio" name="jobHopping" value={opt.value} checked={answers.jobHopping === opt.value} onChange={(e) => setField('jobHopping', e.target.value)} className="mt-1" />
@@ -268,13 +321,13 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
             <label className={labelClass}>{getExperienceLabel(selectedCategory)}</label>
             <select value={answers.relevantExperience} onChange={(e) => setField('relevantExperience', e.target.value)} className={fieldClass}>
               <option value="">-- انتخاب کنید --</option>
-              <option value="exp_red">بدون سابقه مرتبط 🔴</option>
-              <option value="exp_yellow">۱ تا ۳ سال 🟡</option>
-              <option value="exp_green">بیشتر از ۳ سال 🟢</option>
+              <option value="exp_red">بدون سابقه مرتبط</option>
+              <option value="exp_yellow">۱ تا ۳ سال</option>
+              <option value="exp_green">بیشتر از ۳ سال</option>
             </select>
           </div>
           <div className="space-y-2 md:col-span-2">
-            <label className={labelClass}>دقت ظاهری رزومه:</label>
+            <label className={labelClass}>کیفیت و دقت رزومه:</label>
             <div className="flex gap-6">
               {['ضعیف', 'متوسط', 'عالی'].map((val) => (
                 <label key={val} className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
@@ -287,12 +340,12 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
         </div>
       </div>
 
-      {/* SECTION 2 */}
+      {/* 2 Phone */}
       <div className={sectionClass}>
-        <h3 className="text-md font-bold text-slate-800 border-b border-slate-100 pb-2">بخش دوم: مصاحبه تلفنی</h3>
+        <h3 className="text-md font-bold text-slate-800 border-b border-slate-100 pb-2">۲. مصاحبه تلفنی / غربالگری</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <label className={labelClass}>انرژی، فن بیان و لحن صدا:</label>
+            <label className={labelClass}>انرژی، فن بیان و لحن:</label>
             <StarRating rating={answers.phoneEnergy} onRatingChange={(v) => setField('phoneEnergy', v)} />
           </div>
           <div className="space-y-2">
@@ -303,18 +356,14 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
             <label className={labelClass}>انطباق با بودجه شرکت:</label>
             <select value={answers.salaryFit} onChange={(e) => setField('salaryFit', e.target.value)} className={fieldClass}>
               <option value="">-- انتخاب کنید --</option>
-              <option value="in_budget">در بودجه است 🟢</option>
-              <option value="negotiable">قابل مذاکره 🟡</option>
-              <option value="out_of_budget">خارج از بودجه 🔴</option>
+              <option value="in_budget">در بودجه است</option>
+              <option value="negotiable">قابل مذاکره</option>
+              <option value="out_of_budget">خارج از بودجه</option>
             </select>
           </div>
-          <div className="space-y-2">
-            <label className={labelClass}>دلیل ترک کار قبلی / انگیزه جابجایی:</label>
-            <input type="text" value={answers.leaveReason} onChange={(e) => setField('leaveReason', e.target.value)} className={fieldClass} placeholder="مثلا رشد شغلی، جابجایی شهر..." />
-          </div>
           <div className="space-y-2 md:col-span-2">
-            <label className={labelClass}>شرح روتین کاری گذشته:</label>
-            <textarea rows={3} value={answers.phoneRoutine} onChange={(e) => setField('phoneRoutine', e.target.value)} className={fieldClass} placeholder="توضیحات..." />
+            <label className={labelClass}>خلاصه روتین کاری گذشته:</label>
+            <textarea rows={2} value={answers.phoneRoutine} onChange={(e) => setField('phoneRoutine', e.target.value)} className={fieldClass} placeholder="توضیح کوتاه..." />
           </div>
           <div className="space-y-2 md:col-span-2">
             <label className={labelClass}>{getPhoneScenarioLabel(selectedCategory)}</label>
@@ -328,11 +377,11 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
             </div>
           </div>
           <div className="space-y-2 md:col-span-2">
-            <label className={labelClass}>نتیجه مصاحبه تلفنی:</label>
+            <label className={labelClass}>نتیجه غربالگری تلفنی:</label>
             <div className="flex flex-wrap gap-6">
               {[
-                { value: 'reject', label: 'رد 🔴' },
-                { value: 'invite_test', label: 'دعوت به مصاحبه حضوری / تست 🟢' },
+                { value: 'reject', label: 'رد در این مرحله' },
+                { value: 'invite_test', label: 'دعوت به مرحله بعد / مصاحبه تخصصی' },
               ].map((opt) => (
                 <label key={opt.value} className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
                   <input type="radio" name="phoneResult" value={opt.value} checked={answers.phoneResult === opt.value} onChange={(e) => setField('phoneResult', e.target.value)} />
@@ -340,13 +389,157 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
                 </label>
               ))}
             </div>
+            <p className="text-xs text-slate-500">این نتیجه فقط وضعیت فرآیند است و در امتیاز عمومی محاسبه نمی‌شود.</p>
           </div>
         </div>
       </div>
 
-      {/* SECTION 2.5 Logistics */}
+      {/* 3 Org policy / red flags */}
       <div className={sectionClass}>
-        <h3 className="text-md font-bold text-slate-800 border-b border-slate-100 pb-2">بخش سوم: شرایط همکاری و زبان</h3>
+        <h3 className="text-md font-bold text-slate-800 border-b border-slate-100 pb-2">۳. باید و نبایدهای سازمان و ردفلگ‌ها</h3>
+        <p className="text-sm text-slate-500 -mt-2">
+          این بخش قلب ارزیابی عمومی است. پاسخ‌های پرریسک به‌صورت ردفلگ ثبت و از امتیاز کم می‌شود.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <label className={labelClass}>در دوران بحران / جنگ آیا سر کار بوده؟</label>
+            <PolicyRadios
+              name="crisisWorkPresence"
+              value={answers.crisisWorkPresence}
+              onChange={(v) => setField('crisisWorkPresence', v)}
+              options={[
+                { value: 'crisis_yes', label: 'بله؛ حضور مستمر داشته' },
+                { value: 'crisis_partial', label: 'نسبی / با وقفه' },
+                { value: 'crisis_no', label: 'خیر؛ غایب بوده (ردفلگ)' },
+                { value: 'crisis_na', label: 'موضوعیت نداشته / قابل بررسی نیست' },
+              ]}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className={labelClass}>با امانت‌ماندن یک‌ماه حقوق موافق است؟</label>
+            <PolicyRadios
+              name="unpaidTrustMonthOk"
+              value={answers.unpaidTrustMonthOk}
+              onChange={(v) => setField('unpaidTrustMonthOk', v)}
+              options={[
+                { value: 'trust_yes', label: 'بله؛ اوکی است' },
+                { value: 'trust_negotiable', label: 'با شرط / مذاکره' },
+                { value: 'trust_no', label: 'خیر (ردفلگ)' },
+              ]}
+            />
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <label className={labelClass}>علت خروج از شغل قبلی چیست؟</label>
+            <input
+              type="text"
+              value={answers.leaveReason}
+              onChange={(e) => setField('leaveReason', e.target.value)}
+              className={fieldClass}
+              placeholder="دلیل بیان‌شده توسط متقاضی..."
+            />
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <label className={labelClass}>آیا علت خروج منطقی است؟</label>
+            <PolicyRadios
+              name="leaveReasonLogic"
+              value={answers.leaveReasonLogic}
+              onChange={(v) => setField('leaveReasonLogic', v)}
+              options={[
+                { value: 'leave_logical', label: 'بله؛ منطقی و قابل دفاع' },
+                { value: 'leave_questionable', label: 'مشکوک / نیاز به بررسی بیشتر' },
+                { value: 'leave_red_flag', label: 'غیرمنطقی یا پرریسک (ردفلگ)' },
+              ]}
+            />
+          </div>
+
+          {selectedCategory === 'sales' && (
+            <div className="space-y-2 md:col-span-2">
+              <label className={labelClass}>آیا ماموریت خارج از سازمان را می‌پذیرد؟ (ویژه فروش)</label>
+              <PolicyRadios
+                name="externalMissionOk"
+                value={answers.externalMissionOk}
+                onChange={(v) => setField('externalMissionOk', v)}
+                options={[
+                  { value: 'mission_yes', label: 'بله' },
+                  { value: 'mission_conditional', label: 'با شرط (مسافت/روز/هزینه)' },
+                  { value: 'mission_no', label: 'خیر (ردفلگ برای فروش)' },
+                ]}
+              />
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <label className={labelClass}>انعطاف برای فشار کاری / اضافه‌کاری موردی:</label>
+            <PolicyRadios
+              name="overtimeFlexibility"
+              value={answers.overtimeFlexibility}
+              onChange={(v) => setField('overtimeFlexibility', v)}
+              options={[
+                { value: 'overtime_yes', label: 'منعطف است' },
+                { value: 'overtime_limited', label: 'محدود / موردی' },
+                { value: 'overtime_no', label: 'خیر' },
+              ]}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className={labelClass}>تعهد به محرمانگی و امانت اطلاعات:</label>
+            <PolicyRadios
+              name="confidentialityCommitment"
+              value={answers.confidentialityCommitment}
+              onChange={(v) => setField('confidentialityCommitment', v)}
+              options={[
+                { value: 'conf_yes', label: 'متعهد و شفاف' },
+                { value: 'conf_hesitant', label: 'مردد' },
+                { value: 'conf_no', label: 'عدم تعهد (ردفلگ)' },
+              ]}
+            />
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <label className={labelClass}>احترام به ساختار و سلسله‌مراتب سازمان:</label>
+            <PolicyRadios
+              name="hierarchyRespect"
+              value={answers.hierarchyRespect}
+              onChange={(v) => setField('hierarchyRespect', v)}
+              options={[
+                { value: 'hierarchy_yes', label: 'بله' },
+                { value: 'hierarchy_partial', label: 'نسبی' },
+                { value: 'hierarchy_no', label: 'خیر (ردفلگ)' },
+              ]}
+            />
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <label className={labelClass}>سایر ردفلگ‌ها / نکات سیاست سازمانی:</label>
+            <textarea
+              rows={3}
+              value={answers.orgPolicyNotes}
+              onChange={(e) => setField('orgPolicyNotes', e.target.value)}
+              className={fieldClass}
+              placeholder="هر باید/نباید دیگری که مشاهده کردید..."
+            />
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <label className={labelClass}>جمع‌بندی آزاد ردفلگ‌ها:</label>
+            <textarea
+              rows={2}
+              value={answers.redFlags}
+              onChange={(e) => setField('redFlags', e.target.value)}
+              className={`${fieldClass} border-red-100 focus:border-red-300`}
+              placeholder="تناقض رزومه، رفتار نامناسب، ادعای غیرواقعی، ..."
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 4 Logistics */}
+      <div className={sectionClass}>
+        <h3 className="text-md font-bold text-slate-800 border-b border-slate-100 pb-2">۴. شرایط همکاری</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="space-y-2">
             <label className={labelClass}>سطح زبان انگلیسی:</label>
@@ -355,7 +548,7 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
               <option value="beginner">مبتدی</option>
               <option value="intermediate">متوسط</option>
               <option value="advanced">پیشرفته</option>
-              <option value="fluent">فصیح / Fluent</option>
+              <option value="fluent">فصیح</option>
               <option value="native">در حد زبان مادری</option>
             </select>
           </div>
@@ -377,7 +570,7 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
             <input type="text" value={answers.city} onChange={(e) => setField('city', e.target.value)} className={fieldClass} placeholder="تهران، اصفهان، ..." />
           </div>
           <div className="space-y-2 md:col-span-2">
-            <label className={labelClass}>زمان شروع به‌کار (Notice Period):</label>
+            <label className={labelClass}>زمان شروع به‌کار:</label>
             <select value={answers.noticePeriod} onChange={(e) => setField('noticePeriod', e.target.value)} className={fieldClass}>
               <option value="">-- انتخاب کنید --</option>
               <option value="immediate">فوری</option>
@@ -391,54 +584,58 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
         </div>
       </div>
 
-      {/* DISC */}
+      {/* 5 Soft skills / culture */}
       <div className={sectionClass}>
-        <h3 className="text-md font-bold text-slate-800 border-b border-slate-100 pb-2">بخش چهارم: تحلیل رفتارشناسی (DISC)</h3>
+        <h3 className="text-md font-bold text-slate-800 border-b border-slate-100 pb-2">۵. رفتار حرفه‌ای و انطباق</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <label className={labelClass}>تیپ شخصیتی غالب:</label>
-            <div className="flex gap-3 flex-wrap">
-              {['D', 'I', 'S', 'C'].map((type) => {
-                const isChecked = answers.discDominant.includes(type);
-                return (
-                  <label key={type} className={`flex items-center gap-2 cursor-pointer text-sm font-bold px-3 py-1.5 border rounded-xl ${isChecked ? 'bg-blue-50 border-blue-300 text-blue-800' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      onChange={() => {
-                        setField(
-                          'discDominant',
-                          isChecked ? answers.discDominant.filter((t) => t !== type) : [...answers.discDominant, type]
-                        );
-                      }}
-                    />
-                    <span>{type}</span>
-                  </label>
-                );
-              })}
+          {hasDiscTest && (
+            <div className="space-y-2">
+              <label className={labelClass}>تیپ DISC غالب (حداکثر ۲ مورد):</label>
+              <div className="flex gap-3 flex-wrap">
+                {['D', 'I', 'S', 'C'].map((type) => {
+                  const isChecked = answers.discDominant.includes(type);
+                  return (
+                    <label key={type} className={`flex items-center gap-2 cursor-pointer text-sm font-bold px-3 py-1.5 border rounded-xl ${isChecked ? 'bg-blue-50 border-blue-300 text-blue-800' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {
+                          if (isChecked) {
+                            setField('discDominant', answers.discDominant.filter((t) => t !== type));
+                          } else if (answers.discDominant.length < 2) {
+                            setField('discDominant', [...answers.discDominant, type]);
+                          }
+                        }}
+                      />
+                      <span>{type}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-slate-500">فقط چون تست DISC برای این فرد ارسال/ثبت شده نمایش داده می‌شود.</p>
             </div>
-          </div>
+          )}
           <div className="space-y-2">
-            <label className={labelClass}>میزان انطباق با نقش (دقت و صبر):</label>
-            <select value={answers.supportFit} onChange={(e) => setField('supportFit', e.target.value)} className={fieldClass}>
+            <label className={labelClass}>{getRoleFitLabel(selectedCategory)}</label>
+            <select
+              value={answers.roleFit}
+              onChange={(e) => {
+                setField('roleFit', e.target.value);
+                setField('supportFit', e.target.value);
+              }}
+              className={fieldClass}
+            >
               <option value="">-- انتخاب کنید --</option>
-              <option value="fit_green">انطباق بالا 🟢</option>
-              <option value="fit_yellow">انطباق متوسط 🟡</option>
-              <option value="fit_red">پرریسک 🔴</option>
+              <option value="fit_green">انطباق بالا</option>
+              <option value="fit_yellow">انطباق متوسط</option>
+              <option value="fit_red">پرریسک</option>
             </select>
           </div>
-        </div>
-      </div>
-
-      {/* STAR + Culture */}
-      <div className={sectionClass}>
-        <h3 className="text-md font-bold text-slate-800 border-b border-slate-100 pb-2">بخش پنجم: ارزیابی حضوری (STAR & Culture Fit)</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2 md:col-span-2">
-            <label className={labelClass}>سنجش صداقت و دقت (مثال از خطای کاری گذشته):</label>
+            <label className={labelClass}>صداقت و دقت (با مثال):</label>
             <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
               <StarRating rating={answers.starHonesty} onRatingChange={(v) => setField('starHonesty', v)} />
-              <input type="text" value={answers.starHonestyExample} onChange={(e) => setField('starHonestyExample', e.target.value)} placeholder="مثال ذکر شده..." className={`flex-grow ${fieldClass}`} />
+              <input type="text" value={answers.starHonestyExample} onChange={(e) => setField('starHonestyExample', e.target.value)} placeholder="مثال ذکرشده توسط متقاضی..." className={`flex-grow ${fieldClass}`} />
             </div>
           </div>
           <div className="space-y-2">
@@ -450,11 +647,11 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
             <StarRating rating={answers.starTeamwork} onRatingChange={(v) => setField('starTeamwork', v)} />
           </div>
           <div className="space-y-2">
-            <label className={labelClass}>انطباق فرهنگی (Culture Fit):</label>
+            <label className={labelClass}>انطباق فرهنگی:</label>
             <StarRating rating={answers.cultureFit} onRatingChange={(v) => setField('cultureFit', v)} />
           </div>
           <div className="space-y-2">
-            <label className={labelClass}>یادداشت Culture Fit:</label>
+            <label className={labelClass}>یادداشت انطباق فرهنگی:</label>
             <input type="text" value={answers.cultureFitNote} onChange={(e) => setField('cultureFitNote', e.target.value)} className={fieldClass} placeholder="توضیح کوتاه..." />
           </div>
           <div className="space-y-2 md:col-span-2 border-t border-slate-100 pt-4">
@@ -487,11 +684,11 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
         </div>
       </div>
 
-      {/* Tests summary */}
+      {/* Tests */}
       <div className={sectionClass}>
-        <h3 className="text-md font-bold text-slate-800 border-b border-slate-100 pb-2">خلاصه آزمون‌ها</h3>
+        <h3 className="text-md font-bold text-slate-800 border-b border-slate-100 pb-2">۶. خلاصه آزمون‌ها</h3>
         {activeTests.length === 0 ? (
-          <p className="text-sm text-slate-500">هنوز آزمونی ارسال یا ثبت نشده است.</p>
+          <p className="text-sm text-slate-500">هنوز آزمونی ارسال یا ثبت نشده است. مدیریت آزمون‌ها در تب جداگانه است.</p>
         ) : (
           <div className="space-y-2">
             {activeTests.map((tr: any) => {
@@ -510,7 +707,6 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
                     {tr.score !== undefined && tr.score !== '' && tr.score !== null && (
                       <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-md font-bold">نمره: {tr.score}</span>
                     )}
-                    {tr.notes && <span className="text-slate-500 truncate max-w-[200px]">{tr.notes}</span>}
                   </div>
                 </div>
               );
@@ -519,115 +715,20 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
         )}
       </div>
 
-      {/* Specialized */}
-      <div className={`${sectionClass} space-y-6`}>
-        <div className="border-b border-slate-100 pb-4 space-y-3">
-          <div className="flex flex-wrap justify-between items-center gap-3">
-            <h3 className="text-md font-bold text-slate-800">بخش ششم: ارزیابی تخصصی ({candidate.position})</h3>
-            <span className="text-xs px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 font-bold">
-              {selectedCategory === 'tech' ? 'فنی و مهندسی' : selectedCategory === 'sales' ? 'فروش و بازاریابی' : selectedCategory === 'product' ? 'محصول و مدیریت' : 'عمومی و سایر'}
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2 bg-slate-50 p-2 rounded-xl border border-slate-100">
-            <span className="text-xs text-slate-500 self-center ml-2 font-medium">قالب:</span>
-            {[
-              { id: 'tech' as const, label: 'فنی' },
-              { id: 'sales' as const, label: 'فروش' },
-              { id: 'product' as const, label: 'محصول' },
-              { id: 'other' as const, label: 'عمومی' },
-            ].map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  selectedCategory === cat.id ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-                }`}
-              >
-                {cat.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {selectedCategory === 'tech' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2"><label className={labelClass}>دانش فنی / ابزارها:</label><StarRating rating={answers.techKnowledge} onRatingChange={(v) => setField('techKnowledge', v)} /></div>
-            <div className="space-y-2"><label className={labelClass}>کیفیت کدنویسی و معماری:</label><StarRating rating={answers.techCodingQuality} onRatingChange={(v) => setField('techCodingQuality', v)} /></div>
-            <div className="space-y-2"><label className={labelClass}>System Design:</label><StarRating rating={answers.techSystemDesign} onRatingChange={(v) => setField('techSystemDesign', v)} /></div>
-            <div className="space-y-2"><label className={labelClass}>Git / CI-CD و کار تیمی فنی:</label><StarRating rating={answers.techGitCollaboration} onRatingChange={(v) => setField('techGitCollaboration', v)} /></div>
-            <div className="space-y-2 md:col-span-2">
-              <span className={labelClass}>حل مسئله:</span>
-              <div className="flex flex-wrap gap-4 mt-1">
-                {['ضعیف', 'متوسط و منطقی', 'عالی و سریع'].map((val) => (
-                  <label key={val} className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
-                    <input type="radio" name="techProblemSolving" value={val} checked={answers.techProblemSolving === val} onChange={(e) => setField('techProblemSolving', e.target.value)} />
-                    <span>{val}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <label className={labelClass}>نمره / تحلیل تسک فنی:</label>
-              <input type="text" value={answers.techTaskScore} onChange={(e) => setField('techTaskScore', e.target.value)} className={fieldClass} />
-            </div>
-          </div>
-        )}
-
-        {selectedCategory === 'sales' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2"><label className={labelClass}>مذاکره و متقاعدسازی:</label><StarRating rating={answers.salesNegotiation} onRatingChange={(v) => setField('salesNegotiation', v)} /></div>
-            <div className="space-y-2"><label className={labelClass}>درک بازار و نیاز مشتری:</label><StarRating rating={answers.salesMarketAnalysis} onRatingChange={(v) => setField('salesMarketAnalysis', v)} /></div>
-            <div className="space-y-2"><label className={labelClass}>هدف‌گرایی و پیگیری:</label><StarRating rating={answers.salesGoalOrientation} onRatingChange={(v) => setField('salesGoalOrientation', v)} /></div>
-            <div className="space-y-2"><label className={labelClass}>همدلی و روابط عمومی:</label><StarRating rating={answers.salesCustomerEmpathy} onRatingChange={(v) => setField('salesCustomerEmpathy', v)} /></div>
-            <div className="space-y-2"><label className={labelClass}>Closing:</label><StarRating rating={answers.salesClosingAbility} onRatingChange={(v) => setField('salesClosingAbility', v)} /></div>
-            <div className="space-y-2 md:col-span-2">
-              <span className={labelClass}>نتیجه سناریوی فروش:</span>
-              <div className="flex flex-wrap gap-4 mt-1">
-                {['ضعیف', 'متوسط (نیاز به آموزش)', 'عالی و مسلط'].map((val) => (
-                  <label key={val} className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
-                    <input type="radio" name="salesScenarioPlay" value={val} checked={answers.salesScenarioPlay === val} onChange={(e) => setField('salesScenarioPlay', e.target.value)} />
-                    <span>{val}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {selectedCategory === 'product' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2"><label className={labelClass}>تفکر محصولی و اولویت‌بندی:</label><StarRating rating={answers.productStrategy} onRatingChange={(v) => setField('productStrategy', v)} /></div>
-            <div className="space-y-2"><label className={labelClass}>درک UI/UX:</label><StarRating rating={answers.productDesignSense} onRatingChange={(v) => setField('productDesignSense', v)} /></div>
-            <div className="space-y-2"><label className={labelClass}>رهبری و هماهنگی تیمی:</label><StarRating rating={answers.productLeadership} onRatingChange={(v) => setField('productLeadership', v)} /></div>
-            <div className="space-y-2"><label className={labelClass}>تحلیل داده و متریک:</label><StarRating rating={answers.productDataAnalysis} onRatingChange={(v) => setField('productDataAnalysis', v)} /></div>
-            <div className="space-y-2"><label className={labelClass}>درک فنی:</label><StarRating rating={answers.productTechnicalUnderstanding} onRatingChange={(v) => setField('productTechnicalUnderstanding', v)} /></div>
-            <div className="space-y-2 md:col-span-2">
-              <label className={labelClass}>Case Study / پورتفولیو:</label>
-              <textarea rows={3} value={answers.productCaseStudy} onChange={(e) => setField('productCaseStudy', e.target.value)} className={fieldClass} />
-            </div>
-          </div>
-        )}
-
-        {selectedCategory === 'other' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2"><label className={labelClass}>مهارت تخصصی:</label><StarRating rating={answers.otherSkills} onRatingChange={(v) => setField('otherSkills', v)} /></div>
-            <div className="space-y-2"><label className={labelClass}>سرعت یادگیری:</label><StarRating rating={answers.otherLearningSpeed} onRatingChange={(v) => setField('otherLearningSpeed', v)} /></div>
-            <div className="space-y-2"><label className={labelClass}>دقت و جزئیات:</label><StarRating rating={answers.otherDetailOrientation} onRatingChange={(v) => setField('otherDetailOrientation', v)} /></div>
-            <div className="space-y-2"><label className={labelClass}>نگارش و مستندسازی:</label><StarRating rating={answers.otherWrittenCommunication} onRatingChange={(v) => setField('otherWrittenCommunication', v)} /></div>
-            <div className="space-y-2"><label className={labelClass}>حل مسئله و بحران:</label><StarRating rating={answers.otherProblemHandling} onRatingChange={(v) => setField('otherProblemHandling', v)} /></div>
-            <div className="space-y-2 md:col-span-2">
-              <label className={labelClass}>نتیجه کار عملی:</label>
-              <input type="text" value={answers.otherTaskResult} onChange={(e) => setField('otherTaskResult', e.target.value)} className={fieldClass} />
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Final summary */}
+      {/* Final */}
       <div className={sectionClass}>
-        <h3 className="text-md font-bold text-slate-800 border-b border-slate-100 pb-2">بخش هفتم: جمع‌بندی نهایی</h3>
+        <h3 className="text-md font-bold text-slate-800 border-b border-slate-100 pb-2">۷. جمع‌بندی مدیریتی</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="space-y-2 md:col-span-2">
+            <label className={labelClass}>یادداشت کوتاه از ارزیابی تخصصی (اختیاری):</label>
+            <textarea
+              rows={2}
+              value={answers.specializedNotes}
+              onChange={(e) => setField('specializedNotes', e.target.value)}
+              className={fieldClass}
+              placeholder="جزئیات و نمره‌های تخصصی را در تب مصاحبه تخصصی ثبت کنید؛ اینجا فقط جمع‌بندی آزاد است."
+            />
+          </div>
           <div className="space-y-2 md:col-span-2">
             <label className={labelClass}>نقاط قوت:</label>
             <textarea rows={2} value={answers.strengths} onChange={(e) => setField('strengths', e.target.value)} className={fieldClass} placeholder="۳ نقطه قوت اصلی..." />
@@ -636,18 +737,14 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
             <label className={labelClass}>نقاط ضعف / نیاز به آموزش:</label>
             <textarea rows={2} value={answers.weaknesses} onChange={(e) => setField('weaknesses', e.target.value)} className={fieldClass} />
           </div>
-          <div className="space-y-2 md:col-span-2">
-            <label className={labelClass}>پرچم‌های قرمز (Red Flags):</label>
-            <textarea rows={2} value={answers.redFlags} onChange={(e) => setField('redFlags', e.target.value)} className={`${fieldClass} border-red-100 focus:border-red-300`} placeholder="تناقض رزومه، رفتار نامناسب، ..." />
-          </div>
 
           <div className="space-y-2">
-            <label className={labelClass}>Reference Check:</label>
+            <label className={labelClass}>بررسی معرف (Reference):</label>
             <div className="space-y-2">
               {[
-                { value: 'yes_confirmed', label: 'بله، تایید شد' },
-                { value: 'no_check', label: 'خیر' },
-                { value: 'negative_feedback', label: 'انجام شد اما نظرات منفی بود' },
+                { value: 'yes_confirmed', label: 'انجام شد و تأیید شد' },
+                { value: 'no_check', label: 'هنوز انجام نشده' },
+                { value: 'negative_feedback', label: 'انجام شد؛ بازخورد منفی' },
               ].map((opt) => (
                 <label key={opt.value} className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
                   <input type="radio" name="referenceCheck" value={opt.value} checked={answers.referenceCheck === opt.value} onChange={(e) => setField('referenceCheck', e.target.value)} />
@@ -662,38 +759,39 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
             <select value={answers.finalDecision} onChange={(e) => setField('finalDecision', e.target.value)} className={fieldClass}>
               <option value="">-- انتخاب کنید --</option>
               <option value="offer">استخدام قطعی (Offer)</option>
-              <option value="standby">لیست ذخیره (Standby)</option>
-              <option value="reject">رد قطعی (Reject)</option>
+              <option value="standby">لیست ذخیره</option>
+              <option value="reject">رد</option>
             </select>
+            <p className="text-xs text-slate-500">تصمیم در امتیاز عمومی محاسبه نمی‌شود.</p>
           </div>
 
           {answers.finalDecision === 'offer' && (
-            <div className="space-y-2 md:col-span-2">
-              <label className={labelClass}>پیشنهاد حقوق Offer (تومان):</label>
-              <input type="text" value={answers.offerSalary} onChange={(e) => setField('offerSalary', e.target.value)} className={fieldClass} placeholder="مبلغ پیشنهادی برای Offer" />
-            </div>
+            <>
+              <div className="space-y-2 md:col-span-2">
+                <label className={labelClass}>پیشنهاد حقوق Offer (تومان):</label>
+                <input type="text" value={answers.offerSalary} onChange={(e) => setField('offerSalary', e.target.value)} className={fieldClass} placeholder="مبلغ پیشنهادی" />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <label className={labelClass}>چک‌لیست مدارک (مرحله Offer):</label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {visibleDocs.map((item) => (
+                    <label key={item.key} className={`flex items-center gap-2 text-sm px-3 py-2 rounded-xl border cursor-pointer ${answers.docsChecklist[item.key] ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                      <input type="checkbox" checked={answers.docsChecklist[item.key]} onChange={() => toggleDoc(item.key)} />
+                      <span className="font-medium">{item.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
 
           <div className="space-y-2 md:col-span-2">
-            <label className={labelClass}>چک‌لیست مدارک:</label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {DOC_ITEMS.map((item) => (
-                <label key={item.key} className={`flex items-center gap-2 text-sm px-3 py-2 rounded-xl border cursor-pointer ${answers.docsChecklist[item.key] ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
-                  <input type="checkbox" checked={answers.docsChecklist[item.key]} onChange={() => toggleDoc(item.key)} />
-                  <span className="font-medium">{item.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2 md:col-span-2">
-            <label className={labelClass}>یادداشت و تحلیل نهایی مدیر ارزیاب:</label>
+            <label className={labelClass}>یادداشت نهایی مدیر ارزیاب:</label>
             <textarea rows={4} value={answers.finalNotes} onChange={(e) => setField('finalNotes', e.target.value)} className={fieldClass} />
           </div>
         </div>
       </div>
 
-      {/* Evaluator history */}
       {history.length > 0 && (
         <div className={sectionClass}>
           <h3 className="text-md font-bold text-slate-800 border-b border-slate-100 pb-2">تاریخچه ارزیاب‌ها</h3>
@@ -709,7 +807,6 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
                   {typeof h.totalScore === 'number' && (
                     <span className={`px-2 py-0.5 rounded-md border font-bold ${scoreColor(h.totalScore)}`}>{h.totalScore}</span>
                   )}
-                  {h.finalDecision && <span className="text-slate-600 font-semibold">{h.finalDecision}</span>}
                   <span className="text-slate-400">{formatTimestamp(h.updatedAt)}</span>
                 </div>
               </div>
@@ -719,11 +816,7 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
       )}
 
       <div className="flex flex-wrap justify-end gap-3 pt-4 border-t border-slate-100">
-        <button
-          type="button"
-          onClick={handlePrint}
-          className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 px-5 rounded-xl text-sm transition-all"
-        >
+        <button type="button" onClick={handlePrint} className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 px-5 rounded-xl text-sm transition-all">
           چاپ / خروجی PDF
         </button>
         <button
@@ -732,7 +825,7 @@ const EvaluationForm: React.FC<EvaluationFormProps> = ({
           disabled={isSaving}
           className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-6 rounded-xl text-sm shadow-md transition-all disabled:opacity-50"
         >
-          {isSaving ? 'در حال ذخیره...' : 'ثبت نهایی ارزیابی'}
+          {isSaving ? 'در حال ذخیره...' : 'ثبت ارزیابی عمومی'}
         </button>
       </div>
     </div>

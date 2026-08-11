@@ -1,4 +1,5 @@
 import express from 'express';
+import { PrismaClient } from '@prisma/client';
 import {
   getAllCandidates,
   getCandidateById,
@@ -12,36 +13,141 @@ import {
   validateUpdateStage
 } from '../controllers/candidateController';
 import { authenticateToken } from '../middleware/auth';
+import { positionInclude } from '../data/interviewPlanService';
 
+const prisma = new PrismaClient();
 const router = express.Router();
 
-// All routes require authentication
+function parseScoreGuide(raw?: string | null): Record<string, string> {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 router.use(authenticateToken);
 
-// GET /api/candidates - Get all candidates with filters
 router.get('/', getAllCandidates);
 
-// GET /api/candidates/:id - Get candidate by ID
+// GET /api/candidates/:id/interview-evaluation
+router.get('/:id/interview-evaluation', async (req, res) => {
+  try {
+    const candidate = await prisma.candidate.findUnique({ where: { id: req.params.id } });
+    if (!candidate) {
+      return res.status(404).json({ success: false, error: 'کاندیدا یافت نشد' });
+    }
+
+    const positionTitle = (candidate.position || '').trim();
+    const position = await prisma.jobPosition.findFirst({
+      where: {
+        OR: [
+          { title: positionTitle },
+          { title: { equals: positionTitle, mode: 'insensitive' } },
+        ],
+      },
+      include: positionInclude,
+    });
+
+    const answers = await prisma.interviewQuestionAnswer.findMany({
+      where: { candidateId: candidate.id },
+    });
+    const answerMap = new Map(answers.map((a) => [a.questionId, a]));
+
+    const sections = (position?.sections || []).map((section) => ({
+      ...section,
+      questions: (section.questions || []).map((q) => {
+        const saved = answerMap.get(q.id);
+        return {
+          ...q,
+          score: saved?.score ?? null,
+          comment: saved?.comment ?? '',
+        };
+      }),
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        positionId: position?.id ?? null,
+        positionTitle: candidate.position,
+        interviewDurationMinutes: position?.interviewDurationMinutes ?? null,
+        scoreGuide: parseScoreGuide(position?.scoreGuide),
+        sections,
+      },
+    });
+  } catch (error) {
+    console.error('Get interview evaluation error:', error);
+    res.status(500).json({ success: false, error: 'خطا در دریافت ارزیابی مصاحبه' });
+  }
+});
+
+// PUT /api/candidates/:id/interview-evaluation
+router.put('/:id/interview-evaluation', async (req, res) => {
+  try {
+    const candidate = await prisma.candidate.findUnique({ where: { id: req.params.id } });
+    if (!candidate) {
+      return res.status(404).json({ success: false, error: 'کاندیدا یافت نشد' });
+    }
+
+    const answers = Array.isArray(req.body?.answers) ? req.body.answers : [];
+    const userId = (req as any).user?.userId as string | undefined;
+    const results = [];
+
+    for (const item of answers) {
+      if (!item?.questionId) continue;
+      const question = await prisma.interviewScriptQuestion.findUnique({ where: { id: item.questionId } });
+      if (!question) continue;
+
+      let score: number | null = null;
+      if (item.score === null || item.score === undefined || item.score === '') {
+        score = null;
+      } else {
+        const parsed = Number(item.score);
+        if (!Number.isFinite(parsed)) continue;
+        score = Math.max(0, Math.min(question.maxScore, Math.round(parsed)));
+      }
+
+      const comment = typeof item.comment === 'string' ? item.comment.trim() : '';
+
+      const saved = await prisma.interviewQuestionAnswer.upsert({
+        where: {
+          candidateId_questionId: {
+            candidateId: candidate.id,
+            questionId: item.questionId,
+          },
+        },
+        create: {
+          candidateId: candidate.id,
+          questionId: item.questionId,
+          score,
+          comment: comment || null,
+          userId: userId || null,
+        },
+        update: {
+          score,
+          comment: comment || null,
+          userId: userId || null,
+          updatedAt: new Date(),
+        },
+      });
+      results.push(saved);
+    }
+
+    res.json({ success: true, data: results, message: 'ارزیابی ذخیره شد' });
+  } catch (error) {
+    console.error('Save interview evaluation error:', error);
+    res.status(500).json({ success: false, error: 'خطا در ذخیره ارزیابی مصاحبه' });
+  }
+});
+
 router.get('/:id', getCandidateById);
-
-// POST /api/candidates - Create new candidate
 router.post('/', validateCreateCandidate, createCandidate);
-
-// PUT /api/candidates/:id - Update candidate
 router.put('/:id', validateUpdateCandidate, updateCandidate);
-
-// POST /api/candidates/:id/analyze-resume - Parse/Analyze resume using pdftotext
 router.post('/:id/analyze-resume', analyzeResume);
-
-// DELETE /api/candidates/:id - Delete candidate
 router.delete('/:id', deleteCandidate);
-
-// PATCH /api/candidates/:id/stage - Update candidate stage
 router.patch('/:id/stage', validateUpdateStage, updateCandidateStage);
 
 export default router;
-
-
-
-
-

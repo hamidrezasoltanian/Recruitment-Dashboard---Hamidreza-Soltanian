@@ -2,6 +2,8 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { body, validationResult } from 'express-validator';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
+import { getJobPositionsInclude, positionInclude, applyInterviewPlan, seedInterviewPlansForPositions } from '../data/interviewPlanService';
+import { INTERVIEW_PLANS } from '../data/interviewPlans';
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -12,12 +14,10 @@ router.use(authenticateToken);
 // GET /api/settings/company-profile - Get company profile
 router.get('/company-profile', async (req, res) => {
   try {
+    const jobPositionsInclude = getJobPositionsInclude();
+
     let companyProfile = await prisma.companyProfile.findFirst({
-      include: {
-        jobPositions: {
-          orderBy: { createdAt: 'asc' }
-        }
-      }
+      include: jobPositionsInclude
     });
 
     // Create default if none exists
@@ -35,9 +35,7 @@ router.get('/company-profile', async (req, res) => {
             ]
           }
         },
-        include: {
-          jobPositions: true
-        }
+        include: jobPositionsInclude
       });
     }
 
@@ -93,11 +91,7 @@ router.put('/company-profile', [
           address,
           updatedAt: new Date()
         },
-        include: {
-          jobPositions: {
-            orderBy: { createdAt: 'asc' }
-          }
-        }
+        include: getJobPositionsInclude()
       });
     } else {
       companyProfile = await prisma.companyProfile.create({
@@ -109,9 +103,7 @@ router.put('/company-profile', [
             create: []
           }
         },
-        include: {
-          jobPositions: true
-        }
+        include: getJobPositionsInclude()
       });
     }
 
@@ -152,12 +144,26 @@ router.post('/job-positions', [
   }
 });
 
-// PUT /api/settings/job-positions/:id - Update job position (Admin only)
+// PUT /api/settings/job-positions/:id - Update job position
 router.put('/job-positions/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { title } = req.body;
-    const position = await prisma.jobPosition.update({ where: { id }, data: { title, updatedAt: new Date() } });
+    const data: Record<string, unknown> = { updatedAt: new Date() };
+    if (typeof req.body.title === 'string') data.title = req.body.title;
+    if (typeof req.body.interviewDurationMinutes === 'number') {
+      data.interviewDurationMinutes = req.body.interviewDurationMinutes;
+    }
+    if (req.body.scoreGuide !== undefined) {
+      data.scoreGuide = typeof req.body.scoreGuide === 'string'
+        ? req.body.scoreGuide
+        : JSON.stringify(req.body.scoreGuide);
+    }
+
+    const position = await prisma.jobPosition.update({
+      where: { id },
+      data,
+      include: positionInclude,
+    });
     res.json({ success: true, data: position });
   } catch (error) {
     console.error('Update job position error:', error);
@@ -165,7 +171,7 @@ router.put('/job-positions/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/settings/job-positions/:id - Delete job position (Admin only)
+// DELETE /api/settings/job-positions/:id
 router.delete('/job-positions/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -174,6 +180,205 @@ router.delete('/job-positions/:id', async (req, res) => {
   } catch (error) {
     console.error('Delete job position error:', error);
     res.status(500).json({ success: false, error: 'خطا در حذف موقعیت شغلی' });
+  }
+});
+
+// GET /api/settings/job-positions/:id/interview-plan
+router.get('/job-positions/:id/interview-plan', async (req, res) => {
+  try {
+    const position = await prisma.jobPosition.findUnique({
+      where: { id: req.params.id },
+      include: positionInclude,
+    });
+    if (!position) {
+      return res.status(404).json({ success: false, error: 'موقعیت شغلی یافت نشد' });
+    }
+    res.json({ success: true, data: position });
+  } catch (error) {
+    console.error('Get interview plan error:', error);
+    res.status(500).json({ success: false, error: 'خطا در دریافت سناریوی مصاحبه' });
+  }
+});
+
+// POST /api/settings/job-positions/:id/apply-default-plan
+router.post('/job-positions/:id/apply-default-plan', async (req, res) => {
+  try {
+    const position = await prisma.jobPosition.findUnique({ where: { id: req.params.id } });
+    if (!position) {
+      return res.status(404).json({ success: false, error: 'موقعیت شغلی یافت نشد' });
+    }
+    const plan = INTERVIEW_PLANS.find((p) => p.title === position.title);
+    if (!plan) {
+      return res.status(404).json({ success: false, error: 'سناریوی پیش‌فرض برای این پوزیشن تعریف نشده است' });
+    }
+    const updated = await applyInterviewPlan(prisma, position.id, plan, { replace: true });
+    res.json({ success: true, data: updated, message: 'سناریوی پیش‌فرض اعمال شد' });
+  } catch (error) {
+    console.error('Apply default plan error:', error);
+    res.status(500).json({ success: false, error: 'خطا در اعمال سناریوی پیش‌فرض' });
+  }
+});
+
+// POST /api/settings/interview-plans/seed-defaults
+router.post('/interview-plans/seed-defaults', async (req, res) => {
+  try {
+    const force = Boolean(req.body?.force);
+    const applied = await seedInterviewPlansForPositions(prisma, { force });
+    const profile = await prisma.companyProfile.findFirst({ include: getJobPositionsInclude() });
+    res.json({ success: true, data: { applied, profile }, message: `${applied} سناریو اعمال شد` });
+  } catch (error) {
+    console.error('Seed interview plans error:', error);
+    res.status(500).json({ success: false, error: 'خطا در seeding سناریوها' });
+  }
+});
+
+// Sections
+router.post('/job-positions/:id/sections', [
+  body('title').notEmpty().isLength({ min: 2, max: 200 }),
+  body('durationMinutes').optional().isInt({ min: 1, max: 180 }),
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ success: false, error: 'داده‌های ورودی نامعتبر' });
+
+    const count = await prisma.interviewSection.count({ where: { jobPositionId: req.params.id } });
+    const section = await prisma.interviewSection.create({
+      data: {
+        title: req.body.title.trim(),
+        durationMinutes: req.body.durationMinutes ?? 5,
+        order: typeof req.body.order === 'number' ? req.body.order : count,
+        jobPositionId: req.params.id,
+      },
+      include: { questions: true },
+    });
+    res.status(201).json({ success: true, data: section });
+  } catch (error) {
+    console.error('Add section error:', error);
+    res.status(500).json({ success: false, error: 'خطا در افزودن بخش' });
+  }
+});
+
+router.put('/interview-sections/:id', async (req, res) => {
+  try {
+    const data: Record<string, unknown> = { updatedAt: new Date() };
+    if (typeof req.body.title === 'string') data.title = req.body.title.trim();
+    if (typeof req.body.durationMinutes === 'number') data.durationMinutes = req.body.durationMinutes;
+    if (typeof req.body.order === 'number') data.order = req.body.order;
+    const section = await prisma.interviewSection.update({
+      where: { id: req.params.id },
+      data,
+      include: { questions: { orderBy: [{ order: 'asc' }, { createdAt: 'asc' }] } },
+    });
+    res.json({ success: true, data: section });
+  } catch (error) {
+    console.error('Update section error:', error);
+    res.status(500).json({ success: false, error: 'خطا در ویرایش بخش' });
+  }
+});
+
+router.delete('/interview-sections/:id', async (req, res) => {
+  try {
+    await prisma.interviewSection.delete({ where: { id: req.params.id } });
+    res.json({ success: true, message: 'بخش حذف شد' });
+  } catch (error) {
+    console.error('Delete section error:', error);
+    res.status(500).json({ success: false, error: 'خطا در حذف بخش' });
+  }
+});
+
+// Script questions
+router.post('/interview-sections/:id/questions', [
+  body('text').notEmpty().isLength({ min: 2, max: 1000 }),
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ success: false, error: 'داده‌های ورودی نامعتبر' });
+    const count = await prisma.interviewScriptQuestion.count({ where: { sectionId: req.params.id } });
+    const question = await prisma.interviewScriptQuestion.create({
+      data: {
+        text: req.body.text.trim(),
+        maxScore: typeof req.body.maxScore === 'number' ? req.body.maxScore : 4,
+        order: typeof req.body.order === 'number' ? req.body.order : count,
+        sectionId: req.params.id,
+      },
+    });
+    res.status(201).json({ success: true, data: question });
+  } catch (error) {
+    console.error('Add script question error:', error);
+    res.status(500).json({ success: false, error: 'خطا در افزودن سوال' });
+  }
+});
+
+router.put('/interview-script-questions/:id', async (req, res) => {
+  try {
+    const data: Record<string, unknown> = { updatedAt: new Date() };
+    if (typeof req.body.text === 'string') data.text = req.body.text.trim();
+    if (typeof req.body.order === 'number') data.order = req.body.order;
+    const question = await prisma.interviewScriptQuestion.update({ where: { id: req.params.id }, data });
+    res.json({ success: true, data: question });
+  } catch (error) {
+    console.error('Update script question error:', error);
+    res.status(500).json({ success: false, error: 'خطا در ویرایش سوال' });
+  }
+});
+
+router.delete('/interview-script-questions/:id', async (req, res) => {
+  try {
+    await prisma.interviewScriptQuestion.delete({ where: { id: req.params.id } });
+    res.json({ success: true, message: 'سوال حذف شد' });
+  } catch (error) {
+    console.error('Delete script question error:', error);
+    res.status(500).json({ success: false, error: 'خطا در حذف سوال' });
+  }
+});
+
+// Criteria
+router.post('/job-positions/:id/criteria', [
+  body('title').notEmpty().isLength({ min: 2, max: 200 }),
+  body('maxScore').optional().isInt({ min: 1, max: 10 }),
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ success: false, error: 'داده‌های ورودی نامعتبر' });
+    const count = await prisma.evaluationCriterion.count({ where: { jobPositionId: req.params.id } });
+    const criterion = await prisma.evaluationCriterion.create({
+      data: {
+        title: req.body.title.trim(),
+        description: typeof req.body.description === 'string' ? req.body.description.trim() : null,
+        maxScore: req.body.maxScore ?? 4,
+        order: typeof req.body.order === 'number' ? req.body.order : count,
+        jobPositionId: req.params.id,
+      },
+    });
+    res.status(201).json({ success: true, data: criterion });
+  } catch (error) {
+    console.error('Add criterion error:', error);
+    res.status(500).json({ success: false, error: 'خطا در افزودن معیار' });
+  }
+});
+
+router.put('/evaluation-criteria/:id', async (req, res) => {
+  try {
+    const data: Record<string, unknown> = { updatedAt: new Date() };
+    if (typeof req.body.title === 'string') data.title = req.body.title.trim();
+    if (typeof req.body.description === 'string') data.description = req.body.description.trim();
+    if (typeof req.body.maxScore === 'number') data.maxScore = req.body.maxScore;
+    if (typeof req.body.order === 'number') data.order = req.body.order;
+    const criterion = await prisma.evaluationCriterion.update({ where: { id: req.params.id }, data });
+    res.json({ success: true, data: criterion });
+  } catch (error) {
+    console.error('Update criterion error:', error);
+    res.status(500).json({ success: false, error: 'خطا در ویرایش معیار' });
+  }
+});
+
+router.delete('/evaluation-criteria/:id', async (req, res) => {
+  try {
+    await prisma.evaluationCriterion.delete({ where: { id: req.params.id } });
+    res.json({ success: true, message: 'معیار حذف شد' });
+  } catch (error) {
+    console.error('Delete criterion error:', error);
+    res.status(500).json({ success: false, error: 'خطا در حذف معیار' });
   }
 });
 

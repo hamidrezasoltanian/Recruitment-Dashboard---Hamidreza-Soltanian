@@ -14,6 +14,7 @@ import { useTemplates } from '../../contexts/TemplateContext';
 import { templateService } from '../../services/templateService';
 import { EmailIcon, WhatsappIcon } from '../ui/Icons';
 import EvaluationForm from '../evaluation/EvaluationForm';
+import InterviewEvaluationPanel from '../evaluation/InterviewEvaluationPanel';
 import { EvaluationAnswers } from '../../utils/evaluationUtils';
 
 declare const persianDate: any;
@@ -26,7 +27,7 @@ interface CandidateDetailsModalProps {
   onStageChangeRequest: (info: StageChangeInfo) => void;
   onNavigateToTests: (candidateId: string) => void;
   onOpenCommunicationModal: (candidate: Candidate) => void;
-  onViewResume: (file: File) => void;
+  onViewResume: (file: File, candidate: Candidate) => void;
 }
 
 interface CandidateTestItemProps {
@@ -392,7 +393,7 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
   const [interviewDate, setInterviewDate] = useState('');
   const [interviewTime, setInterviewTime] = useState('');
   const [interviewer, setInterviewer] = useState('');
-  const [activeTab, setActiveTab] = useState<'info' | 'evaluation' | 'tests'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'interview' | 'evaluation' | 'tests'>('info');
 
 
   const emailReminderTemplate = useMemo(() => {
@@ -522,7 +523,7 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
         if (blob) {
             const ext = blob.type.includes('pdf') ? '.pdf' : blob.type.includes('word') ? '.docx' : '.pdf';
             const file = new File([blob], `resume${ext}`, { type: blob.type });
-            onViewResume(file);
+            onViewResume(file, candidate);
         } else {
             addToast('فایل رزومه یافت نشد.', 'error');
         }
@@ -644,10 +645,10 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
           {/* Main Content */}
           <div className="xl:col-span-3 space-y-6">
               {/* Tab Navigation */}
-              <div className="flex border-b border-gray-200">
+              <div className="flex flex-wrap border-b border-gray-200 gap-1">
                 <button
                   onClick={() => setActiveTab('info')}
-                  className={`pb-3 px-6 font-bold text-sm transition-colors border-b-2 ${
+                  className={`pb-3 px-4 font-bold text-sm transition-colors border-b-2 ${
                     activeTab === 'info'
                       ? 'border-blue-600 text-blue-600 font-bold'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -656,18 +657,28 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
                   اطلاعات عمومی و یادداشت‌ها
                 </button>
                 <button
+                  onClick={() => setActiveTab('interview')}
+                  className={`pb-3 px-4 font-bold text-sm transition-colors border-b-2 ${
+                    activeTab === 'interview'
+                      ? 'border-blue-600 text-blue-600 font-bold'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  مصاحبه تخصصی ({candidate.position})
+                </button>
+                <button
                   onClick={() => setActiveTab('evaluation')}
-                  className={`pb-3 px-6 font-bold text-sm transition-colors border-b-2 ${
+                  className={`pb-3 px-4 font-bold text-sm transition-colors border-b-2 ${
                     activeTab === 'evaluation'
                       ? 'border-blue-600 text-blue-600 font-bold'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  فرم ارزیابی اختصاصی متقاضی
+                  فرم ارزیابی عمومی
                 </button>
                 <button
                   onClick={() => setActiveTab('tests')}
-                  className={`pb-3 px-6 font-bold text-sm transition-colors border-b-2 ${
+                  className={`pb-3 px-4 font-bold text-sm transition-colors border-b-2 ${
                     activeTab === 'tests'
                       ? 'border-blue-600 text-blue-600 font-bold'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -795,6 +806,8 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
                        </div>
                   </div>
                 </>
+              ) : activeTab === 'interview' ? (
+                <InterviewEvaluationPanel candidate={candidate} />
               ) : activeTab === 'evaluation' ? (
                 <EvaluationForm
                   candidate={candidate}

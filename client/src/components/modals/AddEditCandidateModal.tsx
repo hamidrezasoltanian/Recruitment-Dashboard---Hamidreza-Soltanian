@@ -189,6 +189,8 @@ const AddEditCandidateModal: React.FC<AddEditCandidateModalProps> = ({ isOpen, o
           phoneResult: '',
           discDominant: [],
           supportFit: '',
+          roleFit: '',
+          specializedNotes: '',
           starHonesty: 0,
           starHonestyExample: '',
           starStress: 0,

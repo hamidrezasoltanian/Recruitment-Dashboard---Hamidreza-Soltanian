@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { KanbanStage, CompanyProfile, TestLibraryItem, JobPosition } from '../types';
 import { apiService } from '../services/apiService';
 import { DEFAULT_STAGES, DEFAULT_COMPANY_PROFILE, DEFAULT_TEST_LIBRARY, DEFAULT_SOURCES } from '../constants';
@@ -9,6 +9,7 @@ interface SettingsContextType {
   stages: KanbanStage[];
   companyProfile: CompanyProfile;
   testLibrary: TestLibraryItem[];
+  refreshCompanyProfile: () => Promise<void>;
   updateSources: (sources: string[]) => Promise<void>;
   addSource: (name: string) => Promise<void>;
   deleteSource: (name: string) => Promise<void>;
@@ -39,12 +40,16 @@ export const useSettings = () => {
 
 export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [sources, setSources] = useState<string[]>(DEFAULT_SOURCES);
-  // Keep source objects internally to have access to IDs for delete
   const [sourceObjects, setSourceObjects] = useState<{ id: string; name: string }[]>([]);
   const [stages, setStages] = useState<KanbanStage[]>(DEFAULT_STAGES);
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile>(DEFAULT_COMPANY_PROFILE);
   const [testLibrary, setTestLibrary] = useState<TestLibraryItem[]>(DEFAULT_TEST_LIBRARY);
   const { user } = useAuth();
+
+  const refreshCompanyProfile = useCallback(async () => {
+    const data = await apiService.getCompanyProfile();
+    if (data) setCompanyProfile(data as any);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -57,13 +62,11 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
         setSources(data.map((s: any) => String(s.name || s)));
       }
     }).catch(() => {});
-    apiService.getCompanyProfile().then(data => {
-      if (data) setCompanyProfile(data as any);
-    }).catch(() => {});
+    refreshCompanyProfile().catch(() => {});
     apiService.getTestLibrary().then(data => {
       if (data && data.length > 0) setTestLibrary(data as any);
     }).catch(() => {});
-  }, [user]);
+  }, [user, refreshCompanyProfile]);
 
   const updateSources = async (newSources: string[]) => setSources(newSources);
 
@@ -96,7 +99,6 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
       const created = await apiService.createStage({ title, isCore: false } as any);
       setStages(prev => [...prev, created as any]);
     } catch {
-      // fallback: local only
       setStages(prev => [...prev, { id: `stage_${Date.now()}`, title } as any]);
     }
   };
@@ -135,10 +137,15 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
       const created = await apiService.addJobPosition(title);
       setCompanyProfile(prev => ({
         ...prev,
-        jobPositions: [...(prev.jobPositions || []), { id: created.id, title: created.title }]
+        jobPositions: [...(prev.jobPositions || []), {
+          id: created.id,
+          title: created.title,
+          sections: [],
+          criteria: [],
+        }],
       }));
     } catch {
-      const newJob: JobPosition = { id: `job_${Date.now()}`, title };
+      const newJob: JobPosition = { id: `job_${Date.now()}`, title, sections: [], criteria: [] };
       setCompanyProfile(prev => ({ ...prev, jobPositions: [...(prev.jobPositions || []), newJob] }));
     }
   };
@@ -189,6 +196,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   const value = {
     sources, stages, companyProfile, testLibrary,
+    refreshCompanyProfile,
     updateSources, addSource, deleteSource,
     updateStages, setStageOrder,
     addStage, updateStage, deleteStage,
