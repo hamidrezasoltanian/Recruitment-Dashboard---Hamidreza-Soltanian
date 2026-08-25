@@ -3,15 +3,12 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
-import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import path from 'path';
 import { PrismaClient } from '@prisma/client';
 import { createServer } from 'http';
 import { webSocketService } from './services/websocketService';
 import { monitoringService, requestTrackingMiddleware } from './services/monitoringService';
-import { applyRateLimit } from './middleware/rateLimiting';
-
 // Load environment variables - try env.local first, then .env
 // In TypeScript source, __dirname will be src/, so we go up one level
 // In compiled JS, __dirname will be dist/, so we go up two levels
@@ -32,9 +29,6 @@ const prisma = new PrismaClient();
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
-
-// Apply rate limiting
-applyRateLimit(app);
 
 // CORS configuration
 app.use(cors({

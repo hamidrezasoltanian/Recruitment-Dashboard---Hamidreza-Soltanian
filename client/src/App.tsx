@@ -15,16 +15,22 @@ import SettingsModal from './components/modals/SettingsModal';
 import StageChangeCommunicationModal from './components/modals/StageChangeCommunicationModal';
 import DashboardSummary from './components/dashboard/DashboardSummary';
 import LoginScreen from './components/auth/LoginScreen';
-import KanbanControls from './components/kanban/KanbanControls';
+import KanbanControls, { BoardLayout } from './components/kanban/KanbanControls';
 import CommunicationModal from './components/modals/CommunicationModal';
 import ResumeViewerModal from './components/modals/ResumeViewerModal';
 import BulkCommunicationModal from './components/modals/BulkCommunicationModal';
 import BulkUploadModal from './components/modals/BulkUploadModal';
+import CandidatesTableView from './components/views/CandidatesTableView';
+import CandidatesListView from './components/views/CandidatesListView';
 
 const App: React.FC = () => {
   const { user } = useAuth();
   const { candidates, addCandidate, updateCandidate, updateCandidateStage } = useCandidates();
   const [activeView, setActiveView] = useState<View>('dashboard');
+  const [boardLayout, setBoardLayout] = useState<BoardLayout>(() => {
+    const saved = localStorage.getItem('boardLayout');
+    return saved === 'table' || saved === 'list' || saved === 'kanban' ? saved : 'kanban';
+  });
   
   // Modal States
   const [isAddEditModalOpen, setAddEditModalOpen] = useState(false);
@@ -169,6 +175,11 @@ const App: React.FC = () => {
     setActiveView(view);
   };
 
+  const handleLayoutChange = (layout: BoardLayout) => {
+    setBoardLayout(layout);
+    localStorage.setItem('boardLayout', layout);
+  };
+
   const handleOpenBulkCommModal = (candidates: Candidate[]) => {
     setBulkCommConfig({ isOpen: true, candidates: candidates });
   };
@@ -190,13 +201,30 @@ const App: React.FC = () => {
               onFilterChange={handleFilterChange}
               sortBy={sortBy}
               onSortChange={setSortBy}
+              layout={boardLayout}
+              onLayoutChange={handleLayoutChange}
             />
-            <KanbanBoard 
-              candidates={filteredAndSortedCandidates}
-              onEdit={handleOpenEditModal} 
-              onViewDetails={handleOpenDetailsModal} 
-              onStageChangeRequest={handleStageChangeRequest}
-            />
+            {boardLayout === 'table' ? (
+              <CandidatesTableView
+                candidates={filteredAndSortedCandidates}
+                onEdit={handleOpenEditModal}
+                onViewDetails={handleOpenDetailsModal}
+                onStageChangeRequest={handleStageChangeRequest}
+              />
+            ) : boardLayout === 'list' ? (
+              <CandidatesListView
+                candidates={filteredAndSortedCandidates}
+                onEdit={handleOpenEditModal}
+                onViewDetails={handleOpenDetailsModal}
+              />
+            ) : (
+              <KanbanBoard 
+                candidates={filteredAndSortedCandidates}
+                onEdit={handleOpenEditModal} 
+                onViewDetails={handleOpenDetailsModal} 
+                onStageChangeRequest={handleStageChangeRequest}
+              />
+            )}
           </>
         );
     }
