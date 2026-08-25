@@ -4,6 +4,7 @@ import { useSettings } from '../../contexts/SettingsContext';
 import { useCandidates } from '../../contexts/CandidatesContext';
 import { useToast } from '../../contexts/ToastContext';
 import { EmailIcon, WhatsappIcon } from '../ui/Icons';
+import { templateService } from '../../services/templateService';
 
 interface TestSelectionModalProps {
   isOpen: boolean;
@@ -12,7 +13,7 @@ interface TestSelectionModalProps {
 }
 
 const TestSelectionModal: React.FC<TestSelectionModalProps> = ({ isOpen, onClose, candidateId }) => {
-  const { testLibrary } = useSettings();
+  const { testLibrary, companyProfile } = useSettings();
   const { candidates, updateTestResult } = useCandidates();
   const { addToast } = useToast();
   
@@ -56,10 +57,11 @@ const TestSelectionModal: React.FC<TestSelectionModalProps> = ({ isOpen, onClose
 
     const selectedTests = testLibrary.filter(t => selectedTestIds.has(t.id));
     
-    let body = `سلام ${candidate.name}،\nلطفاً آزمون‌های زیر را انجام دهید:\n\n`;
+    let body = `سلام ${candidate.name} عزیز،\n\nلطفاً آزمون‌های زیر را تکمیل کنید:\n\n`;
     selectedTests.forEach(test => { body += `- ${test.name}:\n${test.url}\n\n`; });
-    if (deadlineHours) { body += `مهلت شما برای انجام این آزمون‌ها ${deadlineHours} ساعت می‌باشد.\n`; }
-    body += `مهم: لطفاً نتیجه را به ایمیل ما ارسال فرمایید.\n\nبا تشکر`;
+    if (deadlineHours) { body += `مهلت انجام: ${deadlineHours} ساعت از زمان دریافت این پیام.\n`; }
+    body += `اگر سوالی داشتید، همین‌جا بپرسید.`;
+    body += templateService.contactFooter(companyProfile);
 
     if (platform === 'email') {
       window.location.href = `mailto:${candidate.email}?subject=آزمون‌های استخدامی&body=${encodeURIComponent(body)}`;

@@ -373,21 +373,20 @@ export const updateCandidate = async (req: AuthRequest, res: Response) => {
             const testObj = await prisma.testLibraryItem.findUnique({ where: { id: resItem.testId } });
             
             if (candidateObj && candidateObj.email && testObj) {
-              const company = await prisma.companyProfile.findFirst() || { name: 'شرکت ما', website: '' };
+              const company = await prisma.companyProfile.findFirst() || { name: 'شرکت ما', website: '', address: '', phone: '' };
               
               const subject = `دعوت به آزمون ${testObj.name} - ${candidateObj.name}`;
               const htmlContent = `
                 <div dir="rtl" style="font-family: Tahoma, Arial, sans-serif; padding: 20px; line-height: 1.6; color: #333;">
                   <h2>سلام ${candidateObj.name} عزیز،</h2>
-                  <p>امیدواریم حال شما عالی باشد.</p>
                   <p>برای ادامه فرآیند ارزیابی موقعیت شغلی «<strong>${candidateObj.position}</strong>»، از شما دعوت می‌شود تا آزمون زیر را تکمیل نمایید:</p>
                   <div style="background-color: #f5f5f5; border-right: 4px solid #007bff; padding: 15px; margin: 20px 0;">
                     <strong>عنوان آزمون:</strong> ${testObj.name}<br/>
                     <strong>لینک آزمون:</strong> <a href="${testObj.url}" target="_blank" style="color: #007bff; text-decoration: underline;">شروع آزمون</a>
                   </div>
-                  <p>لطفاً پس از اتمام آزمون، پاسخ یا گزارش نهایی را از طریق بارگذاری فایل در بخش متقاضی یا ارتباط با کارشناس منابع انسانی برای ما ارسال کنید.</p>
+                  <p>اگر سوالی داشتید، همین ایمیل را پاسخ دهید.</p>
                   <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"/>
-                  <p style="font-size: 12px; color: #777;">با احترام،<br/>تیم استخدام ${company.name}</p>
+                  <p style="font-size: 12px; color: #777;">با آرزوی بهترین‌ها،<br/>تیم جذب و استخدام ${company.name}<br/>وب‌سایت: ${company.website || ''}<br/>آدرس: ${company.address || ''}<br/>تلفن: ${company.phone || ''}</p>
                 </div>
               `;
               

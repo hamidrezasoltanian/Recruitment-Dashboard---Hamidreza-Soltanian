@@ -149,5 +149,6 @@ export interface CompanyProfile {
   name: string;
   website: string;
   address: string;
+  phone: string;
   jobPositions: JobPosition[];
 }

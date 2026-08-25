@@ -37,12 +37,7 @@ const StageChangeCommunicationModal: React.FC<StageChangeCommunicationModalProps
 
   const companyCtx = useMemo(
     () => ({
-      companyName: companyProfile.name,
-      companyAddress: companyProfile.address,
-      companyWebsite: companyProfile.website,
-      name: companyProfile.name,
-      website: companyProfile.website,
-      address: companyProfile.address,
+      ...templateService.companyContext(companyProfile),
       stageName: newStage.title,
       position: candidate.position,
     }),

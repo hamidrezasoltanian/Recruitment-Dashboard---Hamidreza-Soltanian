@@ -6,14 +6,10 @@ export type SeedTemplate = {
   content: string;
 };
 
-const emailSign =
-  `\n\nبا آرزوی بهترین‌ها،\nتیم جذب و استخدام {{companyName}}\nوب‌سایت: {{companyWebsite}}`;
-
-const waSign =
-  `\n\nبا آرزوی بهترین‌ها\nتیم جذب و استخدام {{companyName}}\n{{companyWebsite}}`;
+const contactSign =
+  `\n\nبا آرزوی بهترین‌ها،\nتیم جذب و استخدام {{companyName}}\nوب‌سایت: {{companyWebsite}}\nآدرس: {{companyAddress}}\nتلفن: {{companyPhone}}`;
 
 export const DEFAULT_TEMPLATES: SeedTemplate[] = [
-  // --- Email ---
   {
     id: 'tpl_inbox_email',
     name: 'ایمیل تأیید دریافت رزومه',
@@ -26,8 +22,7 @@ export const DEFAULT_TEMPLATES: SeedTemplate[] = [
 
 رزومه شما را دریافت کردیم و در صف بررسی تیم جذب قرار گرفته است. به‌محض تکمیل بررسی اولیه، نتیجه را از همین طریق به شما اطلاع می‌دهیم.
 
-اگر سوالی داشتید، خوشحال می‌شویم از طریق همین ایمیل یا وب‌سایت شرکت با ما در ارتباط باشید:
-{{companyWebsite}}` + emailSign,
+اگر سوالی داشتید، خوشحال می‌شویم از طریق همین ایمیل با ما در ارتباط باشید.` + contactSign,
   },
   {
     id: 'tpl_review_email',
@@ -39,10 +34,9 @@ export const DEFAULT_TEMPLATES: SeedTemplate[] = [
 
 امیدواریم حالتان خوب باشد.
 
-رزومه شما برای موقعیت «{{position}}» وارد مرحله «{{stageName}}» شده و در حال بررسی دقیق‌تر توسط تیم ماست. به‌محض مشخص شدن نتیجه این مرحله، حتماً خبر می‌دهیم.
+رزومه شما برای موقعیت «{{position}}» وارد مرحله بررسی دقیق‌تر شده است. به‌محض مشخص شدن نتیجه این مرحله، حتماً خبر می‌دهیم.
 
-ممنون از صبر و همراهی‌تان.
-اطلاعات بیشتر درباره ما: {{companyWebsite}}` + emailSign,
+ممنون از صبر و همراهی‌تان.` + contactSign,
   },
   {
     id: 'tpl_interview-1_email',
@@ -52,16 +46,13 @@ export const DEFAULT_TEMPLATES: SeedTemplate[] = [
     content:
 `سلام {{candidateName}} عزیز،
 
-خبر خوبی داریم؛ رزومه شما برای موقعیت «{{position}}» بررسی شد و مایلیم شما را به «{{stageName}}» دعوت کنیم.
+خبر خوبی داریم؛ رزومه شما برای موقعیت «{{position}}» بررسی شد و مایلیم شما را به مصاحبه اول دعوت کنیم.
 
 زمان پیشنهادی مصاحبه:
 📅 تاریخ: {{interviewDate}}
 🕐 ساعت: {{interviewTime}}
-📍 محل: {{companyAddress}}
 
-اگر این زمان برای شما مناسب است، لطفاً حضور خود را تأیید کنید. در غیر این صورت، چند بازه جایگزین پیشنهاد دهید تا هماهنگ کنیم.
-
-آشنایی بیشتر با ما: {{companyWebsite}}` + emailSign,
+اگر این زمان برای شما مناسب است، لطفاً حضور خود را تأیید کنید. در غیر این صورت، چند بازه جایگزین پیشنهاد دهید تا هماهنگ کنیم.` + contactSign,
   },
   {
     id: 'tpl_interview-2_email',
@@ -71,18 +62,15 @@ export const DEFAULT_TEMPLATES: SeedTemplate[] = [
     content:
 `سلام {{candidateName}} عزیز،
 
-از گفت‌وگوی مرحله قبل ممنونیم؛ بازخورد خوبی از مصاحبه اولیه داشتیم.
+از گفت‌وگوی مرحله قبل ممنونیم.
 
-مایلیم شما را به مرحله «{{stageName}}» دعوت کنیم تا جزئیات بیشتری از همکاری را با هم مرور کنیم.
+مایلیم شما را به مصاحبه دوم دعوت کنیم تا جزئیات بیشتری از همکاری را با هم مرور کنیم.
 
 زمان پیشنهادی:
 📅 تاریخ: {{interviewDate}}
 🕐 ساعت: {{interviewTime}}
-📍 محل: {{companyAddress}}
 
-لطفاً حضور خود را تأیید بفرمایید یا در صورت تداخل زمانی، جایگزین پیشنهاد دهید.
-
-{{companyWebsite}}` + emailSign,
+لطفاً حضور خود را تأیید بفرمایید یا در صورت تداخل زمانی، جایگزین پیشنهاد دهید.` + contactSign,
   },
   {
     id: 'tpl_test_email',
@@ -94,11 +82,9 @@ export const DEFAULT_TEMPLATES: SeedTemplate[] = [
 
 از همراهی شما در مراحل قبلی سپاسگزاریم.
 
-برای ادامه فرایند جذب در موقعیت «{{position}}»، مایلیم شما را به مرحله «{{stageName}}» دعوت کنیم. جزئیات آزمون (لینک، مهلت و راهنما) به‌زودی برای شما ارسال می‌شود.
+برای ادامه فرایند جذب در موقعیت «{{position}}»، مایلیم شما را به مرحله آزمون دعوت کنیم. جزئیات آزمون (لینک، مهلت و راهنما) به‌زودی برای شما ارسال می‌شود.
 
-لطفاً آزمون را در بازه اعلام‌شده تکمیل کنید. اگر سوالی داشتید، همین‌جا بپرسید.
-
-{{companyWebsite}}` + emailSign,
+لطفاً آزمون را در بازه اعلام‌شده تکمیل کنید. اگر سوالی داشتید، همین‌جا بپرسید.` + contactSign,
   },
   {
     id: 'tpl_hired_email',
@@ -112,9 +98,7 @@ export const DEFAULT_TEMPLATES: SeedTemplate[] = [
 
 پس از طی مراحل جذب برای موقعیت «{{position}}»، مایلیم پیشنهاد همکاری رسمی در {{companyName}} را به شما ارائه کنیم. جزئیات پیشنهاد (شروع همکاری، شرایط و هماهنگی‌های بعدی) را به‌زودی با شما نهایی می‌کنیم.
 
-اگر آماده‌اید وارد مرحله هماهنگی شوید، لطفاً همین پیام را پاسخ دهید تا زمان گفت‌وگوی Offer را تنظیم کنیم.
-
-وب‌سایت ما: {{companyWebsite}}` + emailSign,
+اگر آماده‌اید وارد مرحله هماهنگی شوید، لطفاً همین پیام را پاسخ دهید تا زمان گفت‌وگوی پیشنهاد همکاری را تنظیم کنیم.` + contactSign,
   },
   {
     id: 'tpl_rejected_email',
@@ -130,8 +114,7 @@ export const DEFAULT_TEMPLATES: SeedTemplate[] = [
 
 رزومه شما در بانک استعدادهای ما می‌ماند و اگر فرصت مناسب‌تری پیش آمد، خوشحال می‌شویم دوباره در تماس باشیم.
 
-برای شما بهترین‌ها را آرزو می‌کنیم.
-{{companyWebsite}}` + emailSign,
+برای شما بهترین‌ها را آرزو می‌کنیم.` + contactSign,
   },
   {
     id: 'tpl_archived_email',
@@ -145,8 +128,7 @@ export const DEFAULT_TEMPLATES: SeedTemplate[] = [
 
 اگر در آینده فرصت شغلی متناسبی باز شد، از همین مسیر با شما در ارتباط خواهیم بود.
 
-ممنون از علاقه‌مندی‌تان.
-{{companyWebsite}}` + emailSign,
+ممنون از علاقه‌مندی‌تان.` + contactSign,
   },
   {
     id: 'tpl_email_invite_reminder',
@@ -160,14 +142,10 @@ export const DEFAULT_TEMPLATES: SeedTemplate[] = [
 موقعیت: «{{position}}»
 📅 تاریخ: {{interviewDate}}
 🕐 ساعت: {{interviewTime}}
-📍 محل: {{companyAddress}}
 
-منتظر دیدار شما هستیم. اگر نیاز به تغییر زمان داشتید، لطفاً زودتر خبر دهید.
-
-{{companyWebsite}}` + emailSign,
+منتظر دیدار شما هستیم. اگر نیاز به تغییر زمان داشتید، لطفاً زودتر خبر دهید.` + contactSign,
   },
 
-  // --- WhatsApp ---
   {
     id: 'tpl_inbox_whatsapp',
     name: 'واتساپ تأیید دریافت رزومه',
@@ -178,8 +156,7 @@ export const DEFAULT_TEMPLATES: SeedTemplate[] = [
 
 رزومه شما برای موقعیت «{{position}}» در {{companyName}} دریافت شد و در صف بررسی قرار گرفت.
 
-به‌محض مشخص شدن نتیجه بررسی اولیه، خبر می‌دهیم.
-وب‌سایت: {{companyWebsite}}` + waSign,
+به‌محض مشخص شدن نتیجه بررسی اولیه، خبر می‌دهیم.` + contactSign,
   },
   {
     id: 'tpl_review_whatsapp',
@@ -189,9 +166,7 @@ export const DEFAULT_TEMPLATES: SeedTemplate[] = [
     content:
 `سلام {{candidateName}} عزیز
 
-رزومه شما برای «{{position}}» الان در مرحله «{{stageName}}» است و توسط تیم بررسی می‌شود. به‌زودی نتیجه را بهتان می‌گوییم.
-
-{{companyWebsite}}` + waSign,
+رزومه شما برای «{{position}}» الان در مرحله بررسی است و توسط تیم بررسی می‌شود. به‌زودی نتیجه را به شما می‌گوییم.` + contactSign,
   },
   {
     id: 'tpl_interview-1_whatsapp',
@@ -201,14 +176,12 @@ export const DEFAULT_TEMPLATES: SeedTemplate[] = [
     content:
 `سلام {{candidateName}} عزیز 🌟
 
-خبر خوب: برای موقعیت «{{position}}» به «{{stageName}}» دعوت شدید.
+خبر خوب: برای موقعیت «{{position}}» به مصاحبه اول دعوت شدید.
 
 📅 {{interviewDate}}
 🕐 {{interviewTime}}
-📍 {{companyAddress}}
 
-لطفاً حضور خود را تأیید کنید. اگر زمان مناسب نبود، جایگزین پیشنهاد دهید.
-{{companyWebsite}}` + waSign,
+لطفاً حضور خود را تأیید کنید. اگر زمان مناسب نبود، جایگزین پیشنهاد دهید.` + contactSign,
   },
   {
     id: 'tpl_interview-2_whatsapp',
@@ -218,14 +191,12 @@ export const DEFAULT_TEMPLATES: SeedTemplate[] = [
     content:
 `سلام {{candidateName}} عزیز
 
-از مصاحبه قبلی ممنونیم. مایلیم شما را به «{{stageName}}» دعوت کنیم.
+از مصاحبه قبلی ممنونیم. مایلیم شما را به مصاحبه دوم دعوت کنیم.
 
 📅 {{interviewDate}}
 🕐 {{interviewTime}}
-📍 {{companyAddress}}
 
-لطفاً تأیید حضور بدهید یا زمان جایگزین پیشنهاد کنید.
-{{companyWebsite}}` + waSign,
+لطفاً تأیید حضور بدهید یا زمان جایگزین پیشنهاد کنید.` + contactSign,
   },
   {
     id: 'tpl_test_whatsapp',
@@ -235,10 +206,9 @@ export const DEFAULT_TEMPLATES: SeedTemplate[] = [
     content:
 `سلام {{candidateName}} عزیز
 
-برای ادامه فرایند «{{position}}»، وارد مرحله «{{stageName}}» می‌شوید. جزئیات آزمون به‌زودی ارسال می‌شود؛ لطفاً در مهلت اعلام‌شده تکمیلش کنید.
+برای ادامه فرایند «{{position}}»، وارد مرحله آزمون می‌شوید. جزئیات آزمون به‌زودی ارسال می‌شود؛ لطفاً در مهلت اعلام‌شده تکمیل کنید.
 
-سوالی بود بپرسید 🙂
-{{companyWebsite}}` + waSign,
+اگر سوالی بود بپرسید.` + contactSign,
   },
   {
     id: 'tpl_hired_whatsapp',
@@ -250,9 +220,7 @@ export const DEFAULT_TEMPLATES: SeedTemplate[] = [
 
 خوشحالیم بگوییم برای موقعیت «{{position}}» در {{companyName}} پیشنهاد همکاری داریم.
 
-به‌زودی جزئیات Offer را هماهنگ می‌کنیم. اگر آماده‌اید، همین پیام را پاسخ دهید.
-
-{{companyWebsite}}` + waSign,
+به‌زودی جزئیات پیشنهاد همکاری را هماهنگ می‌کنیم. اگر آماده‌اید، همین پیام را پاسخ دهید.` + contactSign,
   },
   {
     id: 'tpl_rejected_whatsapp',
@@ -266,8 +234,7 @@ export const DEFAULT_TEMPLATES: SeedTemplate[] = [
 
 متأسفانه در این مرحله امکان ادامه همکاری برای این موقعیت فراهم نشد. رزومه شما در بانک استعدادهای ما می‌ماند و اگر فرصت مناسب‌تری پیش آمد، دوباره در تماس خواهیم بود.
 
-براتون بهترین‌ها رو آرزو می‌کنیم.
-{{companyWebsite}}` + waSign,
+برای شما بهترین‌ها را آرزو می‌کنیم.` + contactSign,
   },
   {
     id: 'tpl_archived_whatsapp',
@@ -277,9 +244,7 @@ export const DEFAULT_TEMPLATES: SeedTemplate[] = [
     content:
 `سلام {{candidateName}} عزیز
 
-رزومه شما برای «{{position}}» در بانک استعدادهای {{companyName}} نگهداری شد. اگر فرصت مناسبی باز شد، خبر می‌دهیم.
-
-{{companyWebsite}}` + waSign,
+رزومه شما برای «{{position}}» در بانک استعدادهای {{companyName}} نگهداری شد. اگر فرصت مناسبی باز شد، خبر می‌دهیم.` + contactSign,
   },
   {
     id: 'tpl_whatsapp_invite_reminder',
@@ -291,9 +256,7 @@ export const DEFAULT_TEMPLATES: SeedTemplate[] = [
 یادآوری مصاحبه «{{position}}»:
 📅 {{interviewDate}}
 🕐 {{interviewTime}}
-📍 {{companyAddress}}
 
-منتظر شما هستیم. اگر نیاز به تغییر زمان دارید، زودتر بگویید.
-{{companyWebsite}}` + waSign,
+منتظر شما هستیم. اگر نیاز به تغییر زمان دارید، زودتر بگویید.` + contactSign
   },
 ];

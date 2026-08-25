@@ -27,6 +27,7 @@ router.get('/company-profile', async (req, res) => {
           name: 'شرکت شما',
           website: 'https://yourcompany.com',
           address: 'آدرس شرکت شما',
+          phone: '',
           jobPositions: {
             create: [
               { title: 'توسعه‌دهنده ارشد React' },
@@ -60,13 +61,19 @@ router.put('/company-profile', [
     .isLength({ min: 2, max: 100 })
     .withMessage('نام باید بین 2 تا 100 کاراکتر باشد'),
   body('website')
-    .isURL()
-    .withMessage('آدرس وب‌سایت معتبر نیست'),
+    .notEmpty()
+    .withMessage('وب‌سایت الزامی است')
+    .isLength({ max: 200 })
+    .withMessage('وب‌سایت حداکثر 200 کاراکتر است'),
   body('address')
     .notEmpty()
     .withMessage('آدرس الزامی است')
     .isLength({ min: 10, max: 200 })
-    .withMessage('آدرس باید بین 10 تا 200 کاراکتر باشد')
+    .withMessage('آدرس باید بین 10 تا 200 کاراکتر باشد'),
+  body('phone')
+    .optional({ values: 'falsy' })
+    .isLength({ max: 40 })
+    .withMessage('تلفن حداکثر 40 کاراکتر است')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -78,7 +85,7 @@ router.put('/company-profile', [
       });
     }
 
-    const { name, website, address } = req.body;
+    const { name, website, address, phone } = req.body;
 
     let companyProfile = await prisma.companyProfile.findFirst();
 
@@ -89,6 +96,7 @@ router.put('/company-profile', [
           name,
           website,
           address,
+          phone: phone ?? '',
           updatedAt: new Date()
         },
         include: getJobPositionsInclude()
@@ -99,6 +107,7 @@ router.put('/company-profile', [
           name,
           website,
           address,
+          phone: phone ?? '',
           jobPositions: {
             create: []
           }

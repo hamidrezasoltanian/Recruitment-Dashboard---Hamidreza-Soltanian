@@ -354,6 +354,7 @@ const TemplateManagementPanel: React.FC = () => {
     { name: '{{companyName}}', desc: 'نام شرکت' },
     { name: '{{companyWebsite}}', desc: 'وب‌سایت شرکت' },
     { name: '{{companyAddress}}', desc: 'آدرس شرکت' },
+    { name: '{{companyPhone}}', desc: 'تلفن شرکت' },
   ];
 
   const renderForm = () => (
@@ -478,8 +479,8 @@ const CompanyProfilePanel: React.FC = () => {
     }
     
     const handleSaveDetails = () => {
-        const {name, website, address} = details;
-        updateCompanyDetails({name, website, address});
+        const {name, website, address, phone} = details;
+        updateCompanyDetails({name, website, address, phone});
     }
 
     const handleAddJob = () => {
@@ -506,6 +507,10 @@ const CompanyProfilePanel: React.FC = () => {
                 <div>
                     <label htmlFor="website" className="block text-sm font-medium text-gray-700">وب‌سایت</label>
                     <input type="text" name="website" id="website" value={details.website} onChange={handleDetailChange} onBlur={handleSaveDetails} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3" />
+                </div>
+                <div>
+                    <label htmlFor="phone" className="block text-sm font-medium text-gray-700">تلفن</label>
+                    <input type="tel" name="phone" id="phone" value={details.phone || ''} onChange={handleDetailChange} onBlur={handleSaveDetails} placeholder="مثال: ۰۲۱-۱۲۳۴۵۶۷۸" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3" />
                 </div>
                 <div>
                     <label htmlFor="address" className="block text-sm font-medium text-gray-700">آدرس</label>

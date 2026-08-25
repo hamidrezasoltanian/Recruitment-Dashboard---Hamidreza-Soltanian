@@ -98,6 +98,7 @@ export const templateService = {
     if (additionalData.name) replacements.companyName = additionalData.name;
     if (additionalData.website) replacements.companyWebsite = additionalData.website;
     if (additionalData.address) replacements.companyAddress = additionalData.address;
+    if (additionalData.phone) replacements.companyPhone = additionalData.phone;
     
     // Filter out any undefined values from additionalData
     for(const key in replacements) {
@@ -108,11 +109,35 @@ export const templateService = {
 
     // Replace all placeholders with more flexible regex
     newContent = newContent.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-        return replacements[key] || match;
+        return Object.prototype.hasOwnProperty.call(replacements, key) ? replacements[key] : match;
     });
 
     return newContent;
   },
+
+  companyContext: (companyProfile: {
+    name?: string;
+    website?: string;
+    address?: string;
+    phone?: string;
+  }) => ({
+    companyName: companyProfile.name || '',
+    companyWebsite: companyProfile.website || '',
+    companyAddress: companyProfile.address || '',
+    companyPhone: companyProfile.phone || '',
+    name: companyProfile.name || '',
+    website: companyProfile.website || '',
+    address: companyProfile.address || '',
+    phone: companyProfile.phone || '',
+  }),
+
+  contactFooter: (companyProfile: {
+    name?: string;
+    website?: string;
+    address?: string;
+    phone?: string;
+  }) =>
+    `\n\nبا آرزوی بهترین‌ها،\nتیم جذب و استخدام ${companyProfile.name || ''}\nوب‌سایت: ${companyProfile.website || ''}\nآدرس: ${companyProfile.address || ''}\nتلفن: ${companyProfile.phone || ''}`,
   
   hasPlaceholder: (content: string | undefined, placeholder: string): boolean => {
       if (!content) return false;
@@ -134,7 +159,8 @@ export const templateService = {
       'currentTime',
       'companyName',
       'companyAddress',
-      'companyWebsite'
+      'companyWebsite',
+      'companyPhone'
     ];
   }
 };

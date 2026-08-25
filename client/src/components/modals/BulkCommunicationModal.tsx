@@ -86,9 +86,7 @@ const BulkCommunicationModal: React.FC<BulkCommunicationModalProps> = ({
     // Use a loop with a delay to avoid browser popup blockers
     for (const candidate of candidates) {
         const placeholders = {
-            companyName: companyProfile.name,
-            companyAddress: companyProfile.address,
-            companyWebsite: companyProfile.website,
+            ...templateService.companyContext(companyProfile),
         };
         const personalizedMessage = templateService.replacePlaceholders(message, candidate, placeholders);
 

@@ -72,9 +72,7 @@ const CommunicationModal: React.FC<CommunicationModalProps> = ({
     const currentStage = stages.find((s) => s.id === candidate.stage);
     const finalMessage = templateService.replacePlaceholders(template.content, candidate, {
       position,
-      companyName: companyProfile.name,
-      companyAddress: companyProfile.address,
-      companyWebsite: companyProfile.website,
+      ...templateService.companyContext(companyProfile),
       stageName: currentStage?.title || candidate.stage,
     });
     setMessage(finalMessage);

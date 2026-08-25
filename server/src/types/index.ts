@@ -115,6 +115,7 @@ export interface CompanyProfile {
   name: string;
   website: string;
   address: string;
+  phone: string;
   createdAt: Date;
   updatedAt: Date;
   jobPositions: JobPosition[];

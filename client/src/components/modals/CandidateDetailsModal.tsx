@@ -39,6 +39,7 @@ interface CandidateTestItemProps {
 }
 
 const CandidateTestItem: React.FC<CandidateTestItemProps> = ({ candidate, test, result, updateTestResult, addToast }) => {
+  const { companyProfile } = useSettings();
   const [status, setStatus] = useState(result?.status || 'not_sent');
   const [score, setScore] = useState(result?.score || '');
   const [notes, setNotes] = useState(result?.notes || '');
@@ -95,7 +96,7 @@ const CandidateTestItem: React.FC<CandidateTestItemProps> = ({ candidate, test, 
   const handleSendTest = async (platform: 'email' | 'whatsapp' | 'direct') => {
     try {
       if (platform !== 'direct') {
-        const body = `سلام ${candidate.name} عزیز،\nلطفاً آزمون ${test.name} را از طریق لینک زیر تکمیل نمایید:\n${test.url}\n\nبا تشکر`;
+        const body = `سلام ${candidate.name} عزیز،\nلطفاً آزمون ${test.name} را از طریق لینک زیر تکمیل نمایید:\n${test.url}${templateService.contactFooter(companyProfile)}`;
         
         if (platform === 'email') {
           window.open(`mailto:${candidate.email}?subject=ارسال آزمون ${test.name}&body=${encodeURIComponent(body)}`, '_blank');
@@ -582,11 +583,7 @@ const CandidateDetailsModal: React.FC<CandidateDetailsModalProps> = ({ isOpen, o
       return;
     }
     
-    const placeholders = {
-        companyName: companyProfile.name,
-        companyAddress: companyProfile.address,
-        companyWebsite: companyProfile.website,
-    };
+    const placeholders = templateService.companyContext(companyProfile);
 
     if (platform === 'email') {
         if (emailReminderTemplate) {
